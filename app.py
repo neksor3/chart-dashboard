@@ -31,7 +31,7 @@ st.markdown("""
     header[data-testid="stHeader"] { background-color: #1e1e1e; }
     [data-testid="stSidebar"] { background-color: #16213e; }
     .stSelectbox > div > div { background-color: #16213e; color: #b0b0b0; }
-    div[data-testid="stHorizontalBlock"] { gap: 0.3rem; }
+    div[data-testid="stHorizontalBlock"] { gap: 0.15rem; }
     .stTabs [data-baseweb="tab-list"] { gap: 2px; background-color: #16213e; padding: 4px; border-radius: 4px; }
     .stTabs [data-baseweb="tab"] {
         background-color: #16213e; color: #b0b0b0; border: 1px solid #2a4a6a;
@@ -44,10 +44,9 @@ st.markdown("""
     div[data-testid="stMarkdownContainer"] p { margin-bottom: 0; }
     .block-container { padding-top: 2.5rem; padding-bottom: 0rem; }
     button[kind="secondary"] { background-color: #16213e; color: white; border: 1px solid #2a4a6a; }
-    .stButton > button { font-size: 10px !important; padding: 2px 6px !important; min-height: 26px !important; height: 26px !important; }
+    .stButton > button { font-size: 10px !important; padding: 1px 4px !important; min-height: 26px !important; height: 26px !important; }
     @media (max-width: 768px) {
         .block-container { padding: 2.5rem 0.5rem 0 0.5rem !important; }
-        .stButton > button { font-size: 9px !important; padding: 2px 4px !important; min-height: 24px !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -969,23 +968,13 @@ def main():
     # Input labels helper
     _lbl = f"color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
-    # CHART + THEME dropdowns row
-    col_ct, col_th = st.columns([1, 2])
-    with col_ct:
-        st.markdown(f"<div style='{_lbl}'>CHART</div>", unsafe_allow_html=True)
-        ct = st.selectbox("Chart", ['line', 'bars'], index=0 if st.session_state.chart_type == 'line' else 1,
-            key='chart_select', label_visibility='collapsed')
-        st.session_state.chart_type = ct
-    with col_th:
-        st.markdown(f"<div style='{_lbl}'>THEME</div>", unsafe_allow_html=True)
-        theme = st.selectbox("Theme", list(THEMES.keys()),
-            index=list(THEMES.keys()).index(st.session_state.theme),
-            key='theme_select', label_visibility='collapsed')
-        st.session_state.theme = theme
-
-    # SECTOR selection
+    # SECTOR + CHART + THEME — one row of dropdowns
     if is_mobile:
-        st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>SECTOR</div>", unsafe_allow_html=True)
+        col_sec, col_ct, col_th = st.columns([3, 1, 2])
+    else:
+        col_sec, col_ct, col_th = st.columns([4, 1, 2])
+    with col_sec:
+        st.markdown(f"<div style='{_lbl}'>SECTOR</div>", unsafe_allow_html=True)
         sector_names = list(FUTURES_GROUPS.keys())
         sector = st.selectbox("Sector", sector_names,
             index=sector_names.index(st.session_state.sector),
@@ -994,25 +983,24 @@ def main():
             st.session_state.sector = sector
             st.session_state.symbol = FUTURES_GROUPS[sector][0]
             st.rerun()
-    else:
-        st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>SECTOR</div>", unsafe_allow_html=True)
-        sector_names = list(FUTURES_GROUPS.keys())
-        scpr = min(len(sector_names), 14)
-        for ri in range((len(sector_names) + scpr - 1) // scpr):
-            s, e = ri * scpr, min((ri + 1) * scpr, len(sector_names))
-            cols = st.columns(scpr)
-            for j, sname in enumerate(sector_names[s:e]):
-                with cols[j]:
-                    if st.button(sname.upper(), key=f"sec_{sname}", use_container_width=True,
-                                type="primary" if sname == st.session_state.sector else "secondary"):
-                        if sname != st.session_state.sector:
-                            st.session_state.sector = sname
-                            st.session_state.symbol = FUTURES_GROUPS[sname][0]
-                            st.rerun()
+    with col_ct:
+        st.markdown(f"<div style='{_lbl}'>CHART</div>", unsafe_allow_html=True)
+        chart_options = ['Line', 'Bars']
+        ct_idx = 0 if st.session_state.chart_type == 'line' else 1
+        ct = st.selectbox("Chart", chart_options, index=ct_idx,
+            key='chart_select', label_visibility='collapsed')
+        st.session_state.chart_type = ct.lower()
+    with col_th:
+        st.markdown(f"<div style='{_lbl}'>THEME</div>", unsafe_allow_html=True)
+        theme = st.selectbox("Theme", list(THEMES.keys()),
+            index=list(THEMES.keys()).index(st.session_state.theme),
+            key='theme_select', label_visibility='collapsed')
+        st.session_state.theme = theme
 
     # ASSET selection
     symbols = FUTURES_GROUPS[st.session_state.sector]
     if is_mobile:
+        # Mobile: dropdown
         st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>ASSET</div>", unsafe_allow_html=True)
         sym_labels = [clean_symbol(s) for s in symbols]
         current_idx = symbols.index(st.session_state.symbol) if st.session_state.symbol in symbols else 0
@@ -1023,12 +1011,15 @@ def main():
             st.session_state.symbol = selected_sym
             st.rerun()
     else:
+        # Desktop: compact buttons — cap columns, wrap into rows
         st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>ASSET</div>", unsafe_allow_html=True)
-        cpr = min(len(symbols), 12)
-        for ri in range((len(symbols) + cpr - 1) // cpr):
-            s, e = ri * cpr, min((ri + 1) * cpr, len(symbols))
+        num_syms = len(symbols)
+        cpr = min(num_syms, 12)
+        for ri in range((num_syms + cpr - 1) // cpr):
+            s, e = ri * cpr, min((ri + 1) * cpr, num_syms)
+            row_syms = symbols[s:e]
             cols = st.columns(cpr)
-            for j, sym in enumerate(symbols[s:e]):
+            for j, sym in enumerate(row_syms):
                 with cols[j]:
                     if st.button(clean_symbol(sym), key=f"sym_{sym}", use_container_width=True,
                                 type="primary" if sym == st.session_state.symbol else "secondary"):
