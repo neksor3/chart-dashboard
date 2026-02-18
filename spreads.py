@@ -49,16 +49,28 @@ def _spread_r2(returns):
 # DATA FETCHING
 # =============================================================================
 
+LOOKBACK_OPTIONS = {
+    'YTD': 0,      # special case
+    '30 Days': 30,
+    '60 Days': 60,
+    '120 Days': 120,
+    '240 Days': 240,
+    '520 Days': 520,
+}
+
 @st.cache_data(ttl=300, show_spinner=False)
-def fetch_sector_ytd(sector):
+def fetch_sector_spread_data(sector, lookback_days=0):
     symbols = FUTURES_GROUPS.get(sector, [])
     if not symbols: return None
-    ytd_start = datetime.now().replace(month=1, day=1).strftime('%Y-%m-%d')
+    if lookback_days == 0:  # YTD
+        start = datetime.now().replace(month=1, day=1).strftime('%Y-%m-%d')
+    else:
+        start = (datetime.now() - pd.Timedelta(days=int(lookback_days * 1.5))).strftime('%Y-%m-%d')
     data = pd.DataFrame()
     for sym in symbols:
         try:
             ticker = yf.Ticker(sym)
-            hist = ticker.history(start=ytd_start)
+            hist = ticker.history(start=start)
             if not hist.empty:
                 closes = hist['Close'].copy()
                 closes.index = closes.index.tz_localize(None) if closes.index.tz else closes.index
@@ -68,6 +80,9 @@ def fetch_sector_ytd(sector):
         except: pass
     if data.empty or len(data.columns) < 2: return None
     data = data.ffill().dropna()
+    # Trim to exact lookback days if not YTD
+    if lookback_days > 0 and len(data) > lookback_days:
+        data = data.iloc[-lookback_days:]
     if len(data) < 5: return None
     data = 100 * (data / data.iloc[0])
     return data
@@ -285,11 +300,11 @@ def render_spreads_tab(is_mobile):
     theme_name = st.session_state.get('theme', 'Blue / Rose')
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
-    # Controls: Sector + Sort + Direction
+    # Controls: Sector + Lookback + Sort + Direction
     if is_mobile:
-        col_sec, col_sort = st.columns([2, 1])
+        col_sec, col_lb, col_sort = st.columns([2, 1, 1])
     else:
-        col_sec, col_sort, col_dir = st.columns([4, 2, 1])
+        col_sec, col_lb, col_sort, col_dir = st.columns([3, 2, 2, 1])
 
     with col_sec:
         st.markdown(f"<div style='{_lbl}'>SECTOR</div>", unsafe_allow_html=True)
@@ -298,6 +313,11 @@ def render_spreads_tab(is_mobile):
             index=sector_names.index(st.session_state.get('spread_sector', 'Indices')),
             key='spread_sector_sel', label_visibility='collapsed')
         st.session_state.spread_sector = spread_sector
+    with col_lb:
+        st.markdown(f"<div style='{_lbl}'>LOOKBACK</div>", unsafe_allow_html=True)
+        lookback_label = st.selectbox("Lookback", list(LOOKBACK_OPTIONS.keys()), index=0,
+            key='spread_lookback_sel', label_visibility='collapsed')
+        lookback_days = LOOKBACK_OPTIONS[lookback_label]
     with col_sort:
         st.markdown(f"<div style='{_lbl}'>SORT BY</div>", unsafe_allow_html=True)
         sort_options = ['Composite', 'Sharpe', 'Sortino', 'MAR', 'R²', 'Total', 'Win Rate']
@@ -317,8 +337,8 @@ def render_spreads_tab(is_mobile):
     pos_c = theme['pos']
 
     # Fetch and compute
-    with st.spinner(f'Computing {spread_sector} spreads...'):
-        data = fetch_sector_ytd(spread_sector)
+    with st.spinner(f'Computing {spread_sector} spreads ({lookback_label})...'):
+        data = fetch_sector_spread_data(spread_sector, lookback_days)
 
     if data is None or len(data.columns) < 2:
         st.markdown(f"<div style='padding:12px;color:#6d6d6d;font-size:11px;font-family:{FONTS}'>Need at least 2 assets with data for spread analysis</div>", unsafe_allow_html=True)

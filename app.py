@@ -29,12 +29,12 @@ st.set_page_config(page_title="Chart Dashboard", layout="wide", initial_sidebar_
 # Dark theme CSS + Google Fonts
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     .stApp { background-color: #1e1e1e; font-family: 'Inter', sans-serif; }
     header[data-testid="stHeader"] { background-color: #1e1e1e; }
     [data-testid="stSidebar"] { background-color: #16213e; }
     .stSelectbox > div > div { background-color: #16213e; color: #b0b0b0; font-family: 'Inter', sans-serif; }
-    .stTextInput > div > div > input { font-family: 'JetBrains Mono', monospace; }
+    .stTextInput > div > div > input { font-family: 'Inter', sans-serif; }
     div[data-testid="stHorizontalBlock"] { gap: 0.3rem; }
     .stTabs [data-baseweb="tab-list"] { gap: 0; background-color: #0f172a; padding: 0; border-radius: 0; border-bottom: 1px solid #2a4a6a; }
     .stTabs [data-baseweb="tab"] {
@@ -915,24 +915,35 @@ def _render_charts_tab(is_mobile, est):
 
     symbols = FUTURES_GROUPS[st.session_state.sector]
     sym_labels = [clean_symbol(s) for s in symbols]
-    current_idx = symbols.index(st.session_state.symbol) if st.session_state.symbol in symbols else 0
 
-    # All controls in one row: SECTOR + ASSET + CHART + THEME
+    # Ensure current symbol belongs to current sector
+    if st.session_state.symbol not in symbols:
+        st.session_state.symbol = symbols[0]
+    current_idx = symbols.index(st.session_state.symbol)
+
+    # Sector change callback
+    def _on_sector_change():
+        new_sector = st.session_state.sel_sector
+        st.session_state.sector = new_sector
+        st.session_state.symbol = FUTURES_GROUPS[new_sector][0]
+        # Clear asset key so selectbox picks up new list
+        if 'sel_asset' in st.session_state:
+            del st.session_state.sel_asset
+
+    # Controls row: SECTOR + ASSET + SORT + CHART + THEME
     if is_mobile:
-        col_sec, col_ast, col_ct, col_th = st.columns([3, 2, 1, 2])
+        col_sec, col_ast, col_sort, col_ct, col_th = st.columns([3, 2, 2, 1, 2])
     else:
-        col_sec, col_ast, col_ct, col_th = st.columns([3, 3, 1, 2])
+        col_sec, col_ast, col_sort, col_ct, col_th = st.columns([3, 3, 2, 1, 2])
 
     with col_sec:
         st.markdown(f"<div style='{_lbl}'>SECTOR</div>", unsafe_allow_html=True)
         sector_names = list(FUTURES_GROUPS.keys())
+        if st.session_state.get('sel_sector') != st.session_state.sector:
+            st.session_state.sel_sector = st.session_state.sector
         sector = st.selectbox("Sector", sector_names,
-            index=sector_names.index(st.session_state.sector),
-            key='sel_sector', label_visibility='collapsed')
-        if sector != st.session_state.sector:
-            st.session_state.sector = sector
-            st.session_state.symbol = FUTURES_GROUPS[sector][0]
-            st.rerun()
+            key='sel_sector', label_visibility='collapsed',
+            on_change=_on_sector_change)
     with col_ast:
         st.markdown(f"<div style='{_lbl}'>ASSET</div>", unsafe_allow_html=True)
         selected_label = st.selectbox("Asset", sym_labels, index=current_idx,
@@ -941,6 +952,12 @@ def _render_charts_tab(is_mobile, est):
         if selected_sym != st.session_state.symbol:
             st.session_state.symbol = selected_sym
             st.rerun()
+    with col_sort:
+        st.markdown(f"<div style='{_lbl}'>SORT</div>", unsafe_allow_html=True)
+        sort_options = ['Default', 'Day %', 'WTD %', 'MTD %', 'YTD %', 'HV', 'DD',
+                        'Sharpe Day', 'Sharpe WTD', 'Sharpe MTD', 'Sharpe YTD']
+        sort_by = st.selectbox("Sort", sort_options, index=0,
+            key='scanner_sort', label_visibility='collapsed')
     with col_ct:
         st.markdown(f"<div style='{_lbl}'>CHART</div>", unsafe_allow_html=True)
         chart_options = ['Line', 'Bars']
@@ -958,6 +975,19 @@ def _render_charts_tab(is_mobile, est):
     # Fetch data
     with st.spinner('Loading market data...'):
         metrics = fetch_sector_data(st.session_state.sector)
+
+    # Sort scanner data
+    if metrics and sort_by != 'Default':
+        sort_map = {
+            'Day %': 'change_day', 'WTD %': 'change_wtd', 'MTD %': 'change_mtd', 'YTD %': 'change_ytd',
+            'HV': 'hist_vol', 'DD': 'current_dd',
+            'Sharpe Day': 'day_sharpe', 'Sharpe WTD': 'wtd_sharpe', 'Sharpe MTD': 'mtd_sharpe', 'Sharpe YTD': 'ytd_sharpe',
+        }
+        attr = sort_map.get(sort_by)
+        if attr:
+            reverse = sort_by not in ('HV', 'DD')  # higher is better for most, lower for HV/DD
+            metrics = sorted(metrics, key=lambda m: getattr(m, attr, 0) if not pd.isna(getattr(m, attr, None)) else -999,
+                           reverse=reverse)
 
     # Scanner table
     if metrics:

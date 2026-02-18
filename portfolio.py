@@ -71,7 +71,7 @@ PERIOD_OPTIONS = OrderedDict([
 
 SCORE_TO_RANK = {
     'Win Rate': 'win_rate', 'Sharpe': 'sharpe', 'Sortino': 'sortino',
-    'MAR': 'mar', 'R²': 'r2', 'Composite': 'sharpe',
+    'MAR': 'mar', 'R²': 'r2', 'Composite': 'sharpe', 'Total Return': 'total_ret',
 }
 
 # =============================================================================
@@ -105,7 +105,8 @@ def fetch_symbol_history(symbols_tuple, days=1800):
 # =============================================================================
 
 def _optimize_window_vectorized(returns_array, n_portfolios, n_assets, max_weight,
-                                score_type='Win Rate', min_weight=0.0, allow_short=False):
+                                score_type='Win Rate', min_weight=0.0, allow_short=False,
+                                max_vol=None, min_ann_ret=None):
     if allow_short:
         weights = np.random.randn(n_portfolios, n_assets)
         weights = weights / weights.sum(axis=1, keepdims=True)
@@ -135,6 +136,16 @@ def _optimize_window_vectorized(returns_array, n_portfolios, n_assets, max_weigh
     ann_rets = np.mean(port_returns, axis=1) * 252
     ann_vols = np.std(port_returns, axis=1, ddof=1) * np.sqrt(252)
 
+    # Apply constraints — mask out portfolios that violate
+    valid = np.ones(n_portfolios, dtype=bool)
+    if max_vol is not None and max_vol > 0:
+        valid &= ann_vols <= max_vol
+    if min_ann_ret is not None:
+        valid &= ann_rets >= min_ann_ret
+    # If too few valid, relax constraints
+    if valid.sum() < max(10, n_portfolios // 20):
+        valid = np.ones(n_portfolios, dtype=bool)
+
     def _vec_downside_vol(pr):
         neg = np.minimum(pr, 0)
         n_neg = np.maximum(np.sum(pr < 0, axis=1).astype(float), 1)
@@ -150,6 +161,9 @@ def _optimize_window_vectorized(returns_array, n_portfolios, n_assets, max_weigh
 
     if score_type == 'Win Rate':
         scores = np.mean(port_returns > 0, axis=1)
+    elif score_type == 'Total Return':
+        cum_final = np.prod(1 + port_returns, axis=1)
+        scores = cum_final - 1
     elif score_type == 'Sortino':
         dv = _vec_downside_vol(port_returns)
         scores = np.where(dv > 0, ann_rets / dv, 0)
@@ -179,19 +193,23 @@ def _optimize_window_vectorized(returns_array, n_portfolios, n_assets, max_weigh
     else:  # Sharpe
         scores = np.where(ann_vols > 0, ann_rets / ann_vols, 0)
 
+    # Apply validity mask
+    scores[~valid] = -np.inf
     return weights[np.argmax(scores)]
 
 # =============================================================================
 # WALK-FORWARD ENGINE
 # =============================================================================
 
-def _optimize_at_rebalance(returns_df, approach, score_type, n_portfolios, mw, mnw=0.0, allow_short=False):
+def _optimize_at_rebalance(returns_df, approach, score_type, n_portfolios, mw, mnw=0.0, allow_short=False,
+                           max_vol=None, min_ann_ret=None):
     n_assets = returns_df.shape[1]; data_len = len(returns_df)
     window_weights_list = []; blend_wts = []
     for wname, wdays in approach['windows'].items():
         if data_len >= wdays:
             w_ret = returns_df.iloc[-wdays:]
-            best_w = _optimize_window_vectorized(w_ret.values, n_portfolios, n_assets, mw, score_type, mnw, allow_short)
+            best_w = _optimize_window_vectorized(w_ret.values, n_portfolios, n_assets, mw, score_type, mnw, allow_short,
+                                                  max_vol=max_vol, min_ann_ret=min_ann_ret)
             window_weights_list.append(best_w); blend_wts.append(approach['blend'][wname])
     if not window_weights_list: return None
     blend_wts = np.array(blend_wts); blend_wts /= blend_wts.sum()
@@ -203,7 +221,8 @@ def _optimize_at_rebalance(returns_df, approach, score_type, n_portfolios, mw, m
 
 def _walk_forward_single(returns_df, approach, score_type, rebal_months,
                          n_portfolios=10000, max_weight=0.50, min_weight=0.0,
-                         txn_cost=0.001, allow_short=False):
+                         txn_cost=0.001, allow_short=False,
+                         max_vol=None, min_ann_ret=None):
     n_assets = returns_df.shape[1]; mw = max_weight; mnw = min_weight
     min_is_days = max(approach['windows'].values()); dates = returns_df.index
 
@@ -229,7 +248,8 @@ def _walk_forward_single(returns_df, approach, score_type, rebal_months,
 
     for i, (ri, rd) in enumerate(rebal_dates):
         is_data = returns_df.iloc[:ri + 1]
-        opt_w = _optimize_at_rebalance(is_data, approach, score_type, n_portfolios, mw, mnw, allow_short)
+        opt_w = _optimize_at_rebalance(is_data, approach, score_type, n_portfolios, mw, mnw, allow_short,
+                                        max_vol=max_vol, min_ann_ret=min_ann_ret)
         if opt_w is None: continue
         oos_start = ri + 1
         oos_end = rebal_dates[i + 1][0] if i + 1 < len(rebal_dates) else len(dates)
@@ -291,7 +311,8 @@ def _calc_oos_metrics(returns_series):
 
 def run_walkforward_grid(symbols, score_type='Win Rate', rebal_months=3, n_portfolios=10000,
                          fetch_days=1800, max_weight=0.50, min_weight=0.0,
-                         txn_cost=0.001, allow_short=False, progress_bar=None):
+                         txn_cost=0.001, allow_short=False, progress_bar=None,
+                         max_vol=None, min_ann_ret=None):
     data, valid = fetch_symbol_history(tuple(symbols), days=fetch_days)
     if data is None or len(valid) < 2: return None
     returns = data.pct_change().dropna(); n_assets = len(valid)
@@ -322,7 +343,8 @@ def run_walkforward_grid(symbols, score_type='Win Rate', rebal_months=3, n_portf
         if progress_bar: progress_bar.progress((i + 1) / len(approach_list), text=f'Walk-forward: {name}')
         try:
             wf = _walk_forward_single(returns, approach, score_type, rebal_months,
-                                      n_portfolios, max_weight, min_weight, txn_cost, allow_short)
+                                      n_portfolios, max_weight, min_weight, txn_cost, allow_short,
+                                      max_vol=max_vol, min_ann_ret=min_ann_ret)
             if wf is not None:
                 metrics = _calc_oos_metrics(wf['oos_returns'])
                 if metrics is not None:
@@ -602,7 +624,7 @@ def render_portfolio_tab(is_mobile):
         c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(f"<div style='{_lbl}'>OBJECTIVE</div>", unsafe_allow_html=True)
-        score = st.selectbox("Objective", ['Win Rate', 'Composite', 'Sharpe', 'Sortino', 'MAR', 'R²'],
+        score = st.selectbox("Objective", ['Win Rate', 'Composite', 'Sharpe', 'Sortino', 'MAR', 'R²', 'Total Return'],
                               key='port_score', label_visibility='collapsed')
     with c2:
         st.markdown(f"<div style='{_lbl}'>REBALANCE</div>", unsafe_allow_html=True)
@@ -618,11 +640,16 @@ def render_portfolio_tab(is_mobile):
                                   key='port_direction', label_visibility='collapsed')
 
     # Controls row 2: Max Wt + Min Wt + Sims + Cost
-    _defaults = {'port_maxwt': '50', 'port_minwt': '0', 'port_sims': '10000', 'port_cost': '0.10'}
+    _defaults = {'port_maxwt': '50', 'port_minwt': '0', 'port_sims': '10000', 'port_cost': '0.10',
+                 'port_maxvol': '', 'port_minret': ''}
     for k, v in _defaults.items():
-        if not st.session_state.get(k):  # handles missing AND empty string
+        if k not in st.session_state:
             st.session_state[k] = v
-    c5, c6, c7, c8 = st.columns(4)
+    # Keep old defaults restored if empty
+    for k, v in [('port_maxwt','50'),('port_minwt','0'),('port_sims','10000'),('port_cost','0.10')]:
+        if not st.session_state.get(k):
+            st.session_state[k] = v
+    c5, c6, c7, c8, c9, c10 = st.columns(6)
     with c5:
         st.markdown(f"<div style='{_lbl}'>MAX WT %</div>", unsafe_allow_html=True)
         max_wt_str = st.text_input("Max Wt", key='port_maxwt', label_visibility='collapsed')
@@ -630,9 +657,17 @@ def render_portfolio_tab(is_mobile):
         st.markdown(f"<div style='{_lbl}'>MIN WT %</div>", unsafe_allow_html=True)
         min_wt_str = st.text_input("Min Wt", key='port_minwt', label_visibility='collapsed')
     with c7:
+        st.markdown(f"<div style='{_lbl}'>MAX VOL %</div>", unsafe_allow_html=True)
+        max_vol_str = st.text_input("Max Vol", key='port_maxvol', label_visibility='collapsed',
+                                     placeholder='e.g. 15')
+    with c8:
+        st.markdown(f"<div style='{_lbl}'>MIN RET %</div>", unsafe_allow_html=True)
+        min_ret_str = st.text_input("Min Ret", key='port_minret', label_visibility='collapsed',
+                                     placeholder='e.g. 5')
+    with c9:
         st.markdown(f"<div style='{_lbl}'>SIMS</div>", unsafe_allow_html=True)
         sims_str = st.text_input("Sims", key='port_sims', label_visibility='collapsed')
-    with c8:
+    with c10:
         st.markdown(f"<div style='{_lbl}'>COST %</div>", unsafe_allow_html=True)
         cost_str = st.text_input("Cost", key='port_cost', label_visibility='collapsed')
 
@@ -658,6 +693,11 @@ def render_portfolio_tab(is_mobile):
         except: n_sims = 10000
         try: txn_cost = max(0, min(5.0, float(cost_str))) / 100.0
         except: txn_cost = 0.001
+        # Optional constraints
+        try: max_vol = float(max_vol_str) / 100.0 if max_vol_str.strip() else None
+        except: max_vol = None
+        try: min_ann_ret = float(min_ret_str) / 100.0 if min_ret_str.strip() else None
+        except: min_ann_ret = None
 
         allow_short = direction == 'Long/Short'
         rebal = REBAL_OPTIONS[rebal_label]
@@ -671,7 +711,8 @@ def render_portfolio_tab(is_mobile):
                                      fetch_days=fetch_days, n_portfolios=n_sims,
                                      max_weight=max_wt, min_weight=min_wt,
                                      txn_cost=txn_cost, allow_short=allow_short,
-                                     progress_bar=progress)
+                                     progress_bar=progress,
+                                     max_vol=max_vol, min_ann_ret=min_ann_ret)
         progress.empty()
 
         if not grid or not grid['results']:
@@ -682,6 +723,7 @@ def render_portfolio_tab(is_mobile):
             'score': score, 'rebal_label': rebal_label, 'period_label': period_label,
             'direction': 'L/S' if allow_short else 'Long',
             'min_wt': min_wt, 'max_wt': max_wt, 'n_sims': n_sims, 'txn_cost': txn_cost,
+            'max_vol': max_vol, 'min_ann_ret': min_ann_ret,
         }
         # Reset approach selector to winner on new run
         if 'port_view_approach' in st.session_state:
@@ -695,10 +737,13 @@ def render_portfolio_tab(is_mobile):
     n_app = len(grid['results'])
 
     # 1. Approach Ranking
+    constraints_str = ''
+    if params.get('max_vol'): constraints_str += f" · max vol {params['max_vol']*100:.0f}%"
+    if params.get('min_ann_ret'): constraints_str += f" · min ret {params['min_ann_ret']*100:.0f}%"
     _section('APPROACH RANKING',
              f"{n_app} lookbacks · {params['rebal_label']} · {params['period_label']} · "
              f"{params['direction']} · wt {params['min_wt']*100:.0f}–{params['max_wt']*100:.0f}% · "
-             f"cost {params['txn_cost']*100:.2f}% · {params['n_sims']:,} sims · max {params['score']} · all OOS")
+             f"cost {params['txn_cost']*100:.2f}% · {params['n_sims']:,} sims · max {params['score']}{constraints_str} · all OOS")
     result = render_ranking_table(grid, rank_metric)
     best_name, sorted_names = result
     if not best_name or not sorted_names: return
