@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 from dataclasses import dataclass
-from collections import OrderedDict
 import pytz
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -13,6 +12,9 @@ import logging
 import feedparser
 from urllib.parse import quote
 import re
+
+from config import (FUTURES_GROUPS, THEMES, SYMBOL_NAMES, CHART_CONFIGS,
+                     STATUS_LABELS, FONTS, MONO, clean_symbol)
 
 # =============================================================================
 # SETUP
@@ -31,7 +33,7 @@ st.markdown("""
     header[data-testid="stHeader"] { background-color: #1e1e1e; }
     [data-testid="stSidebar"] { background-color: #16213e; }
     .stSelectbox > div > div { background-color: #16213e; color: #b0b0b0; }
-    div[data-testid="stHorizontalBlock"] { gap: 0.15rem; }
+    div[data-testid="stHorizontalBlock"] { gap: 0.3rem; }
     .stTabs [data-baseweb="tab-list"] { gap: 2px; background-color: #16213e; padding: 4px; border-radius: 4px; }
     .stTabs [data-baseweb="tab"] {
         background-color: #16213e; color: #b0b0b0; border: 1px solid #2a4a6a;
@@ -44,73 +46,18 @@ st.markdown("""
     div[data-testid="stMarkdownContainer"] p { margin-bottom: 0; }
     .block-container { padding-top: 2.5rem; padding-bottom: 0rem; }
     button[kind="secondary"] { background-color: #16213e; color: white; border: 1px solid #2a4a6a; }
-    .stButton > button { font-size: 10px !important; padding: 1px 4px !important; min-height: 26px !important; height: 26px !important; }
+    .stButton > button { font-size: 11px !important; padding: 4px 8px !important; min-height: 30px !important; }
     @media (max-width: 768px) {
         .block-container { padding: 2.5rem 0.5rem 0 0.5rem !important; }
+        .stButton > button { font-size: 9px !important; padding: 2px 4px !important; min-height: 24px !important; }
     }
 </style>
 """, unsafe_allow_html=True)
 
-FONTS = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
 
-# =============================================================================
-# SYMBOL GROUPS
-# =============================================================================
+# (FUTURES_GROUPS, CHART_CONFIGS imported from config.py)
 
-FUTURES_GROUPS = OrderedDict([
-    ('Futures',   ['ES=F', 'NQ=F', 'GC=F', 'SI=F', 'CL=F', 'NG=F', 'ZC=F', 'ZS=F', 'BTC=F', 'ETH=F', 'SB=F', 'KC=F']),
-    ('Indices',   ['ES=F', 'NQ=F', 'YM=F', 'RTY=F', 'NKD=F']),
-    ('Rates',     ['ZB=F', 'ZN=F', 'ZF=F', 'ZT=F']),
-    ('FX',        ['6E=F', '6J=F', '6B=F', '6A=F', 'USDSGD=X']),
-    ('Crypto',    ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD']),
-    ('Energy',    ['CL=F', 'NG=F', 'RB=F', 'HO=F']),
-    ('Metals',    ['GC=F', 'SI=F', 'PL=F', 'HG=F']),
-    ('Grains',    ['ZC=F', 'ZS=F', 'ZW=F', 'ZM=F']),
-    ('Softs',     ['SB=F', 'KC=F', 'CC=F', 'CT=F']),
-    ('Singapore', ['ES3.SI', 'S68.SI', 'MBH.SI', 'MMS.SI']),
-    ('US Sectors',['XLB', 'XLC', 'XLY', 'XLP', 'XLE', 'XLF', 'XLV', 'XLI', 'XLK', 'XLU', 'XLRE', 'SPY']),
-    ('Countries', ['EWA', 'EWZ', 'EWC', 'GXC', 'EWQ', 'EWG', 'EWH', 'PIN', 'EWI', 'EWJ', 'EWM', 'EWW', 'EWS', 'EWY', 'EWP', 'EWT', 'EWU', 'VNM', 'KSA', 'ARGT']),
-    ('Macro',     ['DBC', 'USO', 'GLD', 'SLV', 'CPER', 'BIL', 'HYG', 'LQD', 'TLT', 'BND', 'EMB', 'EEM', 'SPY', 'BTC-USD', 'ETH-USD']),
-])
-
-CHART_CONFIGS = [
-    ('Session', '5m', 'Session High/Low', 'session'),
-    ('4H', '1h', 'Week High/Low', 'week'),
-    ('Daily', '1d', 'Month High/Low', 'month'),
-    ('Weekly', '1wk', 'Year High/Low', 'year'),
-]
-
-# =============================================================================
-# THEMES
-# =============================================================================
-
-THEMES = {
-    'Blue / Rose': {
-        'pos': '#60a5fa', 'neg': '#fb7185',
-        'zone_hi': '#60a5fa', 'zone_amid': '#93c5fd', 'zone_bmid': '#fda4af', 'zone_lo': '#fb7185',
-        'str_up': '#60a5fa', 'str_dn': '#fb7185', 'pull': '#fbbf24', 'bnce': '#4ade80',
-    },
-    'Emerald / Amber': {
-        'pos': '#4ade80', 'neg': '#f59e0b',
-        'zone_hi': '#4ade80', 'zone_amid': '#86efac', 'zone_bmid': '#fbbf24', 'zone_lo': '#f59e0b',
-        'str_up': '#4ade80', 'str_dn': '#f59e0b', 'pull': '#fbbf24', 'bnce': '#93c5fd',
-    },
-    'Cyan / Red': {
-        'pos': '#22d3ee', 'neg': '#f87171',
-        'zone_hi': '#22d3ee', 'zone_amid': '#67e8f9', 'zone_bmid': '#fca5a5', 'zone_lo': '#f87171',
-        'str_up': '#22d3ee', 'str_dn': '#f87171', 'pull': '#fbbf24', 'bnce': '#a78bfa',
-    },
-    'Teal / Coral': {
-        'pos': '#2dd4bf', 'neg': '#fb923c',
-        'zone_hi': '#2dd4bf', 'zone_amid': '#5eead4', 'zone_bmid': '#fdba74', 'zone_lo': '#fb923c',
-        'str_up': '#2dd4bf', 'str_dn': '#fb923c', 'pull': '#fbbf24', 'bnce': '#93c5fd',
-    },
-    'Indigo / Gold': {
-        'pos': '#818cf8', 'neg': '#fbbf24',
-        'zone_hi': '#818cf8', 'zone_amid': '#a5b4fc', 'zone_bmid': '#fde68a', 'zone_lo': '#fbbf24',
-        'str_up': '#818cf8', 'str_dn': '#fbbf24', 'pull': '#fb923c', 'bnce': '#4ade80',
-    },
-}
+# (THEMES imported from config.py)
 
 def get_theme():
     name = st.session_state.get('theme', 'Blue / Rose')
@@ -120,44 +67,8 @@ def zone_colors():
     t = get_theme()
     return {'above_high': t['zone_hi'], 'above_mid': t['zone_amid'], 'below_mid': t['zone_bmid'], 'below_low': t['zone_lo']}
 
-STATUS_LABELS = {
-    'above_high': '▲ ABOVE HIGH', 'above_mid': '● ABOVE MID',
-    'below_mid': '● BELOW MID', 'below_low': '▼ BELOW LOW',
-}
 
-SYMBOL_NAMES = {
-    'ES=F': 'E-mini S&P 500', 'NQ=F': 'E-mini Nasdaq 100', 'YM=F': 'E-mini Dow',
-    'RTY=F': 'E-mini Russell 2000', 'NKD=F': 'Nikkei 225',
-    'ZB=F': '30Y T-Bond', 'ZN=F': '10Y T-Note', 'ZF=F': '5Y T-Note', 'ZT=F': '2Y T-Note',
-    'GC=F': 'Gold', 'SI=F': 'Silver', 'PL=F': 'Platinum', 'HG=F': 'Copper',
-    'CL=F': 'Crude Oil WTI', 'NG=F': 'Natural Gas', 'RB=F': 'RBOB Gasoline', 'HO=F': 'Heating Oil',
-    'ZS=F': 'Soybeans', 'ZC=F': 'Corn', 'ZW=F': 'Wheat', 'ZM=F': 'Soybean Meal',
-    'SB=F': 'Sugar', 'KC=F': 'Coffee', 'CC=F': 'Cocoa', 'CT=F': 'Cotton',
-    'BTC-USD': 'Bitcoin', 'ETH-USD': 'Ethereum', 'SOL-USD': 'Solana', 'XRP-USD': 'XRP',
-    'BTC=F': 'Bitcoin Futures', 'ETH=F': 'Ethereum Futures',
-    '6E=F': 'Euro FX', '6J=F': 'Japanese Yen', '6B=F': 'British Pound', '6A=F': 'Australian Dollar',
-    'USDSGD=X': 'USD/SGD',
-    'ES3.SI': 'STI ETF', 'S68.SI': 'SGX', 'MBH.SI': 'Amova IG Bond', 'MMS.SI': 'SGD Money Mkt',
-    'XLB': 'Materials', 'XLC': 'Comms', 'XLY': 'Cons Disc', 'XLP': 'Cons Staples',
-    'XLE': 'Energy', 'XLF': 'Financials', 'XLV': 'Healthcare', 'XLI': 'Industrials',
-    'XLK': 'Technology', 'XLU': 'Utilities', 'XLRE': 'Real Estate', 'SPY': 'S&P 500',
-    'EWA': 'Australia', 'EWZ': 'Brazil', 'EWC': 'Canada', 'GXC': 'China',
-    'EWQ': 'France', 'EWG': 'Germany', 'EWH': 'Hong Kong', 'PIN': 'India',
-    'EWI': 'Italy', 'EWJ': 'Japan', 'EWM': 'Malaysia', 'EWW': 'Mexico',
-    'EWS': 'Singapore', 'EWY': 'South Korea', 'EWP': 'Spain', 'EWT': 'Taiwan',
-    'EWU': 'UK', 'VNM': 'Vietnam', 'KSA': 'Saudi Arabia', 'ARGT': 'Argentina',
-    'DBC': 'Commodities', 'USO': 'Oil ETF', 'GLD': 'Gold ETF', 'SLV': 'Silver ETF',
-    'CPER': 'Copper ETF', 'BIL': 'T-Bills', 'HYG': 'High Yield', 'LQD': 'IG Corp',
-    'TLT': '20Y+ Treasury', 'BND': 'Total Bond', 'EMB': 'EM Bonds', 'EEM': 'EM Equity',
-    'ICE': 'ICE', 'NDAQ': 'Nasdaq Inc', 'CME': 'CME Group', 'CBOE': 'Cboe Global',
-    'X.TO': 'TMX Group', 'LSEG.L': 'LSEG', 'DB1.DE': 'Deutsche Börse',
-    'ENX.PA': 'Euronext', '8697.T': 'JPX', '0388.HK': 'HKEX', 'ASX.AX': 'ASX Ltd',
-    'IAU': 'iShares Gold', 'VOO': 'Vanguard S&P 500', 'VTI': 'Vanguard Total Mkt',
-    'SHV': 'Short Treasury', 'IBIT': 'iShares Bitcoin',
-}
-
-def clean_symbol(sym):
-    return sym.replace('=F', '').replace('=X', '').replace('.SI', '')
+# (STATUS_LABELS, SYMBOL_NAMES, clean_symbol imported from config.py)
 
 # =============================================================================
 # HELPERS
@@ -947,6 +858,8 @@ def _detect_mobile():
 # =============================================================================
 
 def main():
+    from spreads import render_spreads_tab
+
     # Init session state
     if 'sector' not in st.session_state: st.session_state.sector = 'Indices'
     if 'symbol' not in st.session_state: st.session_state.symbol = 'ES=F'
@@ -965,6 +878,24 @@ def main():
             <span style='color:#9d9d9d;font-size:11px'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
         </div>""", unsafe_allow_html=True)
 
+    # Tabs
+    tab_charts, tab_spreads = st.tabs(["📊 Charts", "📈 Spreads"])
+
+    # =========================================================================
+    # TAB 1: CHARTS
+    # =========================================================================
+    with tab_charts:
+        _render_charts_tab(is_mobile, est)
+
+    # =========================================================================
+    # TAB 2: SPREADS
+    # =========================================================================
+    with tab_spreads:
+        render_spreads_tab(is_mobile, st.session_state.theme)
+
+
+def _render_charts_tab(is_mobile, est):
+    """Chart tab content — sector scanner, asset charts, levels, news."""
     # Input labels helper
     _lbl = f"color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
@@ -1000,7 +931,6 @@ def main():
     # ASSET selection
     symbols = FUTURES_GROUPS[st.session_state.sector]
     if is_mobile:
-        # Mobile: dropdown
         st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>ASSET</div>", unsafe_allow_html=True)
         sym_labels = [clean_symbol(s) for s in symbols]
         current_idx = symbols.index(st.session_state.symbol) if st.session_state.symbol in symbols else 0
@@ -1011,7 +941,6 @@ def main():
             st.session_state.symbol = selected_sym
             st.rerun()
     else:
-        # Desktop: compact buttons — cap columns, wrap into rows
         st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>ASSET</div>", unsafe_allow_html=True)
         num_syms = len(symbols)
         cpr = min(num_syms, 12)
