@@ -23,26 +23,76 @@ logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
 st.set_page_config(page_title="Chart Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
-# Dark theme CSS
+# Dark theme CSS with mobile responsiveness
 st.markdown("""
 <style>
+    /* Base */
     .stApp { background-color: #1e1e1e; }
     header[data-testid="stHeader"] { background-color: #1e1e1e; }
     [data-testid="stSidebar"] { background-color: #16213e; }
-    .stSelectbox > div > div { background-color: #16213e; color: #b0b0b0; }
     div[data-testid="stHorizontalBlock"] { gap: 0.3rem; }
+    div[data-testid="stMarkdownContainer"] p { margin-bottom: 0; }
+    .block-container { padding-top: 0.5rem; padding-bottom: 0rem; max-width: 100%; }
+
+    /* Selectbox / dropdown styling */
+    .stSelectbox > div > div {
+        background-color: #16213e !important; color: #b0b0b0 !important;
+        border: 1px solid #2a4a6a !important; border-radius: 4px !important;
+    }
+    .stSelectbox [data-baseweb="select"] > div {
+        background-color: #16213e !important; border: 1px solid #2a4a6a !important;
+        border-radius: 4px !important;
+    }
+    .stSelectbox svg { fill: #b0b0b0 !important; }
+    .stSelectbox label { color: #8a8a8a !important; font-size: 11px !important; }
+    [data-baseweb="popover"] { background-color: #0f172a !important; }
+    [data-baseweb="menu"] { background-color: #0f172a !important; }
+    [role="option"] { color: #b0b0b0 !important; }
+    [role="option"]:hover { background-color: #1e4d8a !important; }
+    [aria-selected="true"][role="option"] { background-color: #1e4d8a !important; }
+
+    /* Button styling */
+    button[kind="secondary"] {
+        background-color: #16213e !important; color: white !important;
+        border: 1px solid #2a4a6a !important; border-radius: 4px !important;
+    }
+    button[kind="primary"] {
+        background-color: #1e4d8a !important; color: white !important;
+        border: 1px solid #2a4a6a !important; border-radius: 4px !important;
+    }
+    .stButton > button {
+        border: 1px solid #2a4a6a !important; border-radius: 4px !important;
+        font-size: 12px !important; padding: 4px 16px !important;
+    }
+
+    /* Tabs */
     .stTabs [data-baseweb="tab-list"] { gap: 2px; background-color: #16213e; padding: 4px; border-radius: 4px; }
     .stTabs [data-baseweb="tab"] {
         background-color: #16213e; color: #b0b0b0; border: 1px solid #2a4a6a;
         border-radius: 3px; padding: 4px 12px; font-size: 12px; font-weight: 500;
     }
     .stTabs [aria-selected="true"] { background-color: #1e4d8a; color: white; }
-    .stRadio > div { flex-direction: row; gap: 8px; }
-    .stRadio > div > label { background-color: #16213e; padding: 4px 12px; border-radius: 3px;
-        border: 1px solid #2a4a6a; color: #b0b0b0; font-size: 12px; }
-    div[data-testid="stMarkdownContainer"] p { margin-bottom: 0; }
-    .block-container { padding-top: 1rem; padding-bottom: 0rem; }
-    button[kind="secondary"] { background-color: #16213e; color: white; border: 1px solid #2a4a6a; }
+
+    /* Hide Streamlit branding */
+    #MainMenu { visibility: hidden; }
+    footer { visibility: hidden; }
+    header { visibility: hidden; }
+
+    /* Scrollable table on mobile */
+    .scanner-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+        .block-container { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+        .stButton > button { font-size: 10px !important; padding: 4px 8px !important; min-height: 32px !important; }
+        .stSelectbox { min-width: 0 !important; }
+        .mobile-header { font-size: 11px !important; }
+        .scanner-table-wrap table { font-size: 10px !important; }
+    }
+    @media (max-width: 480px) {
+        .block-container { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
+        .stButton > button { font-size: 9px !important; padding: 2px 6px !important; }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -620,10 +670,7 @@ def render_scanner_table(metrics, selected_symbol):
             <td style='{td}text-align:right'>{_sharpe(m.ytd_sharpe)}</td>
         </tr>"""
     html += "</tbody></table>"
-    st.markdown(html, unsafe_allow_html=True)
-
-
-# =============================================================================
+    st.markdown(f"<div class='scanner-table-wrap'>{html}</div>", unsafe_allow_html=True)# =============================================================================
 # 4-CHART GRID
 # =============================================================================
 
@@ -969,12 +1016,10 @@ def main():
     ts_est = datetime.now(est).strftime('%a %d %b %Y  %H:%M %Z')
     ts_sgt = datetime.now(sgt).strftime('%H:%M SGT')
     st.markdown(f"""
-        <div style='padding:10px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center'>
+        <div class='mobile-header' style='padding:8px 12px;background-color:#16213e;border-radius:4px;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px'>
             <span style='color:#e2e8f0;font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>CHART DASHBOARD</span>
             <span style='color:#9d9d9d;font-size:11px'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
         </div>""", unsafe_allow_html=True)
-
-    render_legend()
 
     # Controls row
     col_sector, col_chart, col_theme = st.columns([6, 1, 2])
@@ -995,11 +1040,12 @@ def main():
             key='theme_select', label_visibility='collapsed')
         st.session_state.theme = theme
 
-    # Symbol buttons
+    # Symbol buttons — responsive grid
     symbols = FUTURES_GROUPS[st.session_state.sector]
-    cols = st.columns(min(len(symbols), 12))
+    max_cols = min(len(symbols), 12)
+    cols = st.columns(max_cols)
     for i, sym in enumerate(symbols):
-        with cols[i % len(cols)]:
+        with cols[i % max_cols]:
             label = clean_symbol(sym)
             if st.button(label, key=f"sym_{sym}", use_container_width=True,
                         type="primary" if sym == st.session_state.symbol else "secondary"):
@@ -1010,11 +1056,11 @@ def main():
     with st.spinner('Loading market data...'):
         metrics = fetch_sector_data(st.session_state.sector)
 
-    # Scanner table
+    # Scanner table — wrapped for mobile scroll
     if metrics:
         render_scanner_table(metrics, st.session_state.symbol)
 
-    # Charts + Levels + News
+    # Charts + Levels + News — stacked on mobile, side-by-side on desktop
     col_chart_area, col_right = st.columns([65, 35])
 
     with col_chart_area:
@@ -1035,9 +1081,8 @@ def main():
 
     # Footer
     ct_now = datetime.now(est).strftime('%H:%M %Z')
-    st.markdown(f"""<div style='margin-top:16px;padding:8px 12px;background-color:#16213e;border-radius:4px;font-family:{FONTS}'>
-        <span style='font-size:11px;color:#9d9d9d'>EST: <span style='color:#cccccc'>{ct_now}</span>
-        &nbsp;·&nbsp; <span style='color:#6d6d6d'>Data refreshes every 2 minutes · Click symbol for analysis</span></span></div>""", unsafe_allow_html=True)
+    st.markdown(f"""<div style='margin-top:12px;padding:6px 12px;background-color:#16213e;border-radius:4px;font-family:{FONTS}'>
+        <span style='font-size:10px;color:#6d6d6d'>EST {ct_now} · Data caches 2 min · Click symbol for analysis</span></div>""", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
