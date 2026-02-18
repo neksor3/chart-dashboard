@@ -569,9 +569,10 @@ def render_portfolio_tab(is_mobile):
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
     # Symbols input
+    if 'port_sym_input' not in st.session_state:
+        st.session_state.port_sym_input = 'IAU, VOO, VTI, SHV, BTC-USD'
     st.markdown(f"<div style='{_lbl}'>SYMBOLS</div>", unsafe_allow_html=True)
-    sym_input = st.text_input("Symbols", value=st.session_state.get('port_sym_input', 'IAU, VOO, VTI, SHV, BTC-USD'),
-                               key='port_sym_input', label_visibility='collapsed',
+    sym_input = st.text_input("Symbols", key='port_sym_input', label_visibility='collapsed',
                                placeholder='Enter symbols: AAPL, MSFT, GOOG')
 
     # Preset buttons
@@ -610,19 +611,21 @@ def render_portfolio_tab(is_mobile):
                                   key='port_direction', label_visibility='collapsed')
 
     # Controls row 2: Max Wt + Min Wt + Sims + Cost
+    for k, v in [('port_maxwt','50'),('port_minwt','0'),('port_sims','10000'),('port_cost','0.10')]:
+        if k not in st.session_state: st.session_state[k] = v
     c5, c6, c7, c8 = st.columns(4)
     with c5:
         st.markdown(f"<div style='{_lbl}'>MAX WT %</div>", unsafe_allow_html=True)
-        max_wt_str = st.text_input("Max Wt", value='50', key='port_maxwt', label_visibility='collapsed')
+        max_wt_str = st.text_input("Max Wt", key='port_maxwt', label_visibility='collapsed')
     with c6:
         st.markdown(f"<div style='{_lbl}'>MIN WT %</div>", unsafe_allow_html=True)
-        min_wt_str = st.text_input("Min Wt", value='0', key='port_minwt', label_visibility='collapsed')
+        min_wt_str = st.text_input("Min Wt", key='port_minwt', label_visibility='collapsed')
     with c7:
         st.markdown(f"<div style='{_lbl}'>SIMS</div>", unsafe_allow_html=True)
-        sims_str = st.text_input("Sims", value='10000', key='port_sims', label_visibility='collapsed')
+        sims_str = st.text_input("Sims", key='port_sims', label_visibility='collapsed')
     with c8:
         st.markdown(f"<div style='{_lbl}'>COST %</div>", unsafe_allow_html=True)
-        cost_str = st.text_input("Cost", value='0.10', key='port_cost', label_visibility='collapsed')
+        cost_str = st.text_input("Cost", key='port_cost', label_visibility='collapsed')
 
     # Run button
     run_clicked = st.button('▶  RUN GRID', key='port_run', type='primary', use_container_width=False)
