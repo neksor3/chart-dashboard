@@ -71,8 +71,6 @@ FUTURES_GROUPS = OrderedDict([
     ('US Sectors',['XLB', 'XLC', 'XLY', 'XLP', 'XLE', 'XLF', 'XLV', 'XLI', 'XLK', 'XLU', 'XLRE', 'SPY']),
     ('Countries', ['EWA', 'EWZ', 'EWC', 'GXC', 'EWQ', 'EWG', 'EWH', 'PIN', 'EWI', 'EWJ', 'EWM', 'EWW', 'EWS', 'EWY', 'EWP', 'EWT', 'EWU', 'VNM', 'KSA', 'ARGT']),
     ('Macro',     ['DBC', 'USO', 'GLD', 'SLV', 'CPER', 'BIL', 'HYG', 'LQD', 'TLT', 'BND', 'EMB', 'EEM', 'SPY', 'BTC-USD', 'ETH-USD']),
-    ('Core 5',    ['IAU', 'VOO', 'VTI', 'SHV', 'IBIT']),
-    ('Exchanges', ['ICE', 'NDAQ', 'CME', 'CBOE', 'X.TO', 'LSEG.L', 'DB1.DE', 'ENX.PA', '8697.T', '0388.HK', 'ASX.AX', 'S68.SI']),
 ])
 
 CHART_CONFIGS = [
@@ -962,14 +960,18 @@ def main():
     ts_est = datetime.now(est).strftime('%a %d %b %Y  %H:%M %Z')
     ts_sgt = datetime.now(sgt).strftime('%H:%M SGT')
     st.markdown(f"""
-        <div style='padding:10px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center'>
+        <div style='padding:10px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center;margin-bottom:10px'>
             <span style='color:#e2e8f0;font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>CHART DASHBOARD</span>
             <span style='color:#9d9d9d;font-size:11px'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
         </div>""", unsafe_allow_html=True)
 
+    # Input labels helper
+    _lbl = f"color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
+
     # Controls row
     col_sector, col_chart, col_theme = st.columns([6, 1, 2])
     with col_sector:
+        st.markdown(f"<div style='{_lbl}'>SECTOR</div>", unsafe_allow_html=True)
         sector = st.selectbox("Sector", list(FUTURES_GROUPS.keys()),
             index=list(FUTURES_GROUPS.keys()).index(st.session_state.sector),
             key='sector_select', label_visibility='collapsed')
@@ -977,16 +979,19 @@ def main():
             st.session_state.sector = sector
             st.session_state.symbol = FUTURES_GROUPS[sector][0]
     with col_chart:
+        st.markdown(f"<div style='{_lbl}'>CHART</div>", unsafe_allow_html=True)
         ct = st.selectbox("Chart", ['line', 'bars'], index=0 if st.session_state.chart_type == 'line' else 1,
             key='chart_select', label_visibility='collapsed')
         st.session_state.chart_type = ct
     with col_theme:
+        st.markdown(f"<div style='{_lbl}'>THEME</div>", unsafe_allow_html=True)
         theme = st.selectbox("Theme", list(THEMES.keys()),
             index=list(THEMES.keys()).index(st.session_state.theme),
             key='theme_select', label_visibility='collapsed')
         st.session_state.theme = theme
 
     # Symbol buttons
+    st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>ASSET</div>", unsafe_allow_html=True)
     symbols = FUTURES_GROUPS[st.session_state.sector]
     cpr = min(len(symbols), 6) if is_mobile else min(len(symbols), 12)
     for ri in range((len(symbols) + cpr - 1) // cpr):
