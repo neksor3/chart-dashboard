@@ -575,18 +575,19 @@ def render_portfolio_tab(is_mobile):
     sym_input = st.text_input("Symbols", key='port_sym_input', label_visibility='collapsed',
                                placeholder='Enter symbols: AAPL, MSFT, GOOG')
 
-    # Preset buttons
+    # Preset buttons — use on_click callbacks (run before rerender)
+    def _set_preset(syms_str):
+        st.session_state.port_sym_input = syms_str
+
     st.markdown(f"<div style='{_lbl};margin-top:4px'>PRESETS</div>", unsafe_allow_html=True)
     preset_cols = st.columns(len(PRESETS) + 1)
     for i, (name, syms) in enumerate(PRESETS.items()):
         with preset_cols[i]:
-            if st.button(name, key=f'preset_{name}', use_container_width=True):
-                st.session_state.port_sym_input = ', '.join(syms)
-                st.rerun()
+            st.button(name, key=f'preset_{name}', use_container_width=True,
+                      on_click=_set_preset, args=(', '.join(syms),))
     with preset_cols[-1]:
-        if st.button('Custom', key='preset_custom', use_container_width=True):
-            st.session_state.port_sym_input = ''
-            st.rerun()
+        st.button('Custom', key='preset_custom', use_container_width=True,
+                  on_click=_set_preset, args=('',))
 
     # Controls row 1: Objective + Rebalance + Period + Direction
     if is_mobile:
