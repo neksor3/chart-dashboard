@@ -567,7 +567,10 @@ def _section(title, subtitle=''):
 # MAIN RENDER FUNCTION
 # =============================================================================
 
-def render_portfolio_tab(is_mobile):
+def render_portfolio_tab(is_mobile, theme_name):
+    global C_POS, C_NEG
+    theme = THEMES.get(theme_name, THEMES['Blue / Rose'])
+    C_POS = theme['pos']; C_NEG = theme['neg']
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
     # Symbols input
@@ -701,10 +704,14 @@ def render_portfolio_tab(is_mobile):
 
     # Approach selector — default to winner, user can pick any
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
+    # Reset to winner if current selection invalid
+    cur = st.session_state.get('port_view_approach')
+    if cur not in sorted_names:
+        st.session_state.port_view_approach = sorted_names[0]
     sel_col, _ = st.columns([3, 5])
     with sel_col:
         st.markdown(f"<div style='{_lbl};margin-top:8px'>VIEW APPROACH</div>", unsafe_allow_html=True)
-        selected_approach = st.selectbox("Approach", sorted_names, index=0,
+        selected_approach = st.selectbox("Approach", sorted_names,
                                           key='port_view_approach', label_visibility='collapsed')
 
     sel = grid['results'][selected_approach]; sm = sel['metrics']; swf = sel['wf']
@@ -726,10 +733,10 @@ def render_portfolio_tab(is_mobile):
     _section('OOS EQUITY CURVE', f'{selected_approach} · {params["rebal_label"]} · yellow = rebalance dates')
     render_oos_chart(grid, selected_approach)
 
-    # 4. Current Weights
-    _section('CURRENT / NEXT WEIGHTS', f'{selected_approach} · optimized on all data through today · trade these')
-    render_weights_table(grid, selected_approach)
-
-    # 5. Monthly Returns
+    # 4. Monthly Returns (above weights)
     _section('OOS MONTHLY RETURNS', f'{selected_approach} · walk-forward out-of-sample only')
     render_monthly_table(swf['oos_returns'])
+
+    # 5. Current Weights (below monthly)
+    _section('CURRENT / NEXT WEIGHTS', f'{selected_approach} · optimized on all data through today · trade these')
+    render_weights_table(grid, selected_approach)

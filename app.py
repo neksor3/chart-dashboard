@@ -56,6 +56,9 @@ st.markdown("""
         .block-container { padding: 2.5rem 0.5rem 0 0.5rem !important; }
         .stButton > button { font-size: 9px !important; padding: 2px 4px !important; min-height: 24px !important; }
     }
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    [data-testid="stStatusWidget"] {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -903,7 +906,7 @@ def main():
                 <span style='color:#e2e8f0;font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>PORTFOLIO DASHBOARD</span>
                 <span style='color:#9d9d9d;font-size:11px'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
             </div>""", unsafe_allow_html=True)
-        render_portfolio_tab(is_mobile)
+        render_portfolio_tab(is_mobile, st.session_state.theme)
 
 
 def _render_charts_tab(is_mobile, est):
