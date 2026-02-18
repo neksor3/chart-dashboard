@@ -284,11 +284,11 @@ def render_spread_charts(pairs, data, theme, mobile=False):
 def render_spreads_tab(is_mobile, theme_name):
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
-    # Controls: Sector + Sort + Direction + Theme
+    # Controls: Sector + Sort + Direction
     if is_mobile:
         col_sec, col_sort = st.columns([2, 1])
     else:
-        col_sec, col_sort, col_dir, col_theme = st.columns([3, 2, 1, 2])
+        col_sec, col_sort, col_dir = st.columns([4, 2, 1])
 
     with col_sec:
         st.markdown(f"<div style='{_lbl}'>SECTOR</div>", unsafe_allow_html=True)
@@ -308,15 +308,10 @@ def render_spreads_tab(is_mobile, theme_name):
             sort_dir = st.selectbox("Dir", ['Desc', 'Asc'], index=0,
                 key='spread_dir_sel', label_visibility='collapsed')
             ascending = sort_dir == 'Asc'
-        with col_theme:
-            st.markdown(f"<div style='{_lbl}'>THEME</div>", unsafe_allow_html=True)
-            theme_name = st.selectbox("Theme", list(THEMES.keys()),
-                index=list(THEMES.keys()).index(theme_name),
-                key='spread_theme_sel', label_visibility='collapsed')
     else:
         ascending = False
 
-    # Resolve theme after controls (theme_name may have been updated by dropdown)
+    # Use shared theme from Charts tab
     theme = THEMES.get(theme_name, THEMES['Blue / Rose'])
     pos_c = theme['pos']
 

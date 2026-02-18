@@ -679,6 +679,9 @@ def render_portfolio_tab(is_mobile):
             'direction': 'L/S' if allow_short else 'Long',
             'min_wt': min_wt, 'max_wt': max_wt, 'n_sims': n_sims, 'txn_cost': txn_cost,
         }
+        # Reset approach selector to winner on new run
+        if 'port_view_approach' in st.session_state:
+            del st.session_state.port_view_approach
 
     # Display results
     if 'port_grid' not in st.session_state: return
@@ -698,13 +701,11 @@ def render_portfolio_tab(is_mobile):
 
     # Approach selector — default to winner, user can pick any
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
-    if st.session_state.get('port_approach_sel') not in sorted_names:
-        st.session_state.port_approach_sel = sorted_names[0]
     sel_col, _ = st.columns([3, 5])
     with sel_col:
         st.markdown(f"<div style='{_lbl};margin-top:8px'>VIEW APPROACH</div>", unsafe_allow_html=True)
-        selected_approach = st.selectbox("Approach", sorted_names,
-                                          key='port_approach_sel', label_visibility='collapsed')
+        selected_approach = st.selectbox("Approach", sorted_names, index=0,
+                                          key='port_view_approach', label_visibility='collapsed')
 
     sel = grid['results'][selected_approach]; sm = sel['metrics']; swf = sel['wf']
     is_best = selected_approach == best_name

@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
-FONTS = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-MONO = 'Consolas, Monaco, monospace'
+FONTS = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+MONO = '"JetBrains Mono", Consolas, Monaco, monospace'
 
 # =============================================================================
 # SYMBOL GROUPS
@@ -72,24 +72,6 @@ THEMES = {
         'zone_hi': '#4ade80', 'zone_amid': '#86efac', 'zone_bmid': '#fbbf24', 'zone_lo': '#f59e0b',
         'str_up': '#4ade80', 'str_dn': '#f59e0b', 'pull': '#fbbf24', 'bnce': '#93c5fd',
         'long': '#4ade80', 'short': '#f59e0b',
-    },
-    'Cyan / Red': {
-        'pos': '#22d3ee', 'neg': '#f87171',
-        'zone_hi': '#22d3ee', 'zone_amid': '#67e8f9', 'zone_bmid': '#fca5a5', 'zone_lo': '#f87171',
-        'str_up': '#22d3ee', 'str_dn': '#f87171', 'pull': '#fbbf24', 'bnce': '#a78bfa',
-        'long': '#22d3ee', 'short': '#f87171',
-    },
-    'Teal / Coral': {
-        'pos': '#2dd4bf', 'neg': '#fb923c',
-        'zone_hi': '#2dd4bf', 'zone_amid': '#5eead4', 'zone_bmid': '#fdba74', 'zone_lo': '#fb923c',
-        'str_up': '#2dd4bf', 'str_dn': '#fb923c', 'pull': '#fbbf24', 'bnce': '#93c5fd',
-        'long': '#2dd4bf', 'short': '#fb923c',
-    },
-    'Indigo / Gold': {
-        'pos': '#818cf8', 'neg': '#fbbf24',
-        'zone_hi': '#818cf8', 'zone_amid': '#a5b4fc', 'zone_bmid': '#fde68a', 'zone_lo': '#fbbf24',
-        'str_up': '#818cf8', 'str_dn': '#fbbf24', 'pull': '#fb923c', 'bnce': '#4ade80',
-        'long': '#818cf8', 'short': '#fbbf24',
     },
 }
 
