@@ -570,9 +570,9 @@ def render_portfolio_tab(is_mobile):
 
     # Symbols input
     st.markdown(f"<div style='{_lbl}'>SYMBOLS</div>", unsafe_allow_html=True)
-    default_syms = st.session_state.get('port_symbols', 'IAU, VOO, VTI, SHV, BTC-USD')
-    sym_input = st.text_input("Symbols", value=default_syms, key='port_sym_input',
-                               label_visibility='collapsed', placeholder='Enter symbols: AAPL, MSFT, GOOG')
+    sym_input = st.text_input("Symbols", value=st.session_state.get('port_sym_input', 'IAU, VOO, VTI, SHV, BTC-USD'),
+                               key='port_sym_input', label_visibility='collapsed',
+                               placeholder='Enter symbols: AAPL, MSFT, GOOG')
 
     # Preset buttons
     st.markdown(f"<div style='{_lbl};margin-top:4px'>PRESETS</div>", unsafe_allow_html=True)
@@ -580,11 +580,11 @@ def render_portfolio_tab(is_mobile):
     for i, (name, syms) in enumerate(PRESETS.items()):
         with preset_cols[i]:
             if st.button(name, key=f'preset_{name}', use_container_width=True):
-                st.session_state.port_symbols = ', '.join(syms)
+                st.session_state.port_sym_input = ', '.join(syms)
                 st.rerun()
     with preset_cols[-1]:
         if st.button('Custom', key='preset_custom', use_container_width=True):
-            st.session_state.port_symbols = ''
+            st.session_state.port_sym_input = ''
             st.rerun()
 
     # Controls row 1: Objective + Rebalance + Period + Direction
