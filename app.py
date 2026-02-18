@@ -895,7 +895,7 @@ def main():
 
 def _render_charts_tab(is_mobile, est):
     """Chart tab content — sector scanner, asset charts, levels, news."""
-    _lbl = f"color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
+    _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
     symbols = FUTURES_GROUPS[st.session_state.sector]
     sym_labels = [clean_symbol(s) for s in symbols]
