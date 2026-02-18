@@ -12,6 +12,7 @@ import warnings
 import logging
 import feedparser
 from urllib.parse import quote
+import re
 
 # =============================================================================
 # SETUP
@@ -24,82 +25,65 @@ logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 st.set_page_config(page_title="Chart Dashboard", page_icon="📊", layout="wide", initial_sidebar_state="collapsed")
 
 # Design tokens
-FONTS = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-MONO = '"JetBrains Mono", "SF Mono", "Fira Code", Consolas, monospace'
-BG      = '#0b0f19'
-CARD    = '#111827'
-SURFACE = '#1f2937'
-BORDER  = '#2d3748'
+FONTS = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+MONO = 'SFMono-Regular, Menlo, Monaco, Consolas, monospace'
+BG      = '#1e1e1e'
+CARD    = '#16213e'
+SURFACE = '#1a2744'
+BORDER  = '#2a4a6a'
 ACCENT  = '#3b82f6'
-MUTED   = '#64748b'
-DIM     = '#475569'
+MUTED   = '#8a8a8a'
+DIM     = '#6d6d6d'
 TEXT    = '#e2e8f0'
 
 st.markdown(f"""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
     .stApp {{ background: {BG}; }}
     header[data-testid="stHeader"] {{ background: {BG}; }}
     #MainMenu, footer, header {{ visibility: hidden; }}
     .block-container {{ padding: 0.5rem 1rem 0 1rem; max-width: 100%; }}
-    div[data-testid="stHorizontalBlock"] {{ gap: 0.25rem; }}
+    div[data-testid="stHorizontalBlock"] {{ gap: 0.3rem; }}
     div[data-testid="stMarkdownContainer"] p {{ margin-bottom: 0; }}
 
     /* Selectbox */
     .stSelectbox label {{
-        color: {MUTED} !important; font-size: 9px !important; font-weight: 600 !important;
-        text-transform: uppercase !important; letter-spacing: 0.1em !important;
-        font-family: {FONTS} !important; margin-bottom: 2px !important;
+        color: {MUTED} !important; font-size: 10px !important; font-weight: 600 !important;
+        text-transform: uppercase !important; letter-spacing: 0.08em !important;
     }}
     .stSelectbox [data-baseweb="select"] > div {{
         background: {CARD} !important; border: 1px solid {BORDER} !important;
-        border-radius: 6px !important; min-height: 34px !important;
-        transition: border-color 0.15s ease !important;
+        border-radius: 4px !important;
     }}
-    .stSelectbox [data-baseweb="select"] > div:hover {{ border-color: {ACCENT} !important; }}
-    .stSelectbox [data-baseweb="select"] > div > div {{
-        color: {TEXT} !important; font-size: 12px !important; font-family: {FONTS} !important;
-    }}
-    .stSelectbox svg {{ fill: {MUTED} !important; }}
-    [data-baseweb="popover"], [data-baseweb="menu"] {{
-        background: {CARD} !important; border: 1px solid {BORDER} !important; border-radius: 8px !important;
-    }}
-    [role="option"] {{ color: #cbd5e1 !important; font-size: 12px !important; }}
-    [role="option"]:hover {{ background: #1e3a5f !important; }}
-    [aria-selected="true"][role="option"] {{ background: #1e3a5f !important; }}
+    .stSelectbox [data-baseweb="select"] > div > div {{ color: #b0b0b0 !important; }}
+    .stSelectbox svg {{ fill: #b0b0b0 !important; }}
+    [data-baseweb="popover"], [data-baseweb="menu"] {{ background: #0f172a !important; }}
+    [role="option"] {{ color: #b0b0b0 !important; }}
+    [role="option"]:hover {{ background: #1e4d8a !important; }}
+    [aria-selected="true"][role="option"] {{ background: #1e4d8a !important; }}
 
     /* Buttons */
     .stButton > button {{
-        font-family: {FONTS} !important; font-weight: 600 !important;
-        border-radius: 6px !important; font-size: 11px !important;
+        border-radius: 4px !important; font-size: 11px !important;
         padding: 4px 12px !important; min-height: 30px !important;
-        transition: all 0.15s ease !important; letter-spacing: 0.02em !important;
     }}
     button[kind="secondary"] {{
-        background: {CARD} !important; color: #94a3b8 !important; border: 1px solid {BORDER} !important;
-    }}
-    button[kind="secondary"]:hover {{
-        background: {SURFACE} !important; color: {TEXT} !important; border-color: #475569 !important;
+        background: {CARD} !important; color: white !important; border: 1px solid {BORDER} !important;
     }}
     button[kind="primary"] {{
-        background: linear-gradient(135deg, #1e40af, #3b82f6) !important;
-        color: white !important; border: 1px solid #3b82f6 !important;
-        box-shadow: 0 0 12px rgba(59,130,246,0.15) !important;
+        background: #1e4d8a !important; color: white !important; border: 1px solid {BORDER} !important;
     }}
 
     /* Scanner */
     .scanner-wrap {{
         overflow-x: auto; -webkit-overflow-scrolling: touch;
-        border: 1px solid {BORDER}; border-radius: 8px; background: {CARD};
+        border: 1px solid {BORDER}; border-radius: 4px; background: {CARD};
     }}
     .scanner-wrap table {{ border-collapse: collapse; width: 100%; }}
-    .scanner-wrap tr:hover {{ background: rgba(59,130,246,0.05) !important; }}
 
     /* Panels */
-    .panel {{ border: 1px solid {BORDER}; border-radius: 8px; overflow: hidden; background: {CARD}; margin-bottom: 8px; }}
+    .panel {{ border: 1px solid {BORDER}; border-radius: 4px; overflow: hidden; background: {BG}; margin-bottom: 8px; }}
     .panel-hdr {{
-        padding: 8px 12px; background: linear-gradient(135deg, {SURFACE}, {CARD});
+        padding: 8px 12px; background: {CARD};
         border-bottom: 1px solid {BORDER};
         display: flex; justify-content: space-between; align-items: center;
     }}
@@ -491,7 +475,7 @@ def render_scanner(metrics, selected):
     t = get_theme(); zc = zone_colors(); pc, nc = t['pos'], t['neg']
 
     def fv(v):
-        if pd.isna(v): return f"<span style='color:#1e293b'>—</span>"
+        if pd.isna(v): return f"<span style='color:#2a2a2a'>—</span>"
         return f"<span style='color:{pc if v>=0 else nc};font-weight:600'>{'+' if v>=0 else ''}{v:.2f}%</span>"
 
     def dot(s, rev=False):
@@ -505,7 +489,7 @@ def render_scanner(metrics, selected):
         return f"<span style='display:inline-block;width:52px;text-align:right;font-variant-numeric:tabular-nums'>{fv(v)}</span>{dot(s,rev)}"
 
     def sharpe(v):
-        if pd.isna(v): return f"<span style='color:#1e293b'>—</span>"
+        if pd.isna(v): return f"<span style='color:#2a2a2a'>—</span>"
         return f"<span style='color:{pc if v>=0 else nc};font-weight:500'>{v:+.2f}</span>"
 
     def trend(m):
@@ -526,7 +510,7 @@ def render_scanner(metrics, selected):
         return f"{conf} <span style='color:{sc};font-size:9px;font-weight:600'>{sig}</span>"
 
     th = f"padding:6px 8px;color:{MUTED};font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;font-family:{FONTS};border-bottom:1px solid {BORDER};background:{SURFACE};"
-    td = f"padding:5px 8px;border-bottom:1px solid #1e293b;font-family:{MONO};font-size:11px;"
+    td = f"padding:5px 8px;border-bottom:1px solid #2a2a2a;font-family:{MONO};font-size:11px;"
 
     html = f"""<div class='scanner-wrap'><table>
         <thead><tr>
@@ -547,8 +531,8 @@ def render_scanner(metrics, selected):
         bg = f'rgba(59,130,246,0.06)' if m.symbol==selected else 'transparent'
         bl = f'border-left:3px solid {ACCENT}' if m.symbol==selected else 'border-left:3px solid transparent'
         pf = f"{m.price:,.{m.decimals}f}"
-        hv = f"<span style='color:#94a3b8'>{m.hist_vol:.1f}%</span>" if not pd.isna(m.hist_vol) else f"<span style='color:#1e293b'>—</span>"
-        dd = f"<span style='color:{nc}'>{m.current_dd:.1f}%</span>" if not pd.isna(m.current_dd) else f"<span style='color:#1e293b'>—</span>"
+        hv = f"<span style='color:#94a3b8'>{m.hist_vol:.1f}%</span>" if not pd.isna(m.hist_vol) else f"<span style='color:#2a2a2a'>—</span>"
+        dd = f"<span style='color:{nc}'>{m.current_dd:.1f}%</span>" if not pd.isna(m.current_dd) else f"<span style='color:#2a2a2a'>—</span>"
         html += f"""<tr style='background:{bg}'>
             <td style='{td}{bl};color:{TEXT};font-weight:600'>{sym}</td>
             <td style='{td}color:white;font-weight:700;text-align:right'>{pf}</td>
@@ -603,7 +587,7 @@ def _build_chart(fig, row, col, symbol, chart_type, label, interval, zone_desc, 
             se = min(i+1, len(closes))
             sx = x_data[si:se] if isinstance(x_data, list) else list(range(off+si, off+se))
             sy = closes[si:se]
-            sd = [dt.strftime('%d %b %H:%M') if bt=='session' else dt.strftime('%d %b %Y') for dt in dates[si:se]] if dates else None
+            sd = [dt.strftime('%d %b %H:%M') if bt=='session' else dt.strftime('%d %b %Y') for dt in dates[si:se]] if dates is not None else None
             ht = '%{customdata}<br>%{y:.2f}<extra></extra>' if sd else '%{y:.2f}<extra></extra>'
             fig.add_trace(go.Scatter(x=sx, y=sy, mode='lines', line=dict(color=zc[z], width=1.5),
                 showlegend=False, customdata=sd, hovertemplate=ht), row=row, col=col)
@@ -639,7 +623,7 @@ def _build_chart(fig, row, col, symbol, chart_type, label, interval, zone_desc, 
         ft = boundaries[-2].idx if len(boundaries)>=2 else bi
         if ft > 0 and chart_type == 'line':
             dl = [dt.strftime('%d %b %H:%M') if bt=='session' else dt.strftime('%d %b %Y') for dt in hist.index[:ft]]
-            fig.add_trace(go.Scatter(x=x[:ft], y=hist['Close'].values[:ft], mode='lines', line=dict(color='#374151', width=1.5),
+            fig.add_trace(go.Scatter(x=x[:ft], y=hist['Close'].values[:ft], mode='lines', line=dict(color='#6b7280', width=1.5),
                 showlegend=False, customdata=dl, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
 
         # Current period
@@ -658,7 +642,7 @@ def _build_chart(fig, row, col, symbol, chart_type, label, interval, zone_desc, 
                 showlegend=False, line=dict(width=1)), row=row, col=col)
         else:
             dl = [dt.strftime('%d %b %H:%M') if bt=='session' else dt.strftime('%d %b %Y') for dt in hist.index]
-            fig.add_trace(go.Scatter(x=x, y=hist['Close'].values, mode='lines', line=dict(color='#374151', width=1.5),
+            fig.add_trace(go.Scatter(x=x, y=hist['Close'].values, mode='lines', line=dict(color='#6b7280', width=1.5),
                 showlegend=False, customdata=dl, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
 
     rsi = calculate_rsi(hist['Close'])
@@ -674,7 +658,7 @@ def _build_chart(fig, row, col, symbol, chart_type, label, interval, zone_desc, 
     # Boundary lines
     for j in range(min(2, len(boundaries))):
         b = boundaries[-(j+1)]; px = b.idx; ex = len(hist)-1 if j==0 else boundaries[-1].idx
-        fig.add_vline(x=px, line=dict(color='#374151', width=1, dash='dot'), row=row, col=col)
+        fig.add_vline(x=px, line=dict(color='#6b7280', width=1, dash='dot'), row=row, col=col)
         ml = (b.prev_high+b.prev_low)/2
         for yv, c, lbl in [(b.prev_high, zc['above_high'],'High'),(b.prev_low, zc['below_low'],'Low'),(b.prev_close,'#9ca3af','Close'),(ml,'#fbbf24','50%')]:
             w = 1 if lbl in ('High','Low') else 0.8
@@ -772,13 +756,13 @@ def create_chart_grid(symbol, chart_type='line', mobile=False):
 
     fig.update_layout(template='plotly_dark', height=1200 if mobile else 650,
         margin=dict(l=40, r=80, t=55, b=50),
-        showlegend=False, plot_bgcolor=BG, paper_bgcolor=BG,
+        showlegend=False, plot_bgcolor='#121212', paper_bgcolor='#121212',
         dragmode='pan', hovermode='closest', autosize=True, font=dict(family=FONTS))
-    fig.update_xaxes(gridcolor='#1e293b', linecolor='#1e293b', showgrid=True, tickangle=-45,
+    fig.update_xaxes(gridcolor='#1f1f1f', linecolor='#2a2a2a', showgrid=True, tickangle=-45,
         rangeslider=dict(visible=False), fixedrange=False,
-        showspikes=True, spikecolor=DIM, spikethickness=1, spikedash='dot', spikemode='across')
-    fig.update_yaxes(gridcolor='#1e293b', linecolor='#1e293b', showgrid=True, side='right',
-        fixedrange=False, showspikes=True, spikecolor=DIM, spikethickness=1, spikedash='dot', spikemode='across')
+        showspikes=True, spikecolor='#6b7280', spikethickness=1, spikedash='dot', spikemode='across')
+    fig.update_yaxes(gridcolor='#1f1f1f', linecolor='#2a2a2a', showgrid=True, side='right',
+        fixedrange=False, showspikes=True, spikecolor='#6b7280', spikethickness=1, spikedash='dot', spikemode='across')
 
     return fig, all_levels
 
@@ -810,7 +794,7 @@ def render_levels(symbol, levels):
         if tf in levels: price = levels[tf]['price']; dec = 2 if price > 10 else 4; break
 
     th = f"padding:5px 8px;color:{MUTED};text-align:right;font-size:9px;text-transform:uppercase;border-bottom:1px solid {BORDER};font-family:{FONTS};"
-    td = f"padding:5px 8px;border-bottom:1px solid #1e293b;font-family:{MONO};font-size:11px;"
+    td = f"padding:5px 8px;border-bottom:1px solid #2a2a2a;font-family:{MONO};font-size:11px;"
 
     html = f"""<div class='panel'>
         <div class='panel-hdr' style='font-family:{FONTS}'>
@@ -861,7 +845,7 @@ def render_news(symbol):
             meta = []
             if p: meta.append(f"<span style='color:{ACCENT};font-weight:500'>{p}</span>")
             if d: meta.append(f"<span style='color:{DIM}'>{d}</span>")
-            html += f"<div style='padding:8px 12px;border-bottom:1px solid #1e293b'>{th}<div style='font-size:10px;margin-top:3px'>{' · '.join(meta)}</div></div>"
+            html += f"<div style='padding:8px 12px;border-bottom:1px solid #2a2a2a'>{th}<div style='font-size:10px;margin-top:3px'>{' · '.join(meta)}</div></div>"
         html += "</div>"
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
@@ -871,30 +855,32 @@ def render_news(symbol):
 # MAIN
 # =============================================================================
 
+def _detect_mobile():
+    """Auto-detect mobile from User-Agent header."""
+    try:
+        ua = st.context.headers.get('User-Agent', '')
+        return bool(re.search(r'iPhone|Android.*Mobile|Windows Phone', ua, re.I))
+    except:
+        return False
+
 def main():
-    for k, v in [('sector','Indices'),('symbol','ES=F'),('chart_type','line'),('theme','Blue / Rose'),('layout','Desktop')]:
+    for k, v in [('sector','Indices'),('symbol','ES=F'),('chart_type','line'),('theme','Blue / Rose')]:
         if k not in st.session_state: st.session_state[k] = v
 
+    is_mobile = _detect_mobile()
     est = pytz.timezone('US/Eastern'); sgt = pytz.timezone('Asia/Singapore')
 
     # ── Header ──
     st.markdown(f"""
-        <div style='padding:10px 16px;background:linear-gradient(135deg, #0f172a, #1e293b);
-            border:1px solid {BORDER};border-radius:8px;font-family:{FONTS};
-            display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:10px'>
-            <div>
-                <span style='color:white;font-size:15px;font-weight:700;letter-spacing:0.1em'>CHART DASHBOARD</span>
-                <span style='color:{ACCENT};font-size:9px;font-weight:600;margin-left:8px;padding:2px 6px;
-                    border:1px solid {ACCENT};border-radius:10px;vertical-align:middle'>LIVE</span>
-            </div>
-            <span style='color:{MUTED};font-size:11px;font-family:{MONO}'>
-                {datetime.now(est).strftime('%a %d %b %Y  %H:%M %Z')} · {datetime.now(sgt).strftime('%H:%M SGT')}</span>
+        <div style='padding:8px 12px;background-color:{CARD};border-radius:4px;font-family:{FONTS};
+            display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:8px'>
+            <span style='color:{TEXT};font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>CHART DASHBOARD</span>
+            <span style='color:#9d9d9d;font-size:11px'>
+                {datetime.now(est).strftime('%a %d %b %Y  %H:%M %Z')} &nbsp;·&nbsp; {datetime.now(sgt).strftime('%H:%M SGT')}</span>
         </div>""", unsafe_allow_html=True)
 
-    is_mobile = st.session_state.layout == 'Mobile'
-
     # ── Controls ──
-    c1, c2, c3, c4 = st.columns([5, 1, 2, 1])
+    c1, c2, c3 = st.columns([6, 1, 2])
     with c1:
         sector = st.selectbox("SECTOR", list(FUTURES_GROUPS.keys()),
             index=list(FUTURES_GROUPS.keys()).index(st.session_state.sector), key='sel_sec')
@@ -908,13 +894,9 @@ def main():
         theme = st.selectbox("THEME", list(THEMES.keys()),
             index=list(THEMES.keys()).index(st.session_state.theme), key='sel_th')
         st.session_state.theme = theme
-    with c4:
-        layout = st.selectbox("LAYOUT", ['Desktop','Mobile'],
-            index=0 if st.session_state.layout=='Desktop' else 1, key='sel_ly')
-        st.session_state.layout = layout; is_mobile = layout=='Mobile'
 
     # ── Asset buttons ──
-    st.markdown(f"<div style='color:{MUTED};font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;padding:4px 0 2px 2px;font-family:{FONTS}'>ASSET</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:{MUTED};font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;padding:2px 0 2px 2px;font-family:{FONTS}'>ASSET</div>", unsafe_allow_html=True)
     syms = FUTURES_GROUPS[st.session_state.sector]
     cpr = min(len(syms), 6) if is_mobile else min(len(syms), 12)
     for ri in range((len(syms)+cpr-1)//cpr):
@@ -958,10 +940,8 @@ def main():
             render_news(st.session_state.symbol)
 
     # ── Footer ──
-    st.markdown(f"""<div style='margin-top:12px;padding:6px 16px;border-top:1px solid #1e293b;font-family:{FONTS};
-        display:flex;justify-content:space-between;align-items:center'>
-        <span style='font-size:10px;color:{DIM}'>Data caches 2 min · Yahoo Finance</span>
-        <span style='font-size:10px;color:{DIM}'>{datetime.now(est).strftime('%H:%M %Z')}</span></div>""", unsafe_allow_html=True)
+    st.markdown(f"""<div style='margin-top:12px;padding:6px 12px;background-color:{CARD};border-radius:4px;font-family:{FONTS}'>
+        <span style='font-size:10px;color:{DIM}'>EST {datetime.now(est).strftime('%H:%M %Z')} · Data caches 2 min · Click symbol for analysis</span></div>""", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
