@@ -94,7 +94,8 @@ def fetch_symbol_history(symbols_tuple, days=1800):
                 closes.index = closes.index.normalize()
                 closes = closes.groupby(closes.index).last()
                 data[sym] = closes; valid.append(sym)
-        except: pass
+        except Exception as e:
+            logger.warning(f"[{sym}] portfolio fetch error: {e}")
     if len(valid) < 2: return None, valid
     data = data[valid].ffill().dropna()
     if len(data) < 50: return None, valid
@@ -707,18 +708,18 @@ def render_portfolio_tab(is_mobile):
         symbols = list(dict.fromkeys(symbols))
 
         try: max_wt = max(10, min(100, float(max_wt_str))) / 100.0
-        except: max_wt = 0.50
+        except (ValueError, TypeError): max_wt = 0.50
         try: min_wt = max(0, min(50, float(min_wt_str))) / 100.0
-        except: min_wt = 0.0
+        except (ValueError, TypeError): min_wt = 0.0
         try: n_sims = max(1000, min(100000, int(sims_str)))
-        except: n_sims = 10000
+        except (ValueError, TypeError): n_sims = 10000
         try: txn_cost = max(0, min(5.0, float(cost_str))) / 100.0
-        except: txn_cost = 0.001
+        except (ValueError, TypeError): txn_cost = 0.001
         # Optional constraints
         try: max_vol = float(max_vol_str) / 100.0 if max_vol_str.strip() else None
-        except: max_vol = None
+        except (ValueError, TypeError): max_vol = None
         try: min_ann_ret = float(min_ret_str) / 100.0 if min_ret_str.strip() else None
-        except: min_ann_ret = None
+        except (ValueError, TypeError): min_ann_ret = None
 
         allow_short = direction == 'Long/Short'
         rebal = REBAL_OPTIONS[rebal_label]

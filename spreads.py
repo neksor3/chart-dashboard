@@ -6,8 +6,11 @@ from datetime import datetime
 from itertools import combinations
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import logging
 
 from config import FUTURES_GROUPS, THEMES, SYMBOL_NAMES, FONTS, MONO, clean_symbol
+
+logger = logging.getLogger(__name__)
 
 # =============================================================================
 # SPREAD STATISTICS
@@ -77,7 +80,8 @@ def fetch_sector_spread_data(sector, lookback_days=0):
                 closes.index = closes.index.normalize()
                 closes = closes.groupby(closes.index).last()
                 data[sym] = closes
-        except: pass
+        except Exception as e:
+            logger.debug(f"[{sym}] spread data fetch error: {e}")
     if data.empty or len(data.columns) < 2: return None
     data = data.ffill().dropna()
     # Trim to exact lookback days if not YTD

@@ -11,6 +11,7 @@ import warnings
 import logging
 import feedparser
 from urllib.parse import quote
+from html import escape as html_escape
 import re
 
 from config import (FUTURES_GROUPS, THEMES, SYMBOL_NAMES, CHART_CONFIGS,
@@ -21,6 +22,7 @@ from config import (FUTURES_GROUPS, THEMES, SYMBOL_NAMES, CHART_CONFIGS,
 # =============================================================================
 
 logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
 warnings.filterwarnings('ignore')
 logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
@@ -89,6 +91,78 @@ def get_dynamic_period(boundary_type):
     elif boundary_type == 'month': return f'{int(now.day + 65 + 5)}d'
     elif boundary_type == 'year': return '3y'
     return '90d'
+
+
+# =============================================================================
+# TIMEZONE HELPERS
+# =============================================================================
+
+def _tz_now(hist_index):
+    """Return a tz-aware 'now' aligned with the data's timezone."""
+    tz = hist_index.tz
+    if tz is not None:
+        return pd.Timestamp.now(tz=tz)
+    return pd.Timestamp.now()
+
+
+def _to_date(ts):
+    """Extract .date() safely from a Timestamp index entry."""
+    return ts.date()
+
+
+def _slice_period(hist, period_type, now=None):
+    """Return (prev_period, current_bars) DataFrames for a given period boundary.
+
+    Returns (prev_period_df, current_bars_df) or (None, None) if insufficient data.
+    """
+    if now is None:
+        now = _tz_now(hist.index)
+
+    dates = hist.index.map(_to_date)
+
+    if period_type == 'session':
+        today = now.date()
+        prev_data = hist[dates < today]
+        if prev_data.empty:
+            return None, None
+        prev_period = prev_data.iloc[-1:]
+        current_bars = hist[dates >= today]
+
+    elif period_type == 'week':
+        wsd = (now - pd.Timedelta(days=now.weekday())).date()
+        prev_data = hist[dates < wsd]
+        if prev_data.empty:
+            return None, None
+        pwsd = wsd - pd.Timedelta(days=7)
+        prev_period = prev_data[prev_data.index.map(_to_date) >= pwsd]
+        if prev_period.empty:
+            prev_period = prev_data.tail(5)
+        current_bars = hist[dates >= wsd]
+
+    elif period_type == 'month':
+        msd = now.replace(day=1).date()
+        prev_data = hist[dates < msd]
+        if prev_data.empty:
+            return None, None
+        pm = (now.month - 2) % 12 + 1
+        py = now.year if now.month > 1 else now.year - 1
+        prev_period = prev_data[(prev_data.index.month == pm) & (prev_data.index.year == py)]
+        current_bars = hist[dates >= msd]
+
+    elif period_type == 'year':
+        ysd = now.replace(month=1, day=1).date()
+        prev_data = hist[dates < ysd]
+        if prev_data.empty:
+            return None, None
+        prev_period = prev_data[prev_data.index.year == now.year - 1]
+        current_bars = hist[dates >= ysd]
+
+    else:
+        return None, None
+
+    if prev_period.empty:
+        return None, None
+    return prev_period, current_bars
 
 # =============================================================================
 # PERIOD BOUNDARIES
@@ -178,12 +252,31 @@ class FuturesDataFetcher:
         self.ticker = yf.Ticker(symbol)
         self.est = pytz.timezone('US/Eastern')
         self.decimals = 4 if symbol.endswith('=X') else 2
+        self._hist_yearly = None
+        self._hist_intraday = None
 
     def fetch(self):
+        """Fetch data from yfinance directly (used by chart tab)."""
         try:
             hist_yearly = self.ticker.history(period='1y')
             if hist_yearly.empty: return None
             hist_intraday = self.ticker.history(period='1d', interval='1m')
+        except Exception as e:
+            logger.warning(f"[{self.symbol}] fetch API error: {e}")
+            return None
+        return self._compute_metrics(hist_yearly, hist_intraday)
+
+    def fetch_from_cache(self):
+        """Compute metrics from pre-loaded data (used by batch scanner)."""
+        hist_yearly = self._hist_yearly
+        hist_intraday = self._hist_intraday if self._hist_intraday is not None else pd.DataFrame()
+        if hist_yearly is None or hist_yearly.empty:
+            return None
+        return self._compute_metrics(hist_yearly, hist_intraday)
+
+    def _compute_metrics(self, hist_yearly, hist_intraday):
+        try:
+            if hist_yearly.empty: return None
             if not hist_intraday.empty:
                 current_price = hist_intraday['Close'].iloc[-1]
                 daily_open = hist_intraday['Open'].iloc[0]
@@ -196,8 +289,10 @@ class FuturesDataFetcher:
                 last_timestamp = hist_yearly.index[-1]
 
             now_est = datetime.now(self.est)
-            try: lag_minutes = (now_est - last_timestamp.tz_convert(self.est)).total_seconds() / 60
-            except: lag_minutes = 0
+            try:
+                lag_minutes = (now_est - last_timestamp.tz_convert(self.est)).total_seconds() / 60
+            except Exception:
+                lag_minutes = 0
             wtd, mtd, ytd = self._calculate_period_returns(hist_yearly, current_price)
             day_status = self._calculate_period_status(hist_yearly, current_price, 'session')
             week_status = self._calculate_period_status(hist_yearly, current_price, 'week')
@@ -232,6 +327,7 @@ class FuturesDataFetcher:
                 day_reversal=day_rev, week_reversal=week_rev,
                 month_reversal=month_rev, year_reversal=year_rev)
         except Exception as e:
+            logger.warning(f"[{self.symbol}] fetch failed: {e}")
             return None
 
     def _calculate_hist_vol(self, hist):
@@ -239,37 +335,51 @@ class FuturesDataFetcher:
             if len(hist) < 20: return np.nan
             dr = hist['Close'].pct_change().dropna()
             return dr.std() * np.sqrt(252) * 100 if len(dr) >= 20 else np.nan
-        except: return np.nan
+        except Exception as e:
+            logger.debug(f"[{self.symbol}] hist_vol error: {e}")
+            return np.nan
 
     def _calculate_current_dd(self, hist, current_price):
         try:
             if len(hist) < 2: return np.nan
             peak = hist['High'].max()
             return ((current_price - peak) / peak) * 100 if peak != 0 else np.nan
-        except: return np.nan
+        except Exception as e:
+            logger.debug(f"[{self.symbol}] current_dd error: {e}")
+            return np.nan
 
     def _calculate_ytd_sharpe(self, hist, current_price):
         try:
-            ytd_start = pd.Timestamp.now().replace(month=1, day=1).date()
-            ytd_hist = hist[hist.index.map(lambda x: x.date()) >= ytd_start]
+            now = _tz_now(hist.index)
+            ytd_start = now.replace(month=1, day=1).date()
+            ytd_hist = hist[hist.index.map(_to_date) >= ytd_start]
             if len(ytd_hist) < 10: return np.nan
             dr = ytd_hist['Close'].pct_change().dropna()
             if len(dr) < 5 or dr.std() == 0: return np.nan
             return (dr.mean() / dr.std()) * np.sqrt(252)
-        except: return np.nan
+        except Exception as e:
+            logger.debug(f"[{self.symbol}] ytd_sharpe error: {e}")
+            return np.nan
 
     def _calculate_period_sharpe(self, hist, period):
         try:
-            now = pd.Timestamp.now()
-            if period == 'wtd': start_date = (now - pd.Timedelta(days=now.weekday())).date(); min_bars = 2
-            elif period == 'mtd': start_date = now.replace(day=1).date(); min_bars = 3
-            else: return np.nan
-            ph = hist[hist.index.map(lambda x: x.date()) >= start_date]
+            now = _tz_now(hist.index)
+            if period == 'wtd':
+                start_date = (now - pd.Timedelta(days=now.weekday())).date()
+                min_bars = 2
+            elif period == 'mtd':
+                start_date = now.replace(day=1).date()
+                min_bars = 3
+            else:
+                return np.nan
+            ph = hist[hist.index.map(_to_date) >= start_date]
             if len(ph) < min_bars: return np.nan
             dr = ph['Close'].pct_change().dropna()
             if len(dr) < 2 or dr.std() == 0: return np.nan
             return (dr.mean() / dr.std()) * np.sqrt(252)
-        except: return np.nan
+        except Exception as e:
+            logger.debug(f"[{self.symbol}] period_sharpe ({period}) error: {e}")
+            return np.nan
 
     def _calculate_intraday_sharpe(self, hist_intraday):
         try:
@@ -277,84 +387,31 @@ class FuturesDataFetcher:
             r = hist_intraday['Close'].pct_change().dropna()
             if len(r) < 20 or r.std() == 0: return np.nan
             return (r.mean() / r.std()) * np.sqrt(252 * 390)
-        except: return np.nan
+        except Exception as e:
+            logger.debug(f"[{self.symbol}] intraday_sharpe error: {e}")
+            return np.nan
 
     def _calculate_period_status(self, hist, current_price, period_type):
         try:
-            now = pd.Timestamp.now()
-            if hist.index.tzinfo is not None:
-                try: now = now.tz_localize(hist.index.tzinfo)
-                except: now = now.tz_localize('UTC').tz_convert(hist.index.tzinfo)
-            if period_type == 'session':
-                prev_data = hist[hist.index.map(lambda x: x.date()) < now.date()]
-                if prev_data.empty: return ''
-                prev_period = prev_data.iloc[-1:]
-            elif period_type == 'week':
-                wsd = (now - pd.Timedelta(days=now.weekday())).date()
-                prev_data = hist[hist.index.map(lambda x: x.date()) < wsd]
-                if prev_data.empty: return ''
-                pwsd = wsd - pd.Timedelta(days=7)
-                prev_period = prev_data[prev_data.index.map(lambda x: x.date()) >= pwsd]
-                if prev_period.empty: prev_period = prev_data.tail(5)
-            elif period_type == 'month':
-                msd = now.replace(day=1).date()
-                prev_data = hist[hist.index.map(lambda x: x.date()) < msd]
-                if prev_data.empty: return ''
-                pm = (now.month - 2) % 12 + 1
-                py = now.year if now.month > 1 else now.year - 1
-                prev_period = prev_data[(prev_data.index.month == pm) & (prev_data.index.year == py)]
-            elif period_type == 'year':
-                ysd = now.replace(month=1, day=1).date()
-                prev_data = hist[hist.index.map(lambda x: x.date()) < ysd]
-                if prev_data.empty: return ''
-                prev_period = prev_data[prev_data.index.year == now.year - 1]
-            else: return ''
-            if prev_period.empty: return ''
+            prev_period, _ = _slice_period(hist, period_type)
+            if prev_period is None:
+                return ''
             ph, pl = prev_period['High'].max(), prev_period['Low'].min()
             pm = (ph + pl) / 2
             if current_price > ph: return 'above_high'
             elif current_price < pl: return 'below_low'
             elif current_price > pm: return 'above_mid'
             else: return 'below_mid'
-        except: return ''
+        except Exception as e:
+            logger.debug(f"[{self.symbol}] period_status ({period_type}) error: {e}")
+            return ''
 
     def _check_reversal(self, hist, period_type):
         try:
             if len(hist) < 3: return False
-            now = pd.Timestamp.now()
-            if hist.index.tzinfo is not None:
-                try: now = now.tz_localize(hist.index.tzinfo)
-                except: now = now.tz_localize('UTC').tz_convert(hist.index.tzinfo)
-            if period_type == 'session':
-                today = now.date()
-                prev_data = hist[hist.index.map(lambda x: x.date()) < today]
-                if prev_data.empty: return False
-                prev_period = prev_data.iloc[-1:]
-                current_bars = hist[hist.index.map(lambda x: x.date()) >= today]
-            elif period_type == 'week':
-                wsd = (now - pd.Timedelta(days=now.weekday())).date()
-                prev_data = hist[hist.index.map(lambda x: x.date()) < wsd]
-                if prev_data.empty: return False
-                pwsd = wsd - pd.Timedelta(days=7)
-                prev_period = prev_data[prev_data.index.map(lambda x: x.date()) >= pwsd]
-                if prev_period.empty: prev_period = prev_data.tail(5)
-                current_bars = hist[hist.index.map(lambda x: x.date()) >= wsd]
-            elif period_type == 'month':
-                msd = now.replace(day=1).date()
-                prev_data = hist[hist.index.map(lambda x: x.date()) < msd]
-                if prev_data.empty: return False
-                pm = (now.month - 2) % 12 + 1
-                py = now.year if now.month > 1 else now.year - 1
-                prev_period = prev_data[(prev_data.index.month == pm) & (prev_data.index.year == py)]
-                current_bars = hist[hist.index.map(lambda x: x.date()) >= msd]
-            elif period_type == 'year':
-                ysd = now.replace(month=1, day=1).date()
-                prev_data = hist[hist.index.map(lambda x: x.date()) < ysd]
-                if prev_data.empty: return False
-                prev_period = prev_data[prev_data.index.year == now.year - 1]
-                current_bars = hist[hist.index.map(lambda x: x.date()) >= ysd]
-            else: return False
-            if prev_period.empty or current_bars.empty: return False
+            prev_period, current_bars = _slice_period(hist, period_type)
+            if prev_period is None or current_bars is None or current_bars.empty:
+                return False
             ph, pl = prev_period['High'].max(), prev_period['Low'].min()
             current_close = current_bars['Close'].iloc[-1]
             period_high = current_bars['High'].max()
@@ -362,11 +419,13 @@ class FuturesDataFetcher:
             period_low = current_bars['Low'].min()
             if period_low < pl and current_close >= pl: return True
             return False
-        except: return False
+        except Exception as e:
+            logger.debug(f"[{self.symbol}] check_reversal ({period_type}) error: {e}")
+            return False
 
     def _calculate_period_returns(self, hist, current_price):
         try:
-            now = pd.Timestamp.now()
+            now = _tz_now(hist.index)
             periods = {
                 'wtd': (now - pd.Timedelta(days=now.weekday())).date(),
                 'mtd': now.replace(day=1).date(),
@@ -374,13 +433,16 @@ class FuturesDataFetcher:
             }
             returns = []
             for pn, sd in periods.items():
-                ph = hist[hist.index.map(lambda x: x.date()) >= sd]
+                ph = hist[hist.index.map(_to_date) >= sd]
                 if not ph.empty:
                     sp = ph['Open'].iloc[0]
                     returns.append(((current_price - sp) / sp) * 100)
-                else: returns.append(np.nan)
+                else:
+                    returns.append(np.nan)
             return tuple(returns)
-        except: return (np.nan, np.nan, np.nan)
+        except Exception as e:
+            logger.debug(f"[{self.symbol}] period_returns error: {e}")
+            return (np.nan, np.nan, np.nan)
 
 
 # =============================================================================
@@ -389,12 +451,50 @@ class FuturesDataFetcher:
 
 @st.cache_data(ttl=120, show_spinner=False)
 def fetch_sector_data(sector_name):
+    """Fetch metrics for all symbols in a sector.
+
+    Uses yf.download for a single batch request to get 1y daily data,
+    then individual 1-minute calls only for intraday price/lag.
+    """
     symbols = FUTURES_GROUPS.get(sector_name, [])
+    if not symbols:
+        return []
+
+    # Batch download 1y daily data for the whole sector at once
+    try:
+        batch_daily = yf.download(symbols, period='1y', group_by='ticker',
+                                   threads=True, progress=False)
+    except Exception as e:
+        logger.warning(f"Batch download failed for {sector_name}: {e}")
+        batch_daily = pd.DataFrame()
+
     metrics = []
     for symbol in symbols:
-        fetcher = FuturesDataFetcher(symbol)
-        result = fetcher.fetch()
-        if result: metrics.append(result)
+        try:
+            # Extract this symbol's daily data from batch result
+            if len(symbols) == 1:
+                hist_yearly = batch_daily.copy()
+            elif symbol in batch_daily.columns.get_level_values(0):
+                hist_yearly = batch_daily[symbol].dropna(how='all')
+            else:
+                hist_yearly = pd.DataFrame()
+
+            if hist_yearly.empty:
+                continue
+
+            # Individual intraday call (can't batch 1m intervals)
+            ticker = yf.Ticker(symbol)
+            hist_intraday = ticker.history(period='1d', interval='1m')
+
+            fetcher = FuturesDataFetcher(symbol)
+            fetcher._hist_yearly = hist_yearly
+            fetcher._hist_intraday = hist_intraday
+
+            result = fetcher.fetch_from_cache()
+            if result:
+                metrics.append(result)
+        except Exception as e:
+            logger.warning(f"[{symbol}] sector fetch error: {e}")
     return metrics
 
 @st.cache_data(ttl=120, show_spinner=False)
@@ -446,10 +546,18 @@ def fetch_news(symbol):
                         now_ts = pd.Timestamp.now(tz=dt.tzinfo) if dt.tzinfo else pd.Timestamp.now()
                         dh = (now_ts - dt).total_seconds() / 3600
                         date_str = f"{int(dh*60)}m ago" if dh < 1 else f"{int(dh)}h ago" if dh < 24 else dt.strftime('%d %b %H:%M')
-                    except: pass
+                    except Exception as e:
+                        logger.debug(f"News date parse error: {e}")
                 seen.add(title)
-                results.append({'title': title, 'url': link, 'provider': provider, 'date': date_str})
-        except: pass
+                # HTML-escape user-facing text to prevent injection
+                results.append({
+                    'title': html_escape(title),
+                    'url': link,
+                    'provider': html_escape(provider),
+                    'date': date_str,
+                })
+        except Exception as e:
+            logger.debug(f"News fetch error for {symbol} ({when}): {e}")
     return results[:12]
 
 
@@ -559,7 +667,8 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
         hist_lag = fetch_chart_data(symbol, '1d', '5m')
         if not hist_lag.empty:
             live_price = float(hist_lag['Close'].iloc[-1])
-    except: pass
+    except Exception as e:
+        logger.debug(f"[{symbol}] live price fetch error: {e}")
 
     if mobile:
         fig = make_subplots(rows=4, cols=1,
@@ -857,7 +966,7 @@ def _detect_mobile():
     try:
         ua = st.context.headers.get('User-Agent', '')
         return bool(re.search(r'iPhone|Android.*Mobile|Windows Phone', ua, re.I))
-    except:
+    except Exception:
         return False
 
 
