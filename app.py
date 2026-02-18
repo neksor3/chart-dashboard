@@ -44,7 +44,7 @@ st.markdown("""
     div[data-testid="stMarkdownContainer"] p { margin-bottom: 0; }
     .block-container { padding-top: 2.5rem; padding-bottom: 0rem; }
     button[kind="secondary"] { background-color: #16213e; color: white; border: 1px solid #2a4a6a; }
-    .stButton > button { font-size: 11px !important; padding: 4px 8px !important; min-height: 30px !important; }
+    .stButton > button { font-size: 10px !important; padding: 2px 6px !important; min-height: 26px !important; height: 26px !important; }
     @media (max-width: 768px) {
         .block-container { padding: 2.5rem 0.5rem 0 0.5rem !important; }
         .stButton > button { font-size: 9px !important; padding: 2px 4px !important; min-height: 24px !important; }
@@ -983,35 +983,57 @@ def main():
             key='theme_select', label_visibility='collapsed')
         st.session_state.theme = theme
 
-    # SECTOR buttons
-    st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>SECTOR</div>", unsafe_allow_html=True)
-    sector_names = list(FUTURES_GROUPS.keys())
-    scpr = min(len(sector_names), 7) if is_mobile else min(len(sector_names), 14)
-    for ri in range((len(sector_names) + scpr - 1) // scpr):
-        s, e = ri * scpr, min((ri + 1) * scpr, len(sector_names))
-        cols = st.columns(scpr)
-        for j, sname in enumerate(sector_names[s:e]):
-            with cols[j]:
-                if st.button(sname.upper(), key=f"sec_{sname}", use_container_width=True,
-                            type="primary" if sname == st.session_state.sector else "secondary"):
-                    if sname != st.session_state.sector:
-                        st.session_state.sector = sname
-                        st.session_state.symbol = FUTURES_GROUPS[sname][0]
-                        st.rerun()
+    # SECTOR selection
+    if is_mobile:
+        st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>SECTOR</div>", unsafe_allow_html=True)
+        sector_names = list(FUTURES_GROUPS.keys())
+        sector = st.selectbox("Sector", sector_names,
+            index=sector_names.index(st.session_state.sector),
+            key='sel_sector', label_visibility='collapsed')
+        if sector != st.session_state.sector:
+            st.session_state.sector = sector
+            st.session_state.symbol = FUTURES_GROUPS[sector][0]
+            st.rerun()
+    else:
+        st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>SECTOR</div>", unsafe_allow_html=True)
+        sector_names = list(FUTURES_GROUPS.keys())
+        scpr = min(len(sector_names), 14)
+        for ri in range((len(sector_names) + scpr - 1) // scpr):
+            s, e = ri * scpr, min((ri + 1) * scpr, len(sector_names))
+            cols = st.columns(scpr)
+            for j, sname in enumerate(sector_names[s:e]):
+                with cols[j]:
+                    if st.button(sname.upper(), key=f"sec_{sname}", use_container_width=True,
+                                type="primary" if sname == st.session_state.sector else "secondary"):
+                        if sname != st.session_state.sector:
+                            st.session_state.sector = sname
+                            st.session_state.symbol = FUTURES_GROUPS[sname][0]
+                            st.rerun()
 
-    # ASSET buttons
-    st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>ASSET</div>", unsafe_allow_html=True)
+    # ASSET selection
     symbols = FUTURES_GROUPS[st.session_state.sector]
-    cpr = min(len(symbols), 6) if is_mobile else min(len(symbols), 12)
-    for ri in range((len(symbols) + cpr - 1) // cpr):
-        s, e = ri * cpr, min((ri + 1) * cpr, len(symbols))
-        cols = st.columns(cpr)
-        for j, sym in enumerate(symbols[s:e]):
-            with cols[j]:
-                if st.button(clean_symbol(sym), key=f"sym_{sym}", use_container_width=True,
-                            type="primary" if sym == st.session_state.symbol else "secondary"):
-                    st.session_state.symbol = sym
-                    st.rerun()
+    if is_mobile:
+        st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>ASSET</div>", unsafe_allow_html=True)
+        sym_labels = [clean_symbol(s) for s in symbols]
+        current_idx = symbols.index(st.session_state.symbol) if st.session_state.symbol in symbols else 0
+        selected_label = st.selectbox("Asset", sym_labels, index=current_idx,
+            key='sel_asset', label_visibility='collapsed')
+        selected_sym = symbols[sym_labels.index(selected_label)]
+        if selected_sym != st.session_state.symbol:
+            st.session_state.symbol = selected_sym
+            st.rerun()
+    else:
+        st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>ASSET</div>", unsafe_allow_html=True)
+        cpr = min(len(symbols), 12)
+        for ri in range((len(symbols) + cpr - 1) // cpr):
+            s, e = ri * cpr, min((ri + 1) * cpr, len(symbols))
+            cols = st.columns(cpr)
+            for j, sym in enumerate(symbols[s:e]):
+                with cols[j]:
+                    if st.button(clean_symbol(sym), key=f"sym_{sym}", use_container_width=True,
+                                type="primary" if sym == st.session_state.symbol else "secondary"):
+                        st.session_state.symbol = sym
+                        st.rerun()
 
     # Fetch data
     with st.spinner('Loading market data...'):
