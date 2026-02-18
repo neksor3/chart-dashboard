@@ -136,15 +136,14 @@ def _optimize_window_vectorized(returns_array, n_portfolios, n_assets, max_weigh
     ann_rets = np.mean(port_returns, axis=1) * 252
     ann_vols = np.std(port_returns, axis=1, ddof=1) * np.sqrt(252)
 
-    # Apply constraints — mask out portfolios that violate
-    valid = np.ones(n_portfolios, dtype=bool)
+    # Apply constraints as soft penalties — penalize violations instead of hard filter
+    penalty = np.zeros(n_portfolios)
     if max_vol is not None and max_vol > 0:
-        valid &= ann_vols <= max_vol
+        vol_excess = np.maximum(ann_vols - max_vol, 0)
+        penalty += vol_excess * 50  # strong penalty: 1% over = 0.5 penalty on 0-1 score
     if min_ann_ret is not None:
-        valid &= ann_rets >= min_ann_ret
-    # If too few valid, relax constraints
-    if valid.sum() < max(10, n_portfolios // 20):
-        valid = np.ones(n_portfolios, dtype=bool)
+        ret_shortfall = np.maximum(min_ann_ret - ann_rets, 0)
+        penalty += ret_shortfall * 50
 
     def _vec_downside_vol(pr):
         neg = np.minimum(pr, 0)
@@ -193,9 +192,15 @@ def _optimize_window_vectorized(returns_array, n_portfolios, n_assets, max_weigh
     else:  # Sharpe
         scores = np.where(ann_vols > 0, ann_rets / ann_vols, 0)
 
-    # Apply validity mask
-    scores[~valid] = -np.inf
-    return weights[np.argmax(scores)]
+    # Normalize scores to 0-1 range, then apply constraint penalty
+    s_min, s_max = scores.min(), scores.max()
+    if s_max > s_min:
+        norm_scores = (scores - s_min) / (s_max - s_min)
+    else:
+        norm_scores = np.ones_like(scores) * 0.5
+    # Penalty is 0 when constraints satisfied, large when violated
+    final_scores = norm_scores - penalty
+    return weights[np.argmax(final_scores)]
 
 # =============================================================================
 # WALK-FORWARD ENGINE
@@ -505,6 +510,11 @@ def render_weights_table(grid, approach_name):
 # =============================================================================
 
 def render_oos_chart(grid, approach_name):
+    # Read theme fresh from session state every time
+    theme_name = st.session_state.get('theme', 'Emerald / Amber')
+    theme = THEMES.get(theme_name, THEMES['Emerald / Amber'])
+    pos_c = theme['pos']; neg_c = theme['neg']
+
     wf = grid['results'][approach_name]['wf']
     oos = wf['oos_returns']; m = grid['results'][approach_name]['metrics']; eq_m = grid['eq_metrics']
     eq_aligned = grid['eq_returns'].loc[grid['eq_returns'].index >= oos.index[0]]
@@ -512,13 +522,12 @@ def render_oos_chart(grid, approach_name):
     opt_peak = np.maximum.accumulate(opt_cum); opt_dd = (opt_cum - opt_peak) / opt_peak
     opt_pct = (opt_cum[-1] - 1) * 100; eq_pct = (eq_cum[-1] - 1) * 100
 
-    opt_lbl = (f'{approach_name} ({opt_pct:+.1f}%)  Sharpe {m["sharpe"]:.2f} · Sortino {m["sortino"]:.2f} · '
-               f'MAR {m["mar"]:.1f} · Win {m["win_rate"]*100:.0f}% · R² {m["r2"]:.3f}')
-    eq_lbl = (f'Equal Weight ({eq_pct:+.1f}%)  Sharpe {eq_m["sharpe"]:.2f} · Sortino {eq_m["sortino"]:.2f} · '
-              f'MAR {eq_m["mar"]:.1f} · Win {eq_m["win_rate"]*100:.0f}% · R² {eq_m["r2"]:.3f}')
+    # Concise legend — just Sharpe + Win%
+    opt_lbl = f'{approach_name} ({opt_pct:+.1f}%)  Sharpe {m["sharpe"]:.2f} · Win {m["win_rate"]*100:.0f}%'
+    eq_lbl = f'Equal Weight ({eq_pct:+.1f}%)  Sharpe {eq_m["sharpe"]:.2f} · Win {eq_m["win_rate"]*100:.0f}%'
 
     fig = make_subplots(rows=2, cols=1, row_heights=[0.75, 0.25], shared_xaxes=True, vertical_spacing=0.04)
-    fig.add_trace(go.Scatter(x=oos.index, y=opt_cum, mode='lines', line=dict(color=C_POS, width=2),
+    fig.add_trace(go.Scatter(x=oos.index, y=opt_cum, mode='lines', line=dict(color=pos_c, width=2),
         name=opt_lbl, hovertemplate='WF: $%{y:.3f}<extra></extra>'), row=1, col=1)
     fig.add_trace(go.Scatter(x=eq_aligned.index, y=eq_cum, mode='lines',
         line=dict(color='#ffffff', width=1.2, dash='dot'), name=eq_lbl,
@@ -528,22 +537,33 @@ def render_oos_chart(grid, approach_name):
             fig.add_vline(x=wh['date'], line=dict(color=C_GOLD, width=0.6, dash='dot'), opacity=0.4, row=1, col=1)
     fig.add_hline(y=1.0, line=dict(color='#333333', width=0.8, dash='dash'), row=1, col=1)
 
-    nr = C_NEG.lstrip('#'); rv, gv, bv = int(nr[:2], 16), int(nr[2:4], 16), int(nr[4:6], 16)
+    # End value annotations
+    fig.add_annotation(x=oos.index[-1], y=opt_cum[-1], text=f'${opt_cum[-1]:.2f}',
+        showarrow=False, xanchor='left', xshift=5,
+        font=dict(size=11, color=pos_c, family=FONTS), row=1, col=1)
+    fig.add_annotation(x=eq_aligned.index[-1], y=eq_cum[-1], text=f'${eq_cum[-1]:.2f}',
+        showarrow=False, xanchor='left', xshift=5,
+        font=dict(size=11, color='#ffffff', family=FONTS), row=1, col=1)
+
+    nr = neg_c.lstrip('#'); rv, gv, bv = int(nr[:2], 16), int(nr[2:4], 16), int(nr[4:6], 16)
     fig.add_trace(go.Scatter(x=oos.index, y=opt_dd * 100, mode='lines', fill='tozeroy',
-        line=dict(color=C_NEG, width=1), fillcolor=f'rgba({rv},{gv},{bv},0.2)',
+        line=dict(color=neg_c, width=1), fillcolor=f'rgba({rv},{gv},{bv},0.2)',
         name='Drawdown', showlegend=False, hovertemplate='DD: %{y:.1f}%<extra></extra>'), row=2, col=1)
 
-    title = ', '.join(_short(s) for s in grid['symbols'][:5])
-    if len(grid['symbols']) > 5: title += f" +{len(grid['symbols'])-5}"
-    fig.update_layout(template='plotly_dark', height=400, margin=dict(l=55, r=30, t=35, b=25),
+    # Title — use preset name instead of symbols
+    params = st.session_state.get('port_params', {})
+    title_name = params.get('preset_name', 'Portfolio').upper()
+    fig.update_layout(template='plotly_dark', height=400, margin=dict(l=55, r=55, t=35, b=25),
         plot_bgcolor='#0a0a0a', paper_bgcolor='#0a0a0a', showlegend=True,
-        legend=dict(x=0.01, y=0.88, bgcolor='rgba(0,0,0,0)', font=dict(size=9, color='#ffffff', family=MONO), borderwidth=0),
-        hovermode='x unified', font=dict(family=MONO))
-    fig.add_annotation(text=f"<b>{title.upper()}</b>  <span style='font-size:10px;color:{C_GOLD}'>OOS WALK-FORWARD</span>",
+        legend=dict(x=0.01, y=0.88, bgcolor='rgba(0,0,0,0)',
+                    font=dict(size=12, color='#ffffff', family=FONTS), borderwidth=0),
+        hovermode='x unified', font=dict(family=FONTS))
+    fig.add_annotation(text=f"<b>{title_name}</b>  <span style='font-size:10px;color:{C_GOLD}'>OOS WALK-FORWARD</span>",
         x=0.01, y=0.99, xref='paper', yref='paper', showarrow=False,
-        font=dict(size=13, color='#ffffff', family=MONO), xanchor='left', yanchor='top')
-    fig.update_xaxes(gridcolor='#1a1a1a', linecolor='#222', tickfont=dict(size=8, color='#555', family=MONO))
-    fig.update_yaxes(gridcolor='#1a1a1a', linecolor='#222', tickfont=dict(size=8, color='#555', family=MONO), side='right')
+        font=dict(size=14, color='#ffffff', family=FONTS), xanchor='left', yanchor='top')
+    # White axes
+    fig.update_xaxes(gridcolor='#1a1a1a', linecolor='#333', tickfont=dict(size=9, color='#cccccc', family=FONTS))
+    fig.update_yaxes(gridcolor='#1a1a1a', linecolor='#333', tickfont=dict(size=9, color='#cccccc', family=FONTS), side='right')
     fig.update_yaxes(tickprefix='$', tickformat='.2f', row=1, col=1)
     fig.update_yaxes(ticksuffix='%', row=2, col=1)
     st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True, 'responsive': True})
@@ -591,8 +611,8 @@ def _section(title, subtitle=''):
 
 def render_portfolio_tab(is_mobile):
     global C_POS, C_NEG
-    theme_name = st.session_state.get('theme', 'Blue / Rose')
-    theme = THEMES.get(theme_name, THEMES['Blue / Rose'])
+    theme_name = st.session_state.get('theme', 'Emerald / Amber')
+    theme = THEMES.get(theme_name, THEMES['Emerald / Amber'])
     C_POS = theme['pos']; C_NEG = theme['neg']
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
@@ -604,18 +624,19 @@ def render_portfolio_tab(is_mobile):
                                placeholder='Enter symbols: AAPL, MSFT, GOOG')
 
     # Preset buttons — use on_click callbacks (run before rerender)
-    def _set_preset(syms_str):
+    def _set_preset(syms_str, preset_name='Custom'):
         st.session_state.port_sym_input = syms_str
+        st.session_state.port_preset_name = preset_name
 
     st.markdown(f"<div style='{_lbl};margin-top:4px'>PRESETS</div>", unsafe_allow_html=True)
     preset_cols = st.columns(len(PRESETS) + 1)
     for i, (name, syms) in enumerate(PRESETS.items()):
         with preset_cols[i]:
             st.button(name, key=f'preset_{name}', use_container_width=True,
-                      on_click=_set_preset, args=(', '.join(syms),))
+                      on_click=_set_preset, args=(', '.join(syms), name))
     with preset_cols[-1]:
         st.button('Custom', key='preset_custom', use_container_width=True,
-                  on_click=_set_preset, args=('',))
+                  on_click=_set_preset, args=('', 'Custom'))
 
     # Controls row 1: Objective + Rebalance + Period + Direction
     if is_mobile:
@@ -719,11 +740,22 @@ def render_portfolio_tab(is_mobile):
             st.warning('Need ≥2 assets with sufficient history for walk-forward'); return
 
         st.session_state.port_grid = grid
+        # Determine display name
+        preset_name = st.session_state.get('port_preset_name', 'Custom')
+        if preset_name == 'Custom' or not preset_name:
+            # Try to match symbols to a preset
+            sym_set = set(symbols)
+            for pname, psyms in PRESETS.items():
+                if set(psyms) == sym_set:
+                    preset_name = pname; break
+            else:
+                preset_name = 'Portfolio'
         st.session_state.port_params = {
             'score': score, 'rebal_label': rebal_label, 'period_label': period_label,
             'direction': 'L/S' if allow_short else 'Long',
             'min_wt': min_wt, 'max_wt': max_wt, 'n_sims': n_sims, 'txn_cost': txn_cost,
             'max_vol': max_vol, 'min_ann_ret': min_ann_ret,
+            'preset_name': preset_name,
         }
         # Reset approach selector to winner on new run
         if 'port_view_approach' in st.session_state:

@@ -61,17 +61,17 @@ SYMBOL_NAMES = {
 # =============================================================================
 
 THEMES = {
-    'Blue / Rose': {
-        'pos': '#60a5fa', 'neg': '#fb7185',
-        'zone_hi': '#60a5fa', 'zone_amid': '#93c5fd', 'zone_bmid': '#fda4af', 'zone_lo': '#fb7185',
-        'str_up': '#60a5fa', 'str_dn': '#fb7185', 'pull': '#fbbf24', 'bnce': '#4ade80',
-        'long': '#60a5fa', 'short': '#fb7185',
-    },
     'Emerald / Amber': {
         'pos': '#4ade80', 'neg': '#f59e0b',
         'zone_hi': '#4ade80', 'zone_amid': '#86efac', 'zone_bmid': '#fbbf24', 'zone_lo': '#f59e0b',
         'str_up': '#4ade80', 'str_dn': '#f59e0b', 'pull': '#fbbf24', 'bnce': '#93c5fd',
         'long': '#4ade80', 'short': '#f59e0b',
+    },
+    'Blue / Rose': {
+        'pos': '#60a5fa', 'neg': '#fb7185',
+        'zone_hi': '#60a5fa', 'zone_amid': '#93c5fd', 'zone_bmid': '#fda4af', 'zone_lo': '#fb7185',
+        'str_up': '#60a5fa', 'str_dn': '#fb7185', 'pull': '#fbbf24', 'bnce': '#4ade80',
+        'long': '#60a5fa', 'short': '#fb7185',
     },
 }
 

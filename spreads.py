@@ -297,7 +297,7 @@ def render_spread_charts(pairs, data, theme, mobile=False):
 # =============================================================================
 
 def render_spreads_tab(is_mobile):
-    theme_name = st.session_state.get('theme', 'Blue / Rose')
+    theme_name = st.session_state.get('theme', 'Emerald / Amber')
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
     # Controls: Sector + Lookback + Sort + Direction
@@ -333,7 +333,7 @@ def render_spreads_tab(is_mobile):
         ascending = False
 
     # Use shared theme from Charts tab
-    theme = THEMES.get(theme_name, THEMES['Blue / Rose'])
+    theme = THEMES.get(theme_name, THEMES['Emerald / Amber'])
     pos_c = theme['pos']
 
     # Fetch and compute

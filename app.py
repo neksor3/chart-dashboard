@@ -68,8 +68,8 @@ st.markdown("""
 # (THEMES imported from config.py)
 
 def get_theme():
-    name = st.session_state.get('theme', 'Blue / Rose')
-    return THEMES.get(name, THEMES['Blue / Rose'])
+    name = st.session_state.get('theme', 'Emerald / Amber')
+    return THEMES.get(name, THEMES['Emerald / Amber'])
 
 def zone_colors():
     t = get_theme()
@@ -873,8 +873,10 @@ def main():
     if 'sector' not in st.session_state: st.session_state.sector = 'Indices'
     if 'symbol' not in st.session_state: st.session_state.symbol = 'ES=F'
     if 'chart_type' not in st.session_state: st.session_state.chart_type = 'line'
-    if 'theme' not in st.session_state or st.session_state.theme not in THEMES:
-        st.session_state.theme = 'Blue / Rose'
+    if 'theme' not in st.session_state:
+        st.session_state.theme = list(THEMES.keys())[0]
+    elif st.session_state.theme not in THEMES:
+        st.session_state.theme = list(THEMES.keys())[0]
 
     is_mobile = _detect_mobile()
     est = pytz.timezone('US/Eastern'); sgt = pytz.timezone('Asia/Singapore')
@@ -967,10 +969,12 @@ def _render_charts_tab(is_mobile, est):
         st.session_state.chart_type = ct.lower()
     with col_th:
         st.markdown(f"<div style='{_lbl}'>THEME</div>", unsafe_allow_html=True)
-        theme = st.selectbox("Theme", list(THEMES.keys()),
-            index=list(THEMES.keys()).index(st.session_state.theme),
-            key='theme_select', label_visibility='collapsed')
-        st.session_state.theme = theme
+        theme_names = list(THEMES.keys())
+        # Use 'theme' directly as widget key — single source of truth
+        if st.session_state.get('theme') not in theme_names:
+            st.session_state.theme = theme_names[0]
+        theme = st.selectbox("Theme", theme_names,
+            key='theme', label_visibility='collapsed')
 
     # Fetch data
     with st.spinner('Loading market data...'):
