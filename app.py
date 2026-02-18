@@ -861,6 +861,7 @@ def _detect_mobile():
 
 def main():
     from spreads import render_spreads_tab
+    from portfolio import render_portfolio_tab
 
     # Init session state
     if 'sector' not in st.session_state: st.session_state.sector = 'Indices'
@@ -874,7 +875,7 @@ def main():
     ts_sgt = datetime.now(sgt).strftime('%H:%M SGT')
 
     # Tabs first — clean uppercase, no icons
-    tab_charts, tab_spreads = st.tabs(["CHARTS", "SPREADS"])
+    tab_charts, tab_spreads, tab_portfolio = st.tabs(["CHARTS", "SPREADS", "PORTFOLIO"])
 
     with tab_charts:
         st.markdown(f"""
@@ -891,6 +892,14 @@ def main():
                 <span style='color:#9d9d9d;font-size:11px'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
             </div>""", unsafe_allow_html=True)
         render_spreads_tab(is_mobile, st.session_state.theme)
+
+    with tab_portfolio:
+        st.markdown(f"""
+            <div style='padding:10px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center;margin-bottom:10px'>
+                <span style='color:#e2e8f0;font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>PORTFOLIO DASHBOARD</span>
+                <span style='color:#9d9d9d;font-size:11px'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
+            </div>""", unsafe_allow_html=True)
+        render_portfolio_tab(is_mobile)
 
 
 def _render_charts_tab(is_mobile, est):
