@@ -612,8 +612,10 @@ def render_portfolio_tab(is_mobile):
                                   key='port_direction', label_visibility='collapsed')
 
     # Controls row 2: Max Wt + Min Wt + Sims + Cost
-    for k, v in [('port_maxwt','50'),('port_minwt','0'),('port_sims','10000'),('port_cost','0.10')]:
-        if k not in st.session_state: st.session_state[k] = v
+    _defaults = {'port_maxwt': '50', 'port_minwt': '0', 'port_sims': '10000', 'port_cost': '0.10'}
+    for k, v in _defaults.items():
+        if not st.session_state.get(k):  # handles missing AND empty string
+            st.session_state[k] = v
     c5, c6, c7, c8 = st.columns(4)
     with c5:
         st.markdown(f"<div style='{_lbl}'>MAX WT %</div>", unsafe_allow_html=True)
