@@ -34,12 +34,14 @@ st.markdown("""
     [data-testid="stSidebar"] { background-color: #16213e; }
     .stSelectbox > div > div { background-color: #16213e; color: #b0b0b0; }
     div[data-testid="stHorizontalBlock"] { gap: 0.3rem; }
-    .stTabs [data-baseweb="tab-list"] { gap: 2px; background-color: #16213e; padding: 4px; border-radius: 4px; }
+    .stTabs [data-baseweb="tab-list"] { gap: 0; background-color: #0f172a; padding: 0; border-radius: 0; border-bottom: 1px solid #2a4a6a; }
     .stTabs [data-baseweb="tab"] {
-        background-color: #16213e; color: #b0b0b0; border: 1px solid #2a4a6a;
-        border-radius: 3px; padding: 4px 12px; font-size: 12px; font-weight: 500;
+        background-color: transparent; color: #64748b; border: none;
+        border-bottom: 2px solid transparent;
+        padding: 8px 20px; font-size: 11px; font-weight: 600;
+        letter-spacing: 0.1em; text-transform: uppercase;
     }
-    .stTabs [aria-selected="true"] { background-color: #1e4d8a; color: white; }
+    .stTabs [aria-selected="true"] { background-color: transparent; color: #e2e8f0; border-bottom: 2px solid #60a5fa; }
     .stRadio > div { flex-direction: row; gap: 8px; }
     .stRadio > div > label { background-color: #16213e; padding: 4px 12px; border-radius: 3px;
         border: 1px solid #2a4a6a; color: #b0b0b0; font-size: 12px; }
@@ -867,43 +869,44 @@ def main():
     if 'theme' not in st.session_state: st.session_state.theme = 'Blue / Rose'
 
     is_mobile = _detect_mobile()
-
-    # Header
     est = pytz.timezone('US/Eastern'); sgt = pytz.timezone('Asia/Singapore')
     ts_est = datetime.now(est).strftime('%a %d %b %Y  %H:%M %Z')
     ts_sgt = datetime.now(sgt).strftime('%H:%M SGT')
-    st.markdown(f"""
-        <div style='padding:10px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center;margin-bottom:10px'>
-            <span style='color:#e2e8f0;font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>CHART DASHBOARD</span>
-            <span style='color:#9d9d9d;font-size:11px'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
-        </div>""", unsafe_allow_html=True)
 
-    # Tabs
-    tab_charts, tab_spreads = st.tabs(["📊 Charts", "📈 Spreads"])
+    # Tabs first — clean uppercase, no icons
+    tab_charts, tab_spreads = st.tabs(["CHARTS", "SPREADS"])
 
-    # =========================================================================
-    # TAB 1: CHARTS
-    # =========================================================================
     with tab_charts:
+        st.markdown(f"""
+            <div style='padding:10px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center;margin-bottom:10px'>
+                <span style='color:#e2e8f0;font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>CHARTS DASHBOARD</span>
+                <span style='color:#9d9d9d;font-size:11px'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
+            </div>""", unsafe_allow_html=True)
         _render_charts_tab(is_mobile, est)
 
-    # =========================================================================
-    # TAB 2: SPREADS
-    # =========================================================================
     with tab_spreads:
+        st.markdown(f"""
+            <div style='padding:10px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center;margin-bottom:10px'>
+                <span style='color:#e2e8f0;font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>SPREADS DASHBOARD</span>
+                <span style='color:#9d9d9d;font-size:11px'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
+            </div>""", unsafe_allow_html=True)
         render_spreads_tab(is_mobile, st.session_state.theme)
 
 
 def _render_charts_tab(is_mobile, est):
     """Chart tab content — sector scanner, asset charts, levels, news."""
-    # Input labels helper
     _lbl = f"color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
-    # SECTOR + CHART + THEME — one row of dropdowns
+    symbols = FUTURES_GROUPS[st.session_state.sector]
+    sym_labels = [clean_symbol(s) for s in symbols]
+    current_idx = symbols.index(st.session_state.symbol) if st.session_state.symbol in symbols else 0
+
+    # All controls in one row: SECTOR + ASSET + CHART + THEME
     if is_mobile:
-        col_sec, col_ct, col_th = st.columns([3, 1, 2])
+        col_sec, col_ast, col_ct, col_th = st.columns([3, 2, 1, 2])
     else:
-        col_sec, col_ct, col_th = st.columns([4, 1, 2])
+        col_sec, col_ast, col_ct, col_th = st.columns([3, 3, 1, 2])
+
     with col_sec:
         st.markdown(f"<div style='{_lbl}'>SECTOR</div>", unsafe_allow_html=True)
         sector_names = list(FUTURES_GROUPS.keys())
@@ -913,6 +916,14 @@ def _render_charts_tab(is_mobile, est):
         if sector != st.session_state.sector:
             st.session_state.sector = sector
             st.session_state.symbol = FUTURES_GROUPS[sector][0]
+            st.rerun()
+    with col_ast:
+        st.markdown(f"<div style='{_lbl}'>ASSET</div>", unsafe_allow_html=True)
+        selected_label = st.selectbox("Asset", sym_labels, index=current_idx,
+            key='sel_asset', label_visibility='collapsed')
+        selected_sym = symbols[sym_labels.index(selected_label)]
+        if selected_sym != st.session_state.symbol:
+            st.session_state.symbol = selected_sym
             st.rerun()
     with col_ct:
         st.markdown(f"<div style='{_lbl}'>CHART</div>", unsafe_allow_html=True)
@@ -927,33 +938,6 @@ def _render_charts_tab(is_mobile, est):
             index=list(THEMES.keys()).index(st.session_state.theme),
             key='theme_select', label_visibility='collapsed')
         st.session_state.theme = theme
-
-    # ASSET selection
-    symbols = FUTURES_GROUPS[st.session_state.sector]
-    if is_mobile:
-        st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>ASSET</div>", unsafe_allow_html=True)
-        sym_labels = [clean_symbol(s) for s in symbols]
-        current_idx = symbols.index(st.session_state.symbol) if st.session_state.symbol in symbols else 0
-        selected_label = st.selectbox("Asset", sym_labels, index=current_idx,
-            key='sel_asset', label_visibility='collapsed')
-        selected_sym = symbols[sym_labels.index(selected_label)]
-        if selected_sym != st.session_state.symbol:
-            st.session_state.symbol = selected_sym
-            st.rerun()
-    else:
-        st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>ASSET</div>", unsafe_allow_html=True)
-        num_syms = len(symbols)
-        cpr = min(num_syms, 12)
-        for ri in range((num_syms + cpr - 1) // cpr):
-            s, e = ri * cpr, min((ri + 1) * cpr, num_syms)
-            row_syms = symbols[s:e]
-            cols = st.columns(cpr)
-            for j, sym in enumerate(row_syms):
-                with cols[j]:
-                    if st.button(clean_symbol(sym), key=f"sym_{sym}", use_container_width=True,
-                                type="primary" if sym == st.session_state.symbol else "secondary"):
-                        st.session_state.symbol = sym
-                        st.rerun()
 
     # Fetch data
     with st.spinner('Loading market data...'):
