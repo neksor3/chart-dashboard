@@ -42,11 +42,12 @@ st.markdown("""
     .stRadio > div > label { background-color: #16213e; padding: 4px 12px; border-radius: 3px;
         border: 1px solid #2a4a6a; color: #b0b0b0; font-size: 12px; }
     div[data-testid="stMarkdownContainer"] p { margin-bottom: 0; }
-    .block-container { padding-top: 1rem; padding-bottom: 0rem; }
+    .block-container { padding-top: 2.5rem; padding-bottom: 0rem; }
     button[kind="secondary"] { background-color: #16213e; color: white; border: 1px solid #2a4a6a; }
+    .stButton > button { font-size: 11px !important; padding: 4px 8px !important; min-height: 30px !important; }
     @media (max-width: 768px) {
-        .block-container { padding: 0.25rem 0.5rem 0 0.5rem !important; }
-        .stButton > button { font-size: 9px !important; padding: 2px 6px !important; min-height: 26px !important; }
+        .block-container { padding: 2.5rem 0.5rem 0 0.5rem !important; }
+        .stButton > button { font-size: 9px !important; padding: 2px 4px !important; min-height: 24px !important; }
     }
 </style>
 """, unsafe_allow_html=True)
@@ -968,29 +969,37 @@ def main():
     # Input labels helper
     _lbl = f"color:#64748b;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
-    # Controls row
-    col_sector, col_chart, col_theme = st.columns([6, 1, 2])
-    with col_sector:
-        st.markdown(f"<div style='{_lbl}'>SECTOR</div>", unsafe_allow_html=True)
-        sector = st.selectbox("Sector", list(FUTURES_GROUPS.keys()),
-            index=list(FUTURES_GROUPS.keys()).index(st.session_state.sector),
-            key='sector_select', label_visibility='collapsed')
-        if sector != st.session_state.sector:
-            st.session_state.sector = sector
-            st.session_state.symbol = FUTURES_GROUPS[sector][0]
-    with col_chart:
+    # CHART + THEME dropdowns row
+    col_ct, col_th = st.columns([1, 2])
+    with col_ct:
         st.markdown(f"<div style='{_lbl}'>CHART</div>", unsafe_allow_html=True)
         ct = st.selectbox("Chart", ['line', 'bars'], index=0 if st.session_state.chart_type == 'line' else 1,
             key='chart_select', label_visibility='collapsed')
         st.session_state.chart_type = ct
-    with col_theme:
+    with col_th:
         st.markdown(f"<div style='{_lbl}'>THEME</div>", unsafe_allow_html=True)
         theme = st.selectbox("Theme", list(THEMES.keys()),
             index=list(THEMES.keys()).index(st.session_state.theme),
             key='theme_select', label_visibility='collapsed')
         st.session_state.theme = theme
 
-    # Symbol buttons
+    # SECTOR buttons
+    st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>SECTOR</div>", unsafe_allow_html=True)
+    sector_names = list(FUTURES_GROUPS.keys())
+    scpr = min(len(sector_names), 7) if is_mobile else min(len(sector_names), 14)
+    for ri in range((len(sector_names) + scpr - 1) // scpr):
+        s, e = ri * scpr, min((ri + 1) * scpr, len(sector_names))
+        cols = st.columns(scpr)
+        for j, sname in enumerate(sector_names[s:e]):
+            with cols[j]:
+                if st.button(sname.upper(), key=f"sec_{sname}", use_container_width=True,
+                            type="primary" if sname == st.session_state.sector else "secondary"):
+                    if sname != st.session_state.sector:
+                        st.session_state.sector = sname
+                        st.session_state.symbol = FUTURES_GROUPS[sname][0]
+                        st.rerun()
+
+    # ASSET buttons
     st.markdown(f"<div style='{_lbl};padding:4px 0 2px 2px'>ASSET</div>", unsafe_allow_html=True)
     symbols = FUTURES_GROUPS[st.session_state.sector]
     cpr = min(len(symbols), 6) if is_mobile else min(len(symbols), 12)
