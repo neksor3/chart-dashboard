@@ -567,8 +567,9 @@ def _section(title, subtitle=''):
 # MAIN RENDER FUNCTION
 # =============================================================================
 
-def render_portfolio_tab(is_mobile, theme_name):
+def render_portfolio_tab(is_mobile):
     global C_POS, C_NEG
+    theme_name = st.session_state.get('theme', 'Blue / Rose')
     theme = THEMES.get(theme_name, THEMES['Blue / Rose'])
     C_POS = theme['pos']; C_NEG = theme['neg']
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"

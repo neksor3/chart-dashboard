@@ -281,7 +281,8 @@ def render_spread_charts(pairs, data, theme, mobile=False):
 # MAIN RENDER FUNCTION (called from app.py)
 # =============================================================================
 
-def render_spreads_tab(is_mobile, theme_name):
+def render_spreads_tab(is_mobile):
+    theme_name = st.session_state.get('theme', 'Blue / Rose')
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
     # Controls: Sector + Sort + Direction
