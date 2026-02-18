@@ -374,7 +374,8 @@ def render_ranking_table(grid, rank_by='win_rate'):
         bg = 'rgba(96,165,250,0.08)' if is_best else 'transparent'
         badge = f" <span style='color:{C_GOLD};font-size:9px'>★</span>" if is_best else ""
         nc = C_GOLD if is_best else C_TXT; fw = '700' if is_best else '500'
-        html += f"<tr style='background:{bg}'>"
+        best_border = f'border-top:2px solid {C_GOLD};border-bottom:2px solid {C_GOLD};' if is_best else ''
+        html += f"<tr style='background:{bg};{best_border}'>"
         html += f"<td style='{TD}color:{C_MUTE}'>{rank}</td>"
         html += f"<td style='{TD}color:{nc};font-weight:{fw}'>{name}{badge}</td>"
         html += f"<td style='{TD}text-align:right;font-weight:700'>{_fc(m['win_rate'],'pct')}</td>"
@@ -434,7 +435,8 @@ def render_ranking_table(grid, rank_by='win_rate'):
 
     html += "</tbody></table></div>"
     st.markdown(html, unsafe_allow_html=True)
-    return best_name
+    sorted_names = [name for name, _ in items]
+    return best_name, sorted_names
 
 # =============================================================================
 # DISPLAY: WEIGHTS TABLE
@@ -690,30 +692,43 @@ def render_portfolio_tab(is_mobile):
              f"{n_app} lookbacks · {params['rebal_label']} · {params['period_label']} · "
              f"{params['direction']} · wt {params['min_wt']*100:.0f}–{params['max_wt']*100:.0f}% · "
              f"cost {params['txn_cost']*100:.2f}% · {params['n_sims']:,} sims · max {params['score']} · all OOS")
-    best_name = render_ranking_table(grid, rank_metric)
-    if not best_name: return
+    result = render_ranking_table(grid, rank_metric)
+    best_name, sorted_names = result
+    if not best_name or not sorted_names: return
 
-    best = grid['results'][best_name]; bm = best['metrics']; wf = best['wf']
+    # Approach selector — default to winner, user can pick any
+    _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
+    if st.session_state.get('port_approach_sel') not in sorted_names:
+        st.session_state.port_approach_sel = sorted_names[0]
+    sel_col, _ = st.columns([3, 5])
+    with sel_col:
+        st.markdown(f"<div style='{_lbl};margin-top:8px'>VIEW APPROACH</div>", unsafe_allow_html=True)
+        selected_approach = st.selectbox("Approach", sorted_names,
+                                          key='port_approach_sel', label_visibility='collapsed')
 
-    # 2. Winner summary
+    sel = grid['results'][selected_approach]; sm = sel['metrics']; swf = sel['wf']
+    is_best = selected_approach == best_name
+    star = f"<span style='color:{C_GOLD}'>★</span> " if is_best else ""
+
+    # 2. Summary bar
     st.markdown(f"""<div style='margin-top:12px;padding:5px 10px;background:{C_BG};font-family:{FONTS};
         font-size:10px;color:#8a8a8a;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px'>
-        <span><span style='color:{C_GOLD}'>★</span> Best: <b style='color:{C_TXT}'>{best_name}</b>
-        &nbsp;·&nbsp;{bm['n_days']} OOS days · {bm['oos_years']}y · {bm['n_rebalances']} rebalances</span>
-        <span>Win% <b style='color:{C_POS}'>{bm["win_rate"]*100:.1f}%</b>
-        &nbsp;Sharpe <b style='color:{C_POS}'>{bm["sharpe"]:.2f}</b>
-        &nbsp;Sortino <b style='color:{C_POS}'>{bm["sortino"]:.2f}</b>
-        &nbsp;MAR <b style='color:{C_POS}'>{bm["mar"]:.2f}</b></span>
+        <span>{star}<b style='color:{C_TXT}'>{selected_approach}</b>
+        &nbsp;·&nbsp;{sm['n_days']} OOS days · {sm['oos_years']}y · {sm['n_rebalances']} rebalances</span>
+        <span>Win% <b style='color:{C_POS}'>{sm["win_rate"]*100:.1f}%</b>
+        &nbsp;Sharpe <b style='color:{C_POS}'>{sm["sharpe"]:.2f}</b>
+        &nbsp;Sortino <b style='color:{C_POS}'>{sm["sortino"]:.2f}</b>
+        &nbsp;MAR <b style='color:{C_POS}'>{sm["mar"]:.2f}</b></span>
     </div>""", unsafe_allow_html=True)
 
     # 3. OOS Equity Curve
-    _section('OOS EQUITY CURVE', f'{best_name} · {params["rebal_label"]} · yellow = rebalance dates')
-    render_oos_chart(grid, best_name)
+    _section('OOS EQUITY CURVE', f'{selected_approach} · {params["rebal_label"]} · yellow = rebalance dates')
+    render_oos_chart(grid, selected_approach)
 
     # 4. Current Weights
-    _section('CURRENT / NEXT WEIGHTS', f'{best_name} · optimized on all data through today · trade these')
-    render_weights_table(grid, best_name)
+    _section('CURRENT / NEXT WEIGHTS', f'{selected_approach} · optimized on all data through today · trade these')
+    render_weights_table(grid, selected_approach)
 
     # 5. Monthly Returns
-    _section('OOS MONTHLY RETURNS', f'{best_name} · walk-forward out-of-sample only')
-    render_monthly_table(wf['oos_returns'])
+    _section('OOS MONTHLY RETURNS', f'{selected_approach} · walk-forward out-of-sample only')
+    render_monthly_table(swf['oos_returns'])
