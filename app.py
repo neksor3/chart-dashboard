@@ -1003,7 +1003,7 @@ def main():
         </style>
         <div style='display:flex;align-items:center;justify-content:space-between;padding:10px 16px;margin-bottom:6px'>
             <div style='display:flex;align-items:center;gap:12px'>
-                <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg width="48" height="48" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="18" cy="18" r="16.5" stroke="#1e293b" stroke-width="1"/>
                     <circle cx="18" cy="18" r="11" stroke="#1e293b" stroke-width="0.7"/>
                     <circle cx="18" cy="18" r="5.5" stroke="#1e293b" stroke-width="0.5"/>
@@ -1019,7 +1019,7 @@ def main():
                         <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
                     </linearGradient></defs>
                 </svg>
-                <span style='font-family:monospace;font-size:22px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
+                <span style='font-family:monospace;font-size:32px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
             </div>
             <span style='font-family:{FONTS};color:#475569;font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
         </div>
