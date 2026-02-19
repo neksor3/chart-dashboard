@@ -588,35 +588,41 @@ def render_return_bars(metrics, sort_by='Default'):
     if not vals: return
     vals.sort(key=lambda x: x[1], reverse=True)
     max_abs = max(abs(v) for _, v in vals) or 1
-    max_bar = max(len(vals) * 14, 40)  # max bar height in px
+
+    # Dynamic sizing based on symbol count
+    n = len(vals)
+    scanner_h = n * 27 + 55  # approximate scanner table height
+    max_bar = max(scanner_h // 3, 30)  # bar area = 1/3 of scanner height
+    bar_w = max(14 - n // 5, 6)  # narrower bars for more symbols
+    font_sz = 7 if n > 10 else 8
+    min_w = 16 if n > 12 else 24
 
     cols = ""
     for sym, v in vals:
         bar_h = max(abs(v) / max_abs * max_bar, 2)
         c = pos_c if v >= 0 else neg_c
         sign = '+' if v >= 0 else ''
-        # Each column: value label, upper half, baseline, lower half, symbol
         if v >= 0:
             upper = f"<div style='display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:{max_bar}px'>"
-            upper += f"<span style='color:{c};font-size:8px;font-weight:600;font-family:{FONTS};line-height:1;margin-bottom:2px'>{sign}{v:.1f}</span>"
-            upper += f"<div style='width:14px;height:{bar_h}px;background:{c};border-radius:2px 2px 0 0;opacity:0.85'></div>"
+            upper += f"<span style='color:{c};font-size:{font_sz}px;font-weight:600;font-family:{FONTS};line-height:1;margin-bottom:1px'>{sign}{v:.1f}</span>"
+            upper += f"<div style='width:{bar_w}px;height:{bar_h}px;background:{c};border-radius:2px 2px 0 0;opacity:0.85'></div>"
             upper += f"</div>"
             lower = f"<div style='height:{max_bar}px'></div>"
         else:
             upper = f"<div style='display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:{max_bar}px'></div>"
             lower = f"<div style='display:flex;flex-direction:column;align-items:center;height:{max_bar}px'>"
-            lower += f"<div style='width:14px;height:{bar_h}px;background:{c};border-radius:0 0 2px 2px;opacity:0.85'></div>"
-            lower += f"<span style='color:{c};font-size:8px;font-weight:600;font-family:{FONTS};line-height:1;margin-top:2px'>{v:.1f}</span>"
+            lower += f"<div style='width:{bar_w}px;height:{bar_h}px;background:{c};border-radius:0 0 2px 2px;opacity:0.85'></div>"
+            lower += f"<span style='color:{c};font-size:{font_sz}px;font-weight:600;font-family:{FONTS};line-height:1;margin-top:1px'>{v:.1f}</span>"
             lower += f"</div>"
 
-        cols += f"""<div style='display:flex;flex-direction:column;align-items:center;flex:1;min-width:28px'>
+        cols += f"""<div style='display:flex;flex-direction:column;align-items:center;flex:1;min-width:{min_w}px'>
             {upper}
             <div style='width:100%;height:1px;background:#2a3a5a'></div>
             {lower}
-            <span style='color:#6b7280;font-size:8px;font-family:{FONTS};margin-top:3px;line-height:1'>{sym}</span>
+            <span style='color:#6b7280;font-size:{font_sz}px;font-family:{FONTS};margin-top:2px;line-height:1'>{sym}</span>
         </div>"""
 
-    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:8px 12px;margin-bottom:8px'>
+    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:8px 10px;margin-bottom:8px'>
         <div style='display:flex;align-items:center;margin-bottom:4px'>
             <span style='color:#8a8a8a;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>{label} %</span>
             <div style='flex:1;height:1px;background:#1e293b;margin-left:8px'></div>
