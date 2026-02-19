@@ -31,7 +31,7 @@ st.set_page_config(page_title="SANPO", layout="wide", initial_sidebar_state="col
 # Dark theme CSS + Google Fonts
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Zen+Dots&display=swap');
     .stApp { background-color: #1e1e1e; font-family: 'Inter', sans-serif; }
     header[data-testid="stHeader"] { background-color: #1e1e1e; }
     [data-testid="stSidebar"] { background-color: #16213e; }
@@ -575,7 +575,7 @@ def fetch_news(symbol):
 # =============================================================================
 
 def render_return_bars(metrics, sort_by='Default'):
-    """Single-row horizontal bar strip — compact inline bars."""
+    """Vertical bar chart — columns up (positive) / down (negative) from baseline."""
     t = get_theme(); pos_c = t['pos']; neg_c = t['neg']
     field_map = {
         'Default': ('change_day', 'DAY'), 'Day %': ('change_day', 'DAY'),
@@ -589,20 +589,40 @@ def render_return_bars(metrics, sort_by='Default'):
     if not vals: return
     vals.sort(key=lambda x: x[1], reverse=True)
     max_abs = max(abs(v) for _, v in vals) or 1
+    max_bar = 40  # max bar height in px
 
-    items = ""
+    cols = ""
     for sym, v in vals:
-        bar_w = max(abs(v) / max_abs * 60, 4)
+        bar_h = max(abs(v) / max_abs * max_bar, 2)
         c = pos_c if v >= 0 else neg_c
         sign = '+' if v >= 0 else ''
-        items += f"""<div style='display:inline-flex;align-items:center;gap:3px;margin-right:10px;white-space:nowrap'>
-            <span style='color:#6b7280;font-size:10px;font-family:{FONTS}'>{sym}</span>
-            <div style='width:{bar_w}px;height:10px;background:{c};border-radius:2px;opacity:0.8'></div>
-            <span style='color:{c};font-size:10px;font-weight:600;font-family:{FONTS}'>{sign}{v:.1f}%</span>
+        # Each column: value label, upper half, baseline, lower half, symbol
+        if v >= 0:
+            upper = f"<div style='display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:{max_bar}px'>"
+            upper += f"<span style='color:{c};font-size:8px;font-weight:600;font-family:{FONTS};line-height:1;margin-bottom:2px'>{sign}{v:.1f}</span>"
+            upper += f"<div style='width:14px;height:{bar_h}px;background:{c};border-radius:2px 2px 0 0;opacity:0.85'></div>"
+            upper += f"</div>"
+            lower = f"<div style='height:{max_bar}px'></div>"
+        else:
+            upper = f"<div style='display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:{max_bar}px'></div>"
+            lower = f"<div style='display:flex;flex-direction:column;align-items:center;height:{max_bar}px'>"
+            lower += f"<div style='width:14px;height:{bar_h}px;background:{c};border-radius:0 0 2px 2px;opacity:0.85'></div>"
+            lower += f"<span style='color:{c};font-size:8px;font-weight:600;font-family:{FONTS};line-height:1;margin-top:2px'>{v:.1f}</span>"
+            lower += f"</div>"
+
+        cols += f"""<div style='display:flex;flex-direction:column;align-items:center;flex:1;min-width:28px'>
+            {upper}
+            <div style='width:100%;height:1px;background:#2a3a5a'></div>
+            {lower}
+            <span style='color:#6b7280;font-size:8px;font-family:{FONTS};margin-top:3px;line-height:1'>{sym}</span>
         </div>"""
 
-    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:6px 12px;margin-bottom:8px;overflow-x:auto;white-space:nowrap'>
-        <span style='color:#8a8a8a;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS};margin-right:10px'>{label}</span>{items}
+    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:8px 12px;margin-bottom:8px'>
+        <div style='display:flex;align-items:center;margin-bottom:4px'>
+            <span style='color:#8a8a8a;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>{label} %</span>
+            <div style='flex:1;height:1px;background:#1e293b;margin-left:8px'></div>
+        </div>
+        <div style='display:flex;align-items:stretch;gap:1px;overflow-x:auto'>{cols}</div>
     </div>"""
     st.markdown(html, unsafe_allow_html=True)
 
@@ -1061,7 +1081,7 @@ def main():
                         <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
                     </linearGradient></defs>
                 </svg>
-                <span style='font-family:monospace;font-size:22px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
+                <span style='font-family:Zen Dots,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
             </div>
             <span style='font-family:{FONTS};color:#475569;font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
         </div>
