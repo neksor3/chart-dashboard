@@ -574,52 +574,35 @@ def fetch_news(symbol):
 # SCANNER TABLE
 # =============================================================================
 
-def render_return_bars(metrics):
-    """Horizontal bar chart showing MTD returns for all symbols."""
+def render_return_bars(metrics, sort_by='Default'):
+    """Single-row horizontal bar strip — compact inline bars."""
     t = get_theme(); pos_c = t['pos']; neg_c = t['neg']
-    vals = []
-    for m in metrics:
-        v = m.change_mtd if not pd.isna(m.change_mtd) else 0
-        vals.append((clean_symbol(m.symbol), v))
-    if not vals:
-        return
-    # Sort by return descending
+    field_map = {
+        'Default': ('change_day', 'DAY'), 'Day %': ('change_day', 'DAY'),
+        'WTD %': ('change_wtd', 'WTD'), 'MTD %': ('change_mtd', 'MTD'),
+        'YTD %': ('change_ytd', 'YTD'), 'Sharpe Day': ('change_day', 'DAY'),
+        'Sharpe WTD': ('change_wtd', 'WTD'), 'Sharpe MTD': ('change_mtd', 'MTD'),
+        'Sharpe YTD': ('change_ytd', 'YTD'),
+    }
+    attr, label = field_map.get(sort_by, ('change_day', 'DAY'))
+    vals = [(clean_symbol(m.symbol), getattr(m, attr, 0) if not pd.isna(getattr(m, attr, 0)) else 0) for m in metrics]
+    if not vals: return
     vals.sort(key=lambda x: x[1], reverse=True)
     max_abs = max(abs(v) for _, v in vals) or 1
 
-    bars_html = ""
+    items = ""
     for sym, v in vals:
-        pct = abs(v) / max_abs * 100
-        bar_w = max(pct * 0.45, 1)  # scale to 45% max width
+        bar_w = max(abs(v) / max_abs * 60, 4)
         c = pos_c if v >= 0 else neg_c
         sign = '+' if v >= 0 else ''
-        # Positive: bar grows right from center; Negative: bar grows left
-        if v >= 0:
-            bar = f"<div style='display:flex;align-items:center;height:22px'>"
-            bar += f"<div style='width:50%;display:flex;justify-content:flex-end;padding-right:4px'>"
-            bar += f"<span style='color:#6b7280;font-size:10px;font-family:{FONTS}'>{sym}</span></div>"
-            bar += f"<div style='width:50%;display:flex;align-items:center'>"
-            bar += f"<div style='height:14px;width:{bar_w}%;background:{c};border-radius:0 3px 3px 0;opacity:0.85'></div>"
-            bar += f"<span style='color:{c};font-size:10px;font-weight:600;margin-left:6px;font-family:{FONTS}'>{sign}{v:.1f}%</span>"
-            bar += f"</div></div>"
-        else:
-            bar = f"<div style='display:flex;align-items:center;height:22px'>"
-            bar += f"<div style='width:50%;display:flex;justify-content:flex-end;align-items:center'>"
-            bar += f"<span style='color:{c};font-size:10px;font-weight:600;margin-right:6px;font-family:{FONTS}'>{v:.1f}%</span>"
-            bar += f"<div style='height:14px;width:{bar_w}%;background:{c};border-radius:3px 0 0 3px;opacity:0.85'></div>"
-            bar += f"</div>"
-            bar += f"<div style='width:50%;padding-left:4px'>"
-            bar += f"<span style='color:#6b7280;font-size:10px;font-family:{FONTS}'>{sym}</span></div>"
-            bar += f"</div>"
-        bars_html += bar
+        items += f"""<div style='display:inline-flex;align-items:center;gap:3px;margin-right:10px;white-space:nowrap'>
+            <span style='color:#6b7280;font-size:10px;font-family:{FONTS}'>{sym}</span>
+            <div style='width:{bar_w}px;height:10px;background:{c};border-radius:2px;opacity:0.8'></div>
+            <span style='color:{c};font-size:10px;font-weight:600;font-family:{FONTS}'>{sign}{v:.1f}%</span>
+        </div>"""
 
-    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:10px 12px;margin-bottom:8px'>
-        <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px'>
-            <span style='color:#8a8a8a;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>MTD RETURNS</span>
-            <div style='flex:1;height:1px;background:#1e293b;margin:0 12px'></div>
-            <span style='color:#475569;font-size:9px;font-family:{FONTS}'>sorted best → worst</span>
-        </div>
-        <div style='border-left:1px solid #1e293b50;border-right:1px solid transparent'>{bars_html}</div>
+    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:6px 12px;margin-bottom:8px;overflow-x:auto;white-space:nowrap'>
+        <span style='color:#8a8a8a;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS};margin-right:10px'>{label}</span>{items}
     </div>"""
     st.markdown(html, unsafe_allow_html=True)
 
@@ -1193,7 +1176,7 @@ def _render_charts_tab(is_mobile, est):
 
     # Scanner table + bar chart
     if metrics:
-        render_return_bars(metrics)
+        render_return_bars(metrics, sort_by)
         render_scanner_table(metrics, st.session_state.symbol)
 
     # Charts + Levels + News
