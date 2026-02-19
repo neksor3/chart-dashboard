@@ -622,13 +622,13 @@ def render_return_bars(metrics, sort_by='Default'):
             )
             right_content = ""
 
-        rows += f"""<div style='display:flex;align-items:center;padding:4px 0;border-bottom:1px solid #2a2a2a'>
+        rows += f"""<div style='display:flex;align-items:center;padding:4px 0'>
             <div style='flex:1;display:flex;align-items:center;justify-content:flex-end'>{left_content}</div>
             <span style='width:36px;text-align:center;color:#9d9d9d;font-size:9px;font-weight:600;font-family:{FONTS};flex-shrink:0'>{sym}</span>
             <div style='flex:1;display:flex;align-items:center'>{right_content}</div>
         </div>"""
 
-    # Header spacer matches scanner's 2-row header
+    # 2 header rows to match scanner thead, then data rows
     html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:0 4px;overflow:hidden'>
         <div style='display:flex;align-items:center;padding:3px 2px;border-bottom:1px solid #3a3a3a'>
             <span style='color:#8a8a8a;font-size:9px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
