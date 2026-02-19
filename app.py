@@ -574,7 +574,7 @@ def fetch_news(symbol):
 # =============================================================================
 
 def render_return_bars(metrics, sort_by='Default'):
-    """Vertical bar chart — sized to match scanner table height."""
+    """Horizontal bar chart — sorted, matching scanner height."""
     t = get_theme(); pos_c = t['pos']; neg_c = t['neg']
     field_map = {
         'Default': ('change_day', 'DAY %', True), 'Day %': ('change_day', 'DAY %', True),
@@ -596,15 +596,11 @@ def render_return_bars(metrics, sort_by='Default'):
     max_abs = max(abs(v) for _, v in vals) or 1
 
     n = len(vals)
-    scanner_h = n * 27 + 55
-    max_bar = max((scanner_h - 50) // 2, 20)
-    bar_w = max(14 - n // 5, 6)
-    font_sz = 7 if n > 10 else 8
-    min_w = 14 if n > 12 else 20
+    row_h = max(20, min(27, (n * 27 + 55 - 30) // n))  # match scanner row height
 
-    cols = ""
+    rows = ""
     for sym, v in vals:
-        bar_h = max(abs(v) / max_abs * max_bar, 2)
+        bar_pct = max(abs(v) / max_abs * 50, 2)
         if is_change:
             c = pos_c if v >= 0 else neg_c
         elif sort_by in ('HV', 'DD'):
@@ -613,28 +609,20 @@ def render_return_bars(metrics, sort_by='Default'):
             c = pos_c if v >= 0 else neg_c
         sign = '+' if v > 0 and is_change else ''
         fmt = f"{sign}{v:.1f}" if abs(v) < 100 else f"{sign}{v:.0f}"
-        if v >= 0 or sort_by in ('HV',):
-            upper = f"<div style='display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:{max_bar}px'>"
-            upper += f"<span style='color:{c};font-size:{font_sz}px;font-weight:600;font-family:{FONTS};line-height:1;margin-bottom:1px'>{fmt}</span>"
-            upper += f"<div style='width:{bar_w}px;height:{bar_h}px;background:{c};border-radius:2px 2px 0 0;opacity:0.85'></div></div>"
-            lower = f"<div style='height:{max_bar}px'></div>"
-        else:
-            upper = f"<div style='height:{max_bar}px'></div>"
-            lower = f"<div style='display:flex;flex-direction:column;align-items:center;height:{max_bar}px'>"
-            lower += f"<div style='width:{bar_w}px;height:{bar_h}px;background:{c};border-radius:0 0 2px 2px;opacity:0.85'></div>"
-            lower += f"<span style='color:{c};font-size:{font_sz}px;font-weight:600;font-family:{FONTS};line-height:1;margin-top:1px'>{fmt}</span></div>"
-
-        cols += f"""<div style='display:flex;flex-direction:column;align-items:center;flex:1;min-width:{min_w}px'>
-            {upper}<div style='width:100%;height:1px;background:#2a3a5a'></div>{lower}
-            <span style='color:#6b7280;font-size:{font_sz}px;font-family:{FONTS};margin-top:2px;line-height:1'>{sym}</span>
+        rows += f"""<div style='display:flex;align-items:center;height:{row_h}px;gap:3px'>
+            <span style='width:30px;text-align:right;color:#6b7280;font-size:9px;font-family:{FONTS};flex-shrink:0;overflow:hidden'>{sym}</span>
+            <div style='flex:1;display:flex;align-items:center'>
+                <div style='height:11px;width:{bar_pct}%;background:{c};border-radius:0 3px 3px 0;opacity:0.85'></div>
+                <span style='color:{c};font-size:8px;font-weight:600;margin-left:4px;font-family:{FONTS};white-space:nowrap'>{fmt}</span>
+            </div>
         </div>"""
 
-    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:8px 6px;height:{scanner_h}px;display:flex;flex-direction:column;overflow:hidden'>
-        <div style='display:flex;align-items:center;margin-bottom:4px;flex-shrink:0'>
+    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:6px 8px'>
+        <div style='display:flex;align-items:center;margin-bottom:4px'>
             <span style='color:#8a8a8a;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
             <div style='flex:1;height:1px;background:#1e293b;margin-left:6px'></div>
         </div>
-        <div style='display:flex;align-items:center;gap:1px;flex:1'>{cols}</div>
+        {rows}
     </div>"""
     st.markdown(html, unsafe_allow_html=True)
 
@@ -1208,7 +1196,7 @@ def _render_charts_tab(is_mobile, est):
 
     # Scanner table + bar chart side by side
     if metrics:
-        col_scan, col_bars = st.columns([75, 25])
+        col_scan, col_bars = st.columns([65, 35])
         with col_scan:
             render_scanner_table(metrics, st.session_state.symbol)
         with col_bars:
