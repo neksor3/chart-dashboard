@@ -596,11 +596,12 @@ def render_return_bars(metrics, sort_by='Default'):
         vals.sort(key=lambda x: x[1], reverse=True)
     max_abs = max(abs(v) for _, v in vals) or 1
 
-    # Dynamic sizing based on symbol count
+    # Dynamic sizing — match scanner table height
     n = len(vals)
-    scanner_h = n * 27 + 55  # approximate scanner table height
-    max_bar = max(scanner_h // 3, 30)  # bar area = 1/3 of scanner height
-    bar_w = max(14 - n // 5, 6)  # narrower bars for more symbols
+    scanner_h = n * 27 + 55  # approximate scanner table height in px
+    half_h = max((scanner_h - 40) // 2, 20)  # half for pos, half for neg
+    max_bar = half_h
+    bar_w = max(14 - n // 5, 6)
     font_sz = 7 if n > 10 else 8
     min_w = 16 if n > 12 else 24
 
@@ -636,12 +637,12 @@ def render_return_bars(metrics, sort_by='Default'):
             <span style='color:#6b7280;font-size:{font_sz}px;font-family:{FONTS};margin-top:2px;line-height:1'>{sym}</span>
         </div>"""
 
-    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:8px 10px;margin-bottom:8px'>
+    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:8px 10px;height:{scanner_h}px;overflow:hidden;display:flex;flex-direction:column'>
         <div style='display:flex;align-items:center;margin-bottom:4px'>
             <span style='color:#8a8a8a;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
             <div style='flex:1;height:1px;background:#1e293b;margin-left:8px'></div>
         </div>
-        <div style='display:flex;align-items:stretch;gap:1px;overflow-x:auto'>{cols}</div>
+        <div style='display:flex;align-items:center;gap:1px;flex:1;overflow-x:auto'>{cols}</div>
     </div>"""
     st.markdown(html, unsafe_allow_html=True)
 
@@ -1213,9 +1214,13 @@ def _render_charts_tab(is_mobile, est):
             metrics = sorted(metrics, key=lambda m: getattr(m, attr, 0) if not pd.isna(getattr(m, attr, None)) else -999,
                            reverse=reverse)
 
-    # Scanner table (full width)
+    # Scanner table + bar chart side by side
     if metrics:
-        render_scanner_table(metrics, st.session_state.symbol)
+        col_scan, col_bars = st.columns([75, 25])
+        with col_scan:
+            render_scanner_table(metrics, st.session_state.symbol)
+        with col_bars:
+            render_return_bars(metrics, sort_by)
 
     # Charts + Levels + Bar Chart + News
     if is_mobile:
@@ -1225,8 +1230,6 @@ def _render_charts_tab(is_mobile, est):
                 st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False, 'responsive': True})
             except Exception as e:
                 st.error(f"Chart error: {str(e)}"); levels = {}
-        if metrics:
-            render_return_bars(metrics, sort_by)
         render_key_levels(st.session_state.symbol, levels)
         render_news_panel(st.session_state.symbol)
     else:
@@ -1242,8 +1245,6 @@ def _render_charts_tab(is_mobile, est):
                 except Exception as e:
                     st.error(f"Chart error: {str(e)}"); levels = {}
         with col_right:
-            if metrics:
-                render_return_bars(metrics, sort_by)
             render_key_levels(st.session_state.symbol, levels)
             render_news_panel(st.session_state.symbol)
 
