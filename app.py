@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 warnings.filterwarnings('ignore')
 logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
-st.set_page_config(page_title="Chart Dashboard", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="SANPO", layout="wide", initial_sidebar_state="collapsed")
 
 # Dark theme CSS + Google Fonts
 st.markdown("""
@@ -992,44 +992,25 @@ def main():
     ts_est = datetime.now(est).strftime('%a %d %b %Y  %H:%M %Z')
     ts_sgt = datetime.now(sgt).strftime('%H:%M SGT')
 
-    # SANPO logo — pure CSS injection into tab bar
+    # SANPO logo header — radar icon + wordmark, dot color follows theme
     t = get_theme()
-    bar_color = t['pos']
+    pos_c = t['pos']
+    neg_c = t['neg']
     st.markdown(f"""
-        <style>
-            .stTabs [data-baseweb="tab-list"] {{
-                position: relative !important;
-                padding-right: 100px !important;
-            }}
-            .stTabs [data-baseweb="tab-list"]::after {{
-                content: 'SANPO';
-                position: absolute;
-                right: 30px;
-                top: 50%;
-                transform: translateY(-50%);
-                font-family: 'Inter', sans-serif;
-                font-size: 11px;
-                font-weight: 600;
-                letter-spacing: 0.1em;
-                color: #64748b;
-                text-transform: uppercase;
-                pointer-events: none;
-            }}
-            .stTabs [data-baseweb="tab-list"]::before {{
-                content: '';
-                position: absolute;
-                right: 16px;
-                top: 50%;
-                transform: translateY(-50%);
-                width: 14px;
-                height: 14px;
-                pointer-events: none;
-                background:
-                    linear-gradient({bar_color}80, {bar_color}80) 0px 9px / 3px 5px no-repeat,
-                    linear-gradient({bar_color}B3, {bar_color}B3) 5px 5px / 3px 9px no-repeat,
-                    linear-gradient({bar_color}, {bar_color}) 10px 0px / 3px 14px no-repeat;
-            }}
-        </style>
+        <div style='display:flex;align-items:center;justify-content:space-between;padding:8px 16px;margin-bottom:6px'>
+            <div style='display:flex;align-items:center;gap:10px'>
+                <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="16" cy="16" r="14" stroke="#1e293b" stroke-width="1"/>
+                    <circle cx="16" cy="16" r="9" stroke="#1e293b" stroke-width="0.7"/>
+                    <circle cx="16" cy="16" r="2" fill="{pos_c}"/>
+                    <line x1="16" y1="16" x2="16" y2="3" stroke="{pos_c}" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
+                    <circle cx="12" cy="9" r="1.5" fill="{pos_c}" opacity="0.7"/>
+                    <circle cx="22" cy="12" r="1.2" fill="{neg_c}" opacity="0.6"/>
+                </svg>
+                <span style='font-family:monospace;font-size:16px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO<span style="color:{pos_c}">.</span></span>
+            </div>
+            <span style='font-family:{FONTS};color:#475569;font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
+        </div>
     """, unsafe_allow_html=True)
 
     # Tabs — clean uppercase, blue underline
@@ -1037,25 +1018,22 @@ def main():
 
     with tab_charts:
         st.markdown(f"""
-            <div style='padding:10px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center;margin-bottom:10px'>
-                <span style='color:#e2e8f0;font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>CHARTS DASHBOARD</span>
-                <span style='color:#9d9d9d;font-size:11px'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
+            <div style='padding:8px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};margin-bottom:10px'>
+                <span style='color:#e2e8f0;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>CHARTS</span>
             </div>""", unsafe_allow_html=True)
         _render_charts_tab(is_mobile, est)
 
     with tab_spreads:
         st.markdown(f"""
-            <div style='padding:10px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center;margin-bottom:10px'>
-                <span style='color:#e2e8f0;font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>SPREADS DASHBOARD</span>
-                <span style='color:#9d9d9d;font-size:11px'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
+            <div style='padding:8px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};margin-bottom:10px'>
+                <span style='color:#e2e8f0;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>SPREADS</span>
             </div>""", unsafe_allow_html=True)
         render_spreads_tab(is_mobile)
 
     with tab_portfolio:
         st.markdown(f"""
-            <div style='padding:10px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center;margin-bottom:10px'>
-                <span style='color:#e2e8f0;font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>PORTFOLIO DASHBOARD</span>
-                <span style='color:#9d9d9d;font-size:11px'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
+            <div style='padding:8px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};margin-bottom:10px'>
+                <span style='color:#e2e8f0;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>PORTFOLIO</span>
             </div>""", unsafe_allow_html=True)
         render_portfolio_tab(is_mobile)
 
