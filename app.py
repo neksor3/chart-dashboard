@@ -31,7 +31,7 @@ st.set_page_config(page_title="SANPO", layout="wide", initial_sidebar_state="col
 # Dark theme CSS + Google Fonts
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Zen+Dots&family=Chakra+Petch:wght@600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Zen+Dots&display=swap');
     .stApp { background-color: #1e1e1e; font-family: 'Inter', sans-serif; }
     header[data-testid="stHeader"] { background-color: #1e1e1e; }
     [data-testid="stSidebar"] { background-color: #16213e; }
@@ -449,7 +449,6 @@ class FuturesDataFetcher:
 # CACHED DATA FETCHING
 # =============================================================================
 
-# # @st.cache_data(ttl=120, show_spinner=False)
 def fetch_sector_data(sector_name):
     """Fetch metrics for all symbols in a sector.
 
@@ -506,7 +505,7 @@ def fetch_sector_data(sector_name):
             logger.warning(f"[{symbol}] sector fetch error: {e}")
     return metrics
 
-# # @st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=120, show_spinner=False)
 def fetch_chart_data(symbol, period, interval):
     ticker = yf.Ticker(symbol)
     hist = ticker.history(period=period, interval=interval)
@@ -1081,7 +1080,7 @@ def main():
                         <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
                     </linearGradient></defs>
                 </svg>
-                <span style='font-family:&quot;Zen Dots&quot;,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
+                <span style='font-family:Zen Dots,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
             </div>
             <span style='font-family:{FONTS};color:#475569;font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
         </div>
@@ -1194,9 +1193,8 @@ def _render_charts_tab(is_mobile, est):
             metrics = sorted(metrics, key=lambda m: getattr(m, attr, 0) if not pd.isna(getattr(m, attr, None)) else -999,
                            reverse=reverse)
 
-    # Scanner table + bar chart
+    # Scanner table
     if metrics:
-        render_return_bars(metrics, sort_by)
         render_scanner_table(metrics, st.session_state.symbol)
 
     # Charts + Levels + News
@@ -1207,6 +1205,8 @@ def _render_charts_tab(is_mobile, est):
                 st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False, 'responsive': True})
             except Exception as e:
                 st.error(f"Chart error: {str(e)}"); levels = {}
+        if metrics:
+            render_return_bars(metrics, sort_by)
         render_key_levels(st.session_state.symbol, levels)
         render_news_panel(st.session_state.symbol)
     else:
@@ -1222,6 +1222,8 @@ def _render_charts_tab(is_mobile, est):
                 except Exception as e:
                     st.error(f"Chart error: {str(e)}"); levels = {}
         with col_right:
+            if metrics:
+                render_return_bars(metrics, sort_by)
             render_key_levels(st.session_state.symbol, levels)
             render_news_panel(st.session_state.symbol)
 
