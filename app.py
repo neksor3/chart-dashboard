@@ -28,19 +28,11 @@ logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
 st.set_page_config(page_title="SANPO", layout="wide", initial_sidebar_state="collapsed")
 
-# Load Google Fonts first
-st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-""", unsafe_allow_html=True)
-
 # Dark theme CSS
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700&display=swap');
     .stApp { background-color: #1e1e1e; font-family: 'Inter', sans-serif; }
-    .sanpo-logo { font-family: 'Orbitron', sans-serif !important; font-size: 24px !important; font-weight: 600 !important; letter-spacing: 0.12em; color: #f8fafc; line-height: 1; }
     header[data-testid="stHeader"] { background-color: #1e1e1e; }
     [data-testid="stSidebar"] { background-color: #16213e; }
     .stSelectbox > div > div { background-color: #16213e; color: #b0b0b0; font-family: 'Inter', sans-serif; }
@@ -1081,7 +1073,6 @@ def main():
     neg_c = t['neg']
     st.markdown(f"""
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap');
             @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
             @keyframes sanpo-blink {{ 0%,100% {{ opacity: 0.9; }} 50% {{ opacity: 0.1; }} }}
         </style>
@@ -1103,7 +1094,7 @@ def main():
                         <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
                     </linearGradient></defs>
                 </svg>
-                <span style="font-family:'Orbitron',sans-serif !important;font-size:24px;font-weight:600;letter-spacing:0.12em;color:#f8fafc;line-height:1">SANPO</span>
+                <span style='font-family:Orbitron,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
             </div>
             <span style='font-family:{FONTS};color:#475569;font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
         </div>
