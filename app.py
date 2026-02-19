@@ -577,16 +577,23 @@ def render_return_bars(metrics, sort_by='Default'):
     """Vertical bar chart — columns up (positive) / down (negative) from baseline."""
     t = get_theme(); pos_c = t['pos']; neg_c = t['neg']
     field_map = {
-        'Default': ('change_day', 'DAY'), 'Day %': ('change_day', 'DAY'),
-        'WTD %': ('change_wtd', 'WTD'), 'MTD %': ('change_mtd', 'MTD'),
-        'YTD %': ('change_ytd', 'YTD'), 'Sharpe Day': ('change_day', 'DAY'),
-        'Sharpe WTD': ('change_wtd', 'WTD'), 'Sharpe MTD': ('change_mtd', 'MTD'),
-        'Sharpe YTD': ('change_ytd', 'YTD'),
+        'Default': ('change_day', 'DAY %', True), 'Day %': ('change_day', 'DAY %', True),
+        'WTD %': ('change_wtd', 'WTD %', True), 'MTD %': ('change_mtd', 'MTD %', True),
+        'YTD %': ('change_ytd', 'YTD %', True),
+        'HV': ('hist_vol', 'HV %', False), 'DD': ('current_dd', 'DD %', False),
+        'Sharpe Day': ('day_sharpe', 'SHARPE DAY', False),
+        'Sharpe WTD': ('wtd_sharpe', 'SHARPE WTD', False),
+        'Sharpe MTD': ('mtd_sharpe', 'SHARPE MTD', False),
+        'Sharpe YTD': ('ytd_sharpe', 'SHARPE YTD', False),
     }
-    attr, label = field_map.get(sort_by, ('change_day', 'DAY'))
+    attr, label, is_change = field_map.get(sort_by, ('change_day', 'DAY %', True))
     vals = [(clean_symbol(m.symbol), getattr(m, attr, 0) if not pd.isna(getattr(m, attr, 0)) else 0) for m in metrics]
     if not vals: return
-    vals.sort(key=lambda x: x[1], reverse=True)
+    # HV/DD: lower is better, sort ascending; others: higher is better
+    if sort_by in ('HV', 'DD'):
+        vals.sort(key=lambda x: x[1])
+    else:
+        vals.sort(key=lambda x: x[1], reverse=True)
     max_abs = max(abs(v) for _, v in vals) or 1
 
     # Dynamic sizing based on symbol count
@@ -600,11 +607,18 @@ def render_return_bars(metrics, sort_by='Default'):
     cols = ""
     for sym, v in vals:
         bar_h = max(abs(v) / max_abs * max_bar, 2)
-        c = pos_c if v >= 0 else neg_c
-        sign = '+' if v >= 0 else ''
-        if v >= 0:
+        # Color: for change metrics use pos/neg; for HV/DD/Sharpe use value sign
+        if is_change:
+            c = pos_c if v >= 0 else neg_c
+        elif sort_by in ('HV', 'DD'):
+            c = neg_c  # all same color for HV/DD (amber = caution)
+        else:
+            c = pos_c if v >= 0 else neg_c  # Sharpe: pos=good, neg=bad
+        sign = '+' if v > 0 and is_change else ''
+        fmt = f"{sign}{v:.1f}" if abs(v) < 100 else f"{sign}{v:.0f}"
+        if v >= 0 or sort_by in ('HV',):  # HV is always positive, bars go up
             upper = f"<div style='display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:{max_bar}px'>"
-            upper += f"<span style='color:{c};font-size:{font_sz}px;font-weight:600;font-family:{FONTS};line-height:1;margin-bottom:1px'>{sign}{v:.1f}</span>"
+            upper += f"<span style='color:{c};font-size:{font_sz}px;font-weight:600;font-family:{FONTS};line-height:1;margin-bottom:1px'>{fmt}</span>"
             upper += f"<div style='width:{bar_w}px;height:{bar_h}px;background:{c};border-radius:2px 2px 0 0;opacity:0.85'></div>"
             upper += f"</div>"
             lower = f"<div style='height:{max_bar}px'></div>"
@@ -612,7 +626,7 @@ def render_return_bars(metrics, sort_by='Default'):
             upper = f"<div style='display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:{max_bar}px'></div>"
             lower = f"<div style='display:flex;flex-direction:column;align-items:center;height:{max_bar}px'>"
             lower += f"<div style='width:{bar_w}px;height:{bar_h}px;background:{c};border-radius:0 0 2px 2px;opacity:0.85'></div>"
-            lower += f"<span style='color:{c};font-size:{font_sz}px;font-weight:600;font-family:{FONTS};line-height:1;margin-top:1px'>{v:.1f}</span>"
+            lower += f"<span style='color:{c};font-size:{font_sz}px;font-weight:600;font-family:{FONTS};line-height:1;margin-top:1px'>{fmt}</span>"
             lower += f"</div>"
 
         cols += f"""<div style='display:flex;flex-direction:column;align-items:center;flex:1;min-width:{min_w}px'>
@@ -624,7 +638,7 @@ def render_return_bars(metrics, sort_by='Default'):
 
     html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:8px 10px;margin-bottom:8px'>
         <div style='display:flex;align-items:center;margin-bottom:4px'>
-            <span style='color:#8a8a8a;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>{label} %</span>
+            <span style='color:#8a8a8a;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
             <div style='flex:1;height:1px;background:#1e293b;margin-left:8px'></div>
         </div>
         <div style='display:flex;align-items:stretch;gap:1px;overflow-x:auto'>{cols}</div>
@@ -1199,15 +1213,11 @@ def _render_charts_tab(is_mobile, est):
             metrics = sorted(metrics, key=lambda m: getattr(m, attr, 0) if not pd.isna(getattr(m, attr, None)) else -999,
                            reverse=reverse)
 
-    # Scanner table + bar chart side by side
+    # Scanner table (full width)
     if metrics:
-        col_scan, col_bars = st.columns([70, 30])
-        with col_scan:
-            render_scanner_table(metrics, st.session_state.symbol)
-        with col_bars:
-            render_return_bars(metrics, sort_by)
+        render_scanner_table(metrics, st.session_state.symbol)
 
-    # Charts + Levels + News
+    # Charts + Levels + Bar Chart + News
     if is_mobile:
         with st.spinner('Loading charts...'):
             try:
@@ -1215,6 +1225,8 @@ def _render_charts_tab(is_mobile, est):
                 st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False, 'responsive': True})
             except Exception as e:
                 st.error(f"Chart error: {str(e)}"); levels = {}
+        if metrics:
+            render_return_bars(metrics, sort_by)
         render_key_levels(st.session_state.symbol, levels)
         render_news_panel(st.session_state.symbol)
     else:
@@ -1230,6 +1242,8 @@ def _render_charts_tab(is_mobile, est):
                 except Exception as e:
                     st.error(f"Chart error: {str(e)}"); levels = {}
         with col_right:
+            if metrics:
+                render_return_bars(metrics, sort_by)
             render_key_levels(st.session_state.symbol, levels)
             render_news_panel(st.session_state.symbol)
 
