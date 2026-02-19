@@ -992,7 +992,47 @@ def main():
     ts_est = datetime.now(est).strftime('%a %d %b %Y  %H:%M %Z')
     ts_sgt = datetime.now(sgt).strftime('%H:%M SGT')
 
-    # Tabs first — clean uppercase, no icons
+    # SANPO logo — pure CSS injection into tab bar
+    t = get_theme()
+    bar_color = t['pos']
+    st.markdown(f"""
+        <style>
+            .stTabs [data-baseweb="tab-list"] {{
+                position: relative !important;
+                padding-right: 100px !important;
+            }}
+            .stTabs [data-baseweb="tab-list"]::after {{
+                content: 'SANPO';
+                position: absolute;
+                right: 30px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-family: 'Inter', sans-serif;
+                font-size: 11px;
+                font-weight: 600;
+                letter-spacing: 0.1em;
+                color: #64748b;
+                text-transform: uppercase;
+                pointer-events: none;
+            }}
+            .stTabs [data-baseweb="tab-list"]::before {{
+                content: '';
+                position: absolute;
+                right: 16px;
+                top: 50%;
+                transform: translateY(-50%);
+                width: 14px;
+                height: 14px;
+                pointer-events: none;
+                background:
+                    linear-gradient({bar_color}80, {bar_color}80) 0px 9px / 3px 5px no-repeat,
+                    linear-gradient({bar_color}B3, {bar_color}B3) 5px 5px / 3px 9px no-repeat,
+                    linear-gradient({bar_color}, {bar_color}) 10px 0px / 3px 14px no-repeat;
+            }}
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Tabs — clean uppercase, blue underline
     tab_charts, tab_spreads, tab_portfolio = st.tabs(["CHARTS", "SPREADS", "PORTFOLIO"])
 
     with tab_charts:
