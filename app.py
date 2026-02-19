@@ -449,7 +449,7 @@ class FuturesDataFetcher:
 # CACHED DATA FETCHING
 # =============================================================================
 
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=120, show_spinner=False, hash_funcs={list: id})
 def fetch_sector_data(sector_name):
     """Fetch metrics for all symbols in a sector.
 
@@ -506,7 +506,7 @@ def fetch_sector_data(sector_name):
             logger.warning(f"[{symbol}] sector fetch error: {e}")
     return metrics
 
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=120, show_spinner=False, hash_funcs={list: id})
 def fetch_chart_data(symbol, period, interval):
     ticker = yf.Ticker(symbol)
     hist = ticker.history(period=period, interval=interval)
@@ -1081,7 +1081,7 @@ def main():
                         <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
                     </linearGradient></defs>
                 </svg>
-                <span style='font-family:Zen Dots,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
+                <span style='font-family:&quot;Zen Dots&quot;,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
             </div>
             <span style='font-family:{FONTS};color:#475569;font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
         </div>
