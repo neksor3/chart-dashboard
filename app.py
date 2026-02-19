@@ -596,7 +596,6 @@ def render_return_bars(metrics, sort_by='Default'):
     max_abs = max(abs(v) for _, v in vals) or 1
 
     n = len(vals)
-    scanner_h = n * 27 + 44
 
     rows = ""
     for sym, v in vals:
@@ -610,9 +609,6 @@ def render_return_bars(metrics, sort_by='Default'):
         sign = '+' if v > 0 and is_change else ''
         fmt = f"{sign}{v:.1f}" if abs(v) < 100 else f"{sign}{v:.0f}"
 
-        # Left half: negative bars grow right-to-left (right-aligned)
-        # Center: symbol
-        # Right half: positive bars grow left-to-right (left-aligned)
         if v >= 0 or sort_by in ('HV',):
             left_content = ""
             right_content = (
@@ -626,18 +622,20 @@ def render_return_bars(metrics, sort_by='Default'):
             )
             right_content = ""
 
-        rows += f"""<div style='display:flex;align-items:center;height:22px'>
+        rows += f"""<div style='display:flex;align-items:center;padding:4px 0;border-bottom:1px solid #2a2a2a'>
             <div style='flex:1;display:flex;align-items:center;justify-content:flex-end'>{left_content}</div>
             <span style='width:36px;text-align:center;color:#9d9d9d;font-size:9px;font-weight:600;font-family:{FONTS};flex-shrink:0'>{sym}</span>
             <div style='flex:1;display:flex;align-items:center'>{right_content}</div>
         </div>"""
 
-    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:6px 4px;height:{scanner_h}px;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column'>
-        <div style='display:flex;align-items:center;margin-bottom:2px;flex-shrink:0'>
-            <span style='color:#8a8a8a;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
+    # Header spacer matches scanner's 2-row header
+    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:0 4px;overflow:hidden'>
+        <div style='display:flex;align-items:center;padding:3px 2px;border-bottom:1px solid #3a3a3a'>
+            <span style='color:#8a8a8a;font-size:9px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
             <div style='flex:1;height:1px;background:#1e293b;margin-left:6px'></div>
         </div>
-        <div style='flex:1;display:flex;flex-direction:column;justify-content:space-around'>{rows}</div>
+        <div style='padding:3px 2px;border-bottom:1px solid #3a3a3a;height:14px'></div>
+        {rows}
     </div>"""
     st.markdown(html, unsafe_allow_html=True)
 
