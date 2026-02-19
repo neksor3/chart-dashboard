@@ -1193,9 +1193,13 @@ def _render_charts_tab(is_mobile, est):
             metrics = sorted(metrics, key=lambda m: getattr(m, attr, 0) if not pd.isna(getattr(m, attr, None)) else -999,
                            reverse=reverse)
 
-    # Scanner table
+    # Scanner table + bar chart side by side
     if metrics:
-        render_scanner_table(metrics, st.session_state.symbol)
+        col_scan, col_bars = st.columns([70, 30])
+        with col_scan:
+            render_scanner_table(metrics, st.session_state.symbol)
+        with col_bars:
+            render_return_bars(metrics, sort_by)
 
     # Charts + Levels + News
     if is_mobile:
@@ -1205,8 +1209,6 @@ def _render_charts_tab(is_mobile, est):
                 st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False, 'responsive': True})
             except Exception as e:
                 st.error(f"Chart error: {str(e)}"); levels = {}
-        if metrics:
-            render_return_bars(metrics, sort_by)
         render_key_levels(st.session_state.symbol, levels)
         render_news_panel(st.session_state.symbol)
     else:
@@ -1222,8 +1224,6 @@ def _render_charts_tab(is_mobile, est):
                 except Exception as e:
                     st.error(f"Chart error: {str(e)}"); levels = {}
         with col_right:
-            if metrics:
-                render_return_bars(metrics, sort_by)
             render_key_levels(st.session_state.symbol, levels)
             render_news_panel(st.session_state.symbol)
 
