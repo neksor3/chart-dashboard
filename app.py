@@ -997,15 +997,26 @@ def main():
     pos_c = t['pos']
     neg_c = t['neg']
     st.markdown(f"""
+        <style>
+            @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
+            @keyframes sanpo-blink {{ 0%,100% {{ opacity: 0.8; }} 50% {{ opacity: 0.2; }} }}
+            .sanpo-sweep {{ animation: sanpo-sweep 4s linear infinite; transform-origin: 16px 16px; }}
+            .sanpo-b1 {{ animation: sanpo-blink 2s ease-in-out infinite; }}
+            .sanpo-b2 {{ animation: sanpo-blink 2s ease-in-out infinite 0.7s; }}
+        </style>
         <div style='display:flex;align-items:center;justify-content:space-between;padding:8px 16px;margin-bottom:6px'>
             <div style='display:flex;align-items:center;gap:10px'>
                 <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="16" cy="16" r="14" stroke="#1e293b" stroke-width="1"/>
                     <circle cx="16" cy="16" r="9" stroke="#1e293b" stroke-width="0.7"/>
                     <circle cx="16" cy="16" r="2" fill="{pos_c}"/>
-                    <line x1="16" y1="16" x2="16" y2="3" stroke="{pos_c}" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
-                    <circle cx="12" cy="9" r="1.5" fill="{pos_c}" opacity="0.7"/>
-                    <circle cx="22" cy="12" r="1.2" fill="{neg_c}" opacity="0.6"/>
+                    <line x1="16" y1="16" x2="16" y2="3" stroke="url(#sanpoSweepG)" stroke-width="1.2" stroke-linecap="round" class="sanpo-sweep"/>
+                    <circle cx="12" cy="9" r="1.5" fill="{pos_c}" class="sanpo-b1"/>
+                    <circle cx="22" cy="12" r="1.2" fill="{neg_c}" class="sanpo-b2"/>
+                    <defs><linearGradient id="sanpoSweepG" x1="16" y1="16" x2="16" y2="3">
+                        <stop offset="0%" stop-color="{pos_c}" stop-opacity="0.7"/>
+                        <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
+                    </linearGradient></defs>
                 </svg>
                 <span style='font-family:monospace;font-size:16px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO<span style="color:{pos_c}">.</span></span>
             </div>
