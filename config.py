@@ -1,7 +1,7 @@
 from collections import OrderedDict
 
-FONTS = '"M PLUS 1", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-MONO = '"M PLUS 1", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+FONTS = '"Chakra Petch", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+MONO = '"Chakra Petch", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 
 # =============================================================================
 # SYMBOL GROUPS
