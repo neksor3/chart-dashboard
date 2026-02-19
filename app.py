@@ -31,12 +31,12 @@ st.set_page_config(page_title="SANPO", layout="wide", initial_sidebar_state="col
 # Dark theme CSS + Google Fonts
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700&display=swap');
-    .stApp { background-color: #1e1e1e; font-family: 'Chakra Petch', sans-serif; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    .stApp { background-color: #1e1e1e; font-family: 'Inter', sans-serif; }
     header[data-testid="stHeader"] { background-color: #1e1e1e; }
     [data-testid="stSidebar"] { background-color: #16213e; }
-    .stSelectbox > div > div { background-color: #16213e; color: #b0b0b0; font-family: 'Chakra Petch', sans-serif; }
-    .stTextInput > div > div > input { font-family: 'Chakra Petch', sans-serif; }
+    .stSelectbox > div > div { background-color: #16213e; color: #b0b0b0; font-family: 'Inter', sans-serif; }
+    .stTextInput > div > div > input { font-family: 'Inter', sans-serif; }
     div[data-testid="stHorizontalBlock"] { gap: 0.3rem; }
     .stTabs [data-baseweb="tab-list"] { gap: 0; background-color: #0f172a; padding: 0; border-radius: 0; border-bottom: 1px solid #2a4a6a; }
     .stTabs [data-baseweb="tab"] {
@@ -44,7 +44,7 @@ st.markdown("""
         border-bottom: 2px solid transparent;
         padding: 8px 20px; font-size: 11px; font-weight: 600;
         letter-spacing: 0.1em; text-transform: uppercase;
-        font-family: 'Chakra Petch', sans-serif;
+        font-family: 'Inter', sans-serif;
     }
     .stTabs [aria-selected="true"] { background-color: transparent; color: #e2e8f0; border-bottom: 2px solid #60a5fa; }
     .stRadio > div { flex-direction: row; gap: 8px; }
@@ -52,8 +52,8 @@ st.markdown("""
         border: 1px solid #2a4a6a; color: #b0b0b0; font-size: 12px; }
     div[data-testid="stMarkdownContainer"] p { margin-bottom: 0; }
     .block-container { padding-top: 2.5rem; padding-bottom: 0rem; }
-    button[kind="secondary"] { background-color: #16213e; color: white; border: 1px solid #2a4a6a; font-family: 'Chakra Petch', sans-serif; }
-    .stButton > button { font-size: 11px !important; padding: 4px 8px !important; min-height: 30px !important; font-family: 'Chakra Petch', sans-serif !important; }
+    button[kind="secondary"] { background-color: #16213e; color: white; border: 1px solid #2a4a6a; font-family: 'Inter', sans-serif; }
+    .stButton > button { font-size: 11px !important; padding: 4px 8px !important; min-height: 30px !important; font-family: 'Inter', sans-serif !important; }
     @media (max-width: 768px) {
         .block-container { padding: 2.5rem 0.5rem 0 0.5rem !important; }
         .stButton > button { font-size: 9px !important; padding: 2px 4px !important; min-height: 24px !important; }
@@ -472,12 +472,21 @@ def fetch_sector_data(sector_name):
     for symbol in symbols:
         try:
             # Extract this symbol's daily data from batch result
-            if len(symbols) == 1:
-                hist_yearly = batch_daily.copy()
-            elif symbol in batch_daily.columns.get_level_values(0):
-                hist_yearly = batch_daily[symbol].dropna(how='all')
-            else:
-                hist_yearly = pd.DataFrame()
+            hist_yearly = pd.DataFrame()
+            if not batch_daily.empty:
+                if len(symbols) == 1:
+                    hist_yearly = batch_daily.copy()
+                elif symbol in batch_daily.columns.get_level_values(0):
+                    hist_yearly = batch_daily[symbol].dropna(how='all')
+
+            # Fallback: individual fetch if batch missed this symbol
+            if hist_yearly.empty:
+                try:
+                    ticker_fb = yf.Ticker(symbol)
+                    hist_yearly = ticker_fb.history(period='1y')
+                except Exception as e:
+                    logger.warning(f"[{symbol}] individual fallback failed: {e}")
+                    continue
 
             if hist_yearly.empty:
                 continue
@@ -564,6 +573,56 @@ def fetch_news(symbol):
 # =============================================================================
 # SCANNER TABLE
 # =============================================================================
+
+def render_return_bars(metrics):
+    """Horizontal bar chart showing MTD returns for all symbols."""
+    t = get_theme(); pos_c = t['pos']; neg_c = t['neg']
+    vals = []
+    for m in metrics:
+        v = m.change_mtd if not pd.isna(m.change_mtd) else 0
+        vals.append((clean_symbol(m.symbol), v))
+    if not vals:
+        return
+    # Sort by return descending
+    vals.sort(key=lambda x: x[1], reverse=True)
+    max_abs = max(abs(v) for _, v in vals) or 1
+
+    bars_html = ""
+    for sym, v in vals:
+        pct = abs(v) / max_abs * 100
+        bar_w = max(pct * 0.45, 1)  # scale to 45% max width
+        c = pos_c if v >= 0 else neg_c
+        sign = '+' if v >= 0 else ''
+        # Positive: bar grows right from center; Negative: bar grows left
+        if v >= 0:
+            bar = f"<div style='display:flex;align-items:center;height:22px'>"
+            bar += f"<div style='width:50%;display:flex;justify-content:flex-end;padding-right:4px'>"
+            bar += f"<span style='color:#6b7280;font-size:10px;font-family:{FONTS}'>{sym}</span></div>"
+            bar += f"<div style='width:50%;display:flex;align-items:center'>"
+            bar += f"<div style='height:14px;width:{bar_w}%;background:{c};border-radius:0 3px 3px 0;opacity:0.85'></div>"
+            bar += f"<span style='color:{c};font-size:10px;font-weight:600;margin-left:6px;font-family:{FONTS}'>{sign}{v:.1f}%</span>"
+            bar += f"</div></div>"
+        else:
+            bar = f"<div style='display:flex;align-items:center;height:22px'>"
+            bar += f"<div style='width:50%;display:flex;justify-content:flex-end;align-items:center'>"
+            bar += f"<span style='color:{c};font-size:10px;font-weight:600;margin-right:6px;font-family:{FONTS}'>{v:.1f}%</span>"
+            bar += f"<div style='height:14px;width:{bar_w}%;background:{c};border-radius:3px 0 0 3px;opacity:0.85'></div>"
+            bar += f"</div>"
+            bar += f"<div style='width:50%;padding-left:4px'>"
+            bar += f"<span style='color:#6b7280;font-size:10px;font-family:{FONTS}'>{sym}</span></div>"
+            bar += f"</div>"
+        bars_html += bar
+
+    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:10px 12px;margin-bottom:8px'>
+        <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px'>
+            <span style='color:#8a8a8a;font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>MTD RETURNS</span>
+            <div style='flex:1;height:1px;background:#1e293b;margin:0 12px'></div>
+            <span style='color:#475569;font-size:9px;font-family:{FONTS}'>sorted best → worst</span>
+        </div>
+        <div style='border-left:1px solid #1e293b50;border-right:1px solid transparent'>{bars_html}</div>
+    </div>"""
+    st.markdown(html, unsafe_allow_html=True)
+
 
 def render_scanner_table(metrics, selected_symbol):
     if not metrics:
@@ -1019,7 +1078,7 @@ def main():
                         <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
                     </linearGradient></defs>
                 </svg>
-                <span style='font-family:Orbitron,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
+                <span style='font-family:monospace;font-size:22px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
             </div>
             <span style='font-family:{FONTS};color:#475569;font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
         </div>
@@ -1132,8 +1191,9 @@ def _render_charts_tab(is_mobile, est):
             metrics = sorted(metrics, key=lambda m: getattr(m, attr, 0) if not pd.isna(getattr(m, attr, None)) else -999,
                            reverse=reverse)
 
-    # Scanner table
+    # Scanner table + bar chart
     if metrics:
+        render_return_bars(metrics)
         render_scanner_table(metrics, st.session_state.symbol)
 
     # Charts + Levels + News
