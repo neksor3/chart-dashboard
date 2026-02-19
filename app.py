@@ -1019,7 +1019,7 @@ def main():
                         <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
                     </linearGradient></defs>
                 </svg>
-                <span style='font-family:'Poppins',sans-serif;font-size:28px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
+                <span style='font-family:Poppins,sans-serif;font-size:32px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
             </div>
             <span style='font-family:{FONTS};color:#475569;font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
         </div>
