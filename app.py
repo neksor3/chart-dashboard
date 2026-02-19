@@ -630,11 +630,11 @@ def render_return_bars(metrics, sort_by='Default'):
 
     # 2 header rows to match scanner thead, then data rows
     html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:0 4px;overflow:hidden'>
-        <div style='display:flex;align-items:center;padding:3px 2px;border-bottom:1px solid #3a3a3a'>
+        <div style='display:flex;align-items:center;padding:3px 2px'>
             <span style='color:#8a8a8a;font-size:9px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
             <div style='flex:1;height:1px;background:#1e293b;margin-left:6px'></div>
         </div>
-        <div style='padding:3px 2px;border-bottom:1px solid #3a3a3a;height:14px'></div>
+        <div style='padding:3px 2px;height:14px'></div>
         {rows}
     </div>"""
     st.markdown(html, unsafe_allow_html=True)
