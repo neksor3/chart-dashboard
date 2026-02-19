@@ -588,7 +588,7 @@ def render_return_bars(metrics, sort_by='Default'):
     if not vals: return
     vals.sort(key=lambda x: x[1], reverse=True)
     max_abs = max(abs(v) for _, v in vals) or 1
-    max_bar = 80  # max bar height in px
+    max_bar = max(len(vals) * 14, 40)  # max bar height in px
 
     cols = ""
     for sym, v in vals:
