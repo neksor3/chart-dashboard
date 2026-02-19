@@ -32,11 +32,11 @@ st.set_page_config(page_title="SANPO", layout="wide", initial_sidebar_state="col
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Chakra Petch:wght@500;700&display=swap');
-    .stApp { background-color: #1e1e1e; font-family: 'Zen Dots', sans-serif; }
+    .stApp { background-color: #1e1e1e; font-family: 'Dela Gothic One', sans-serif; }
     header[data-testid="stHeader"] { background-color: #1e1e1e; }
     [data-testid="stSidebar"] { background-color: #16213e; }
-    .stSelectbox > div > div { background-color: #16213e; color: #b0b0b0; font-family: 'Zen Dots', sans-serif; }
-    .stTextInput > div > div > input { font-family: 'Zen Dots', sans-serif; }
+    .stSelectbox > div > div { background-color: #16213e; color: #b0b0b0; font-family: 'Dela Gothic One', sans-serif; }
+    .stTextInput > div > div > input { font-family: 'Dela Gothic One', sans-serif; }
     div[data-testid="stHorizontalBlock"] { gap: 0.3rem; }
     .stTabs [data-baseweb="tab-list"] { gap: 0; background-color: #0f172a; padding: 0; border-radius: 0; border-bottom: 1px solid #2a4a6a; }
     .stTabs [data-baseweb="tab"] {
@@ -44,7 +44,7 @@ st.markdown("""
         border-bottom: 2px solid transparent;
         padding: 8px 20px; font-size: 11px; font-weight: 600;
         letter-spacing: 0.1em; text-transform: uppercase;
-        font-family: 'Zen Dots', sans-serif;
+        font-family: 'Dela Gothic One', sans-serif;
     }
     .stTabs [aria-selected="true"] { background-color: transparent; color: #e2e8f0; border-bottom: 2px solid #60a5fa; }
     .stRadio > div { flex-direction: row; gap: 8px; }
@@ -52,8 +52,8 @@ st.markdown("""
         border: 1px solid #2a4a6a; color: #b0b0b0; font-size: 12px; }
     div[data-testid="stMarkdownContainer"] p { margin-bottom: 0; }
     .block-container { padding-top: 2.5rem; padding-bottom: 0rem; }
-    button[kind="secondary"] { background-color: #16213e; color: white; border: 1px solid #2a4a6a; font-family: 'Zen Dots', sans-serif; }
-    .stButton > button { font-size: 11px !important; padding: 4px 8px !important; min-height: 30px !important; font-family: 'Zen Dots', sans-serif !important; }
+    button[kind="secondary"] { background-color: #16213e; color: white; border: 1px solid #2a4a6a; font-family: 'Dela Gothic One', sans-serif; }
+    .stButton > button { font-size: 11px !important; padding: 4px 8px !important; min-height: 30px !important; font-family: 'Dela Gothic One', sans-serif !important; }
     @media (max-width: 768px) {
         .block-container { padding: 2.5rem 0.5rem 0 0.5rem !important; }
         .stButton > button { font-size: 9px !important; padding: 2px 4px !important; min-height: 24px !important; }
