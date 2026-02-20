@@ -2,10 +2,13 @@ import streamlit as st
 import feedparser
 import logging
 import re
+import urllib.request
 from html import escape as html_escape, unescape as html_unescape
 from config import FONTS, THEMES
 
 logger = logging.getLogger(__name__)
+
+_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 
 def get_theme():
     tn = st.session_state.get('theme', 'Emerald / Amber')
@@ -19,6 +22,7 @@ NEWS_FEEDS = {
     ],
     'Regional': [
         ('SCMP', 'https://www.scmp.com/rss/5/feed'),
+        ('Nikkei Asia', 'https://asia.nikkei.com/rss/feed/nar'),
         ('Malay Mail', 'https://www.malaymail.com/feed/rss/money'),
         ('The Star', 'https://www.thestar.com.my/rss/Business'),
     ],
@@ -44,10 +48,27 @@ def _clean(raw):
     t = re.sub(r'<[^>]+>', '', raw)
     return re.sub(r'\s+', ' ', html_unescape(t)).strip()
 
+def _fetch_with_ua(url, timeout=10):
+    """Fetch URL with browser user-agent. Returns raw bytes or None."""
+    req = urllib.request.Request(url, headers={
+        'User-Agent': _UA,
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+    })
+    try:
+        resp = urllib.request.urlopen(req, timeout=timeout)
+        return resp.read()
+    except Exception:
+        return None
+
 @st.cache_data(ttl=300, show_spinner=False)
 def fetch_rss_feed(name, url):
     try:
-        feed = feedparser.parse(url)
+        # Try with browser user-agent first (needed for Nikkei, etc)
+        raw = _fetch_with_ua(url)
+        if raw:
+            feed = feedparser.parse(raw)
+        else:
+            feed = feedparser.parse(url)
         items = []
         for entry in feed.entries[:20]:
             title = _clean(getattr(entry, 'title', ''))
