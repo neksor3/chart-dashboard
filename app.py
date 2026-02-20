@@ -1053,6 +1053,7 @@ def _detect_mobile():
 def main():
     from spreads import render_spreads_tab
     from portfolio import render_portfolio_tab
+    from news import render_news_tab
 
     # Init session state
     if 'sector' not in st.session_state: st.session_state.sector = 'Indices'
@@ -1102,28 +1103,19 @@ def main():
     """, unsafe_allow_html=True)
 
     # Tabs — clean uppercase, blue underline
-    tab_charts, tab_spreads, tab_portfolio = st.tabs(["CHARTS", "SPREADS", "PORTFOLIO"])
+    tab_charts, tab_spreads, tab_portfolio, tab_news = st.tabs(["CHARTS", "SPREADS", "PORTFOLIO", "NEWS"])
 
     with tab_charts:
-        st.markdown(f"""
-            <div style='padding:8px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};margin-bottom:10px'>
-                <span style='color:#e2e8f0;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>CHARTS</span>
-            </div>""", unsafe_allow_html=True)
         _render_charts_tab(is_mobile, est)
 
     with tab_spreads:
-        st.markdown(f"""
-            <div style='padding:8px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};margin-bottom:10px'>
-                <span style='color:#e2e8f0;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>SPREADS</span>
-            </div>""", unsafe_allow_html=True)
         render_spreads_tab(is_mobile)
 
     with tab_portfolio:
-        st.markdown(f"""
-            <div style='padding:8px 16px;background-color:#16213e;border-radius:4px;font-family:{FONTS};margin-bottom:10px'>
-                <span style='color:#e2e8f0;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase'>PORTFOLIO</span>
-            </div>""", unsafe_allow_html=True)
         render_portfolio_tab(is_mobile)
+
+    with tab_news:
+        render_news_tab(is_mobile)
 
 
 def _render_charts_tab(is_mobile, est):
