@@ -1077,25 +1077,30 @@ def main():
         <style>
             @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
             @keyframes sanpo-blink {{ 0%,100% {{ opacity: 0.9; }} 50% {{ opacity: 0.1; }} }}
+            @keyframes sanpo-glow {{ 0%,100% {{ filter: drop-shadow(0 0 3px {pos_c}40); }} 50% {{ filter: drop-shadow(0 0 8px {pos_c}90); }} }}
         </style>
         <div style='display:flex;align-items:center;justify-content:space-between;padding:10px 16px;margin-bottom:6px'>
-            <div style='display:flex;align-items:center;gap:12px'>
-                <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="18" cy="18" r="16.5" stroke="#1e293b" stroke-width="1"/>
-                    <circle cx="18" cy="18" r="11" stroke="#1e293b" stroke-width="0.7"/>
-                    <circle cx="18" cy="18" r="5.5" stroke="#1e293b" stroke-width="0.5"/>
-                    <circle cx="18" cy="18" r="2.5" fill="{pos_c}"/>
-                    <line x1="18" y1="18" x2="18" y2="2" stroke="url(#sanpoSweepG)" stroke-width="1.5" stroke-linecap="round" style="animation:sanpo-sweep 4s linear infinite;transform-origin:18px 18px"/>
-                    <circle cx="12" cy="8" r="2" fill="{pos_c}" style="animation:sanpo-blink 1.8s ease-in-out infinite"/>
-                    <circle cx="27" cy="12" r="1.8" fill="{neg_c}" style="animation:sanpo-blink 2.2s ease-in-out infinite 0.4s"/>
-                    <circle cx="25" cy="26" r="1.6" fill="{pos_c}" style="animation:sanpo-blink 2s ease-in-out infinite 0.9s"/>
-                    <circle cx="8" cy="22" r="1.5" fill="{neg_c}" style="animation:sanpo-blink 1.6s ease-in-out infinite 1.3s"/>
-                    <circle cx="22" cy="7" r="1.3" fill="{pos_c}" style="animation:sanpo-blink 2.4s ease-in-out infinite 0.6s"/>
-                    <defs><linearGradient id="sanpoSweepG" x1="18" y1="18" x2="18" y2="2">
-                        <stop offset="0%" stop-color="{pos_c}" stop-opacity="0.7"/>
-                        <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
-                    </linearGradient></defs>
-                </svg>
+            <div style='display:flex;align-items:center;gap:14px'>
+                <div style='width:48px;height:48px;background:#0b1018;border-radius:12px;border:1px solid #1e293b;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden'>
+                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
+                        <circle cx="20" cy="20" r="18" stroke="#1e293b" stroke-width="0.8"/>
+                        <circle cx="20" cy="20" r="12.5" stroke="#1e293b" stroke-width="0.6"/>
+                        <circle cx="20" cy="20" r="7" stroke="#1e293b" stroke-width="0.5"/>
+                        <circle cx="20" cy="20" r="3" fill="{pos_c}"/>
+                        <circle cx="20" cy="20" r="5" fill="{pos_c}" opacity="0.15"/>
+                        <line x1="20" y1="20" x2="20" y2="3" stroke="url(#sanpoSweepG)" stroke-width="1.5" stroke-linecap="round" style="animation:sanpo-sweep 4s linear infinite;transform-origin:20px 20px"/>
+                        <circle cx="13" cy="9" r="2.2" fill="{pos_c}" style="animation:sanpo-blink 1.8s ease-in-out infinite"/>
+                        <circle cx="30" cy="13" r="2" fill="{neg_c}" style="animation:sanpo-blink 2.2s ease-in-out infinite 0.4s"/>
+                        <circle cx="28" cy="29" r="1.8" fill="{pos_c}" style="animation:sanpo-blink 2s ease-in-out infinite 0.9s"/>
+                        <circle cx="9" cy="25" r="1.7" fill="{neg_c}" style="animation:sanpo-blink 1.6s ease-in-out infinite 1.3s"/>
+                        <circle cx="25" cy="8" r="1.5" fill="{pos_c}" style="animation:sanpo-blink 2.4s ease-in-out infinite 0.6s"/>
+                        <circle cx="10" cy="15" r="1.3" fill="{pos_c}" style="animation:sanpo-blink 2.0s ease-in-out infinite 1.7s"/>
+                        <defs><linearGradient id="sanpoSweepG" x1="20" y1="20" x2="20" y2="3">
+                            <stop offset="0%" stop-color="{pos_c}" stop-opacity="0.7"/>
+                            <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
+                        </linearGradient></defs>
+                    </svg>
+                </div>
                 <span style='font-family:Orbitron,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
             </div>
             <span style='font-family:{FONTS};color:#475569;font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
