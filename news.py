@@ -77,7 +77,7 @@ def render_news_column(region, feeds):
     t = get_theme()
     pos_c = t['pos']
 
-    html = f"""<div style='padding:6px 10px;background-color:#111827;border-left:2px solid {pos_c};border-radius:4px 4px 0 0;font-family:{FONTS};margin-bottom:0'>
+    html = f"""<div style='padding:6px 10px;background-color:#1a2744;border-left:2px solid {pos_c};border-radius:4px 4px 0 0;font-family:{FONTS};margin-bottom:0'>
         <span style='color:#e2e8f0;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{region}</span>
     </div>"""
     html += "<div style='background-color:#0f1522;border:1px solid #1e293b;border-top:none;border-radius:0 0 4px 4px;max-height:700px;overflow-y:auto'>"

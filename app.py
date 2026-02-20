@@ -34,8 +34,8 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700&display=swap');
     .stApp { background-color: #1e1e1e; font-family: 'Inter', sans-serif; }
     header[data-testid="stHeader"] { background-color: #1e1e1e; }
-    [data-testid="stSidebar"] { background-color: #111827; }
-    .stSelectbox > div > div { background-color: #111827; color: #b0b0b0; font-family: 'Inter', sans-serif; border: 1px solid #1e293b; }
+    [data-testid="stSidebar"] { background-color: #1a2744; }
+    .stSelectbox > div > div { background-color: #1a2744; color: #b0b0b0; font-family: 'Inter', sans-serif; border: 1px solid #1e293b; }
     .stTextInput > div > div > input { font-family: 'Inter', sans-serif; }
     div[data-testid="stHorizontalBlock"] { gap: 0.3rem; }
     .stTabs [data-baseweb="tab-list"] { gap: 0; background-color: #0f172a; padding: 0; border-radius: 0; border-bottom: 1px solid #2a4a6a; }
@@ -48,11 +48,11 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] { background-color: transparent; color: #e2e8f0; border-bottom: 2px solid #60a5fa; }
     .stRadio > div { flex-direction: row; gap: 8px; }
-    .stRadio > div > label { background-color: #111827; padding: 4px 12px; border-radius: 3px;
+    .stRadio > div > label { background-color: #1a2744; padding: 4px 12px; border-radius: 3px;
         border: 1px solid #2a4a6a; color: #b0b0b0; font-size: 12px; }
     div[data-testid="stMarkdownContainer"] p { margin-bottom: 0; }
     .block-container { padding-top: 2.5rem; padding-bottom: 0rem; }
-    button[kind="secondary"] { background-color: #111827; color: white; border: 1px solid #2a4a6a; font-family: 'Inter', sans-serif; }
+    button[kind="secondary"] { background-color: #1a2744; color: white; border: 1px solid #2a4a6a; font-family: 'Inter', sans-serif; }
     .stButton > button { font-size: 11px !important; padding: 4px 8px !important; min-height: 30px !important; font-family: 'Inter', sans-serif !important; }
     @media (max-width: 768px) {
         .block-container { padding: 2.5rem 0.5rem 0 0.5rem !important; }
@@ -977,7 +977,7 @@ def render_key_levels(symbol, levels):
     for tf in ['session','week','month','year']:
         if tf in levels: price = levels[tf]['price']; dec = 2 if price > 10 else 4; break
 
-    html = f"""<div style='padding:6px 10px;background-color:#111827;border-left:2px solid {pos_c};display:flex;justify-content:space-between;align-items:center;font-family:{FONTS}'>
+    html = f"""<div style='padding:6px 10px;background-color:#1a2744;border-left:2px solid {pos_c};display:flex;justify-content:space-between;align-items:center;font-family:{FONTS}'>
         <span><span style='color:#e2e8f0;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{ds} LEVELS</span>
         <span style='color:#6d6d6d;font-size:10px;margin-left:6px'>{fn}</span></span>
         <span style='color:{sc};font-size:10px;font-weight:600;letter-spacing:0.05em'>{sig}</span></div>"""
@@ -1016,7 +1016,7 @@ def render_news_panel(symbol):
     t = get_theme(); pos_c = t['pos']
     news = fetch_news(symbol)
 
-    html = f"""<div style='padding:6px 10px;background-color:#111827;border-left:2px solid {pos_c};font-family:{FONTS};margin-top:8px'>
+    html = f"""<div style='padding:6px 10px;background-color:#1a2744;border-left:2px solid {pos_c};font-family:{FONTS};margin-top:8px'>
         <span style='color:#e2e8f0;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{ds} NEWS</span>
         <span style='color:#6d6d6d;font-size:10px;margin-left:6px'>{fn}</span></div>"""
 
@@ -1126,7 +1126,7 @@ def _render_charts_tab(is_mobile, est):
     """Chart tab content — sector scanner, asset charts, levels, news."""
     t = get_theme()
     pos_c = t['pos']
-    _lbl = f"color:{pos_c};font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:Orbitron,sans-serif"
+    _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
     symbols = FUTURES_GROUPS[st.session_state.sector]
     sym_labels = [clean_symbol(s) for s in symbols]
@@ -1242,7 +1242,7 @@ def _render_charts_tab(is_mobile, est):
 
     # Footer
     ct_now = datetime.now(est).strftime('%H:%M %Z')
-    st.markdown(f"""<div style='margin-top:16px;padding:8px 12px;background-color:#111827;border-radius:4px;font-family:{FONTS}'>
+    st.markdown(f"""<div style='margin-top:16px;padding:8px 12px;background-color:#1a2744;border-radius:4px;font-family:{FONTS}'>
         <span style='font-size:11px;color:#9d9d9d'>EST: <span style='color:#cccccc'>{ct_now}</span>
         &nbsp;·&nbsp; <span style='color:#6d6d6d'>Auto-refreshes every 5 minutes · Click symbol for analysis</span></span></div>""", unsafe_allow_html=True)
 
