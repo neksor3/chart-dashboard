@@ -449,6 +449,7 @@ class FuturesDataFetcher:
 # CACHED DATA FETCHING
 # =============================================================================
 
+@st.cache_resource(ttl=300, show_spinner=False)
 def fetch_sector_data(sector_name):
     """Fetch metrics for all symbols in a sector.
 
@@ -505,7 +506,7 @@ def fetch_sector_data(sector_name):
             logger.warning(f"[{symbol}] sector fetch error: {e}")
     return metrics
 
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def fetch_chart_data(symbol, period, interval):
     ticker = yf.Ticker(symbol)
     hist = ticker.history(period=period, interval=interval)
@@ -1245,7 +1246,11 @@ def _render_charts_tab(is_mobile, est):
     ct_now = datetime.now(est).strftime('%H:%M %Z')
     st.markdown(f"""<div style='margin-top:16px;padding:8px 12px;background-color:#16213e;border-radius:4px;font-family:{FONTS}'>
         <span style='font-size:11px;color:#9d9d9d'>EST: <span style='color:#cccccc'>{ct_now}</span>
-        &nbsp;·&nbsp; <span style='color:#6d6d6d'>Data refreshes every 2 minutes · Click symbol for analysis</span></span></div>""", unsafe_allow_html=True)
+        &nbsp;·&nbsp; <span style='color:#6d6d6d'>Auto-refreshes every 5 minutes · Click symbol for analysis</span></span></div>""", unsafe_allow_html=True)
+
+    # Auto-refresh every 5 minutes
+    from streamlit.components.v1 import html as st_html
+    st_html("<script>setTimeout(()=>window.parent.location.reload(), 300000)</script>", height=0)
 
 if __name__ == "__main__":
     main()
