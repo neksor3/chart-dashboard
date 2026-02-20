@@ -34,8 +34,8 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700&display=swap');
     .stApp { background-color: #1e1e1e; font-family: 'Inter', sans-serif; }
     header[data-testid="stHeader"] { background-color: #1e1e1e; }
-    [data-testid="stSidebar"] { background-color: #16213e; }
-    .stSelectbox > div > div { background-color: #16213e; color: #b0b0b0; font-family: 'Inter', sans-serif; }
+    [data-testid="stSidebar"] { background-color: #111827; }
+    .stSelectbox > div > div { background-color: #111827; color: #b0b0b0; font-family: 'Inter', sans-serif; border: 1px solid #1e293b; }
     .stTextInput > div > div > input { font-family: 'Inter', sans-serif; }
     div[data-testid="stHorizontalBlock"] { gap: 0.3rem; }
     .stTabs [data-baseweb="tab-list"] { gap: 0; background-color: #0f172a; padding: 0; border-radius: 0; border-bottom: 1px solid #2a4a6a; }
@@ -48,11 +48,11 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] { background-color: transparent; color: #e2e8f0; border-bottom: 2px solid #60a5fa; }
     .stRadio > div { flex-direction: row; gap: 8px; }
-    .stRadio > div > label { background-color: #16213e; padding: 4px 12px; border-radius: 3px;
+    .stRadio > div > label { background-color: #111827; padding: 4px 12px; border-radius: 3px;
         border: 1px solid #2a4a6a; color: #b0b0b0; font-size: 12px; }
     div[data-testid="stMarkdownContainer"] p { margin-bottom: 0; }
     .block-container { padding-top: 2.5rem; padding-bottom: 0rem; }
-    button[kind="secondary"] { background-color: #16213e; color: white; border: 1px solid #2a4a6a; font-family: 'Inter', sans-serif; }
+    button[kind="secondary"] { background-color: #111827; color: white; border: 1px solid #2a4a6a; font-family: 'Inter', sans-serif; }
     .stButton > button { font-size: 11px !important; padding: 4px 8px !important; min-height: 30px !important; font-family: 'Inter', sans-serif !important; }
     @media (max-width: 768px) {
         .block-container { padding: 2.5rem 0.5rem 0 0.5rem !important; }
@@ -956,7 +956,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
 # =============================================================================
 
 def render_key_levels(symbol, levels):
-    zc = zone_colors(); t = get_theme()
+    zc = zone_colors(); t = get_theme(); pos_c = t['pos']
     ds = clean_symbol(symbol); fn = SYMBOL_NAMES.get(symbol, symbol)
     if not levels: return
 
@@ -977,7 +977,7 @@ def render_key_levels(symbol, levels):
     for tf in ['session','week','month','year']:
         if tf in levels: price = levels[tf]['price']; dec = 2 if price > 10 else 4; break
 
-    html = f"""<div style='padding:6px 10px;background-color:#16213e;display:flex;justify-content:space-between;align-items:center;font-family:{FONTS}'>
+    html = f"""<div style='padding:6px 10px;background-color:#111827;border-left:2px solid {pos_c};display:flex;justify-content:space-between;align-items:center;font-family:{FONTS}'>
         <span><span style='color:#e2e8f0;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{ds} LEVELS</span>
         <span style='color:#6d6d6d;font-size:10px;margin-left:6px'>{fn}</span></span>
         <span style='color:{sc};font-size:10px;font-weight:600;letter-spacing:0.05em'>{sig}</span></div>"""
@@ -1013,9 +1013,10 @@ def render_key_levels(symbol, levels):
 
 def render_news_panel(symbol):
     ds = clean_symbol(symbol); fn = SYMBOL_NAMES.get(symbol, symbol)
+    t = get_theme(); pos_c = t['pos']
     news = fetch_news(symbol)
 
-    html = f"""<div style='padding:6px 10px;background-color:#16213e;font-family:{FONTS};margin-top:8px'>
+    html = f"""<div style='padding:6px 10px;background-color:#111827;border-left:2px solid {pos_c};font-family:{FONTS};margin-top:8px'>
         <span style='color:#e2e8f0;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{ds} NEWS</span>
         <span style='color:#6d6d6d;font-size:10px;margin-left:6px'>{fn}</span></div>"""
 
@@ -1081,8 +1082,7 @@ def main():
         </style>
         <div style='display:flex;align-items:center;justify-content:space-between;padding:10px 16px;margin-bottom:6px'>
             <div style='display:flex;align-items:center;gap:14px'>
-                <div style='width:48px;height:48px;background:#0b1018;border-radius:12px;border:1px solid #1e293b;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden'>
-                    <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
+                    <svg width="44" height="44" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
                         <circle cx="20" cy="20" r="18" stroke="#1e293b" stroke-width="0.8"/>
                         <circle cx="20" cy="20" r="12.5" stroke="#1e293b" stroke-width="0.6"/>
                         <circle cx="20" cy="20" r="7" stroke="#1e293b" stroke-width="0.5"/>
@@ -1100,7 +1100,6 @@ def main():
                             <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
                         </linearGradient></defs>
                     </svg>
-                </div>
                 <span style='font-family:Orbitron,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
             </div>
             <span style='font-family:{FONTS};color:#475569;font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
@@ -1125,7 +1124,9 @@ def main():
 
 def _render_charts_tab(is_mobile, est):
     """Chart tab content — sector scanner, asset charts, levels, news."""
-    _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
+    t = get_theme()
+    pos_c = t['pos']
+    _lbl = f"color:{pos_c};font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:Orbitron,sans-serif"
 
     symbols = FUTURES_GROUPS[st.session_state.sector]
     sym_labels = [clean_symbol(s) for s in symbols]
@@ -1241,7 +1242,7 @@ def _render_charts_tab(is_mobile, est):
 
     # Footer
     ct_now = datetime.now(est).strftime('%H:%M %Z')
-    st.markdown(f"""<div style='margin-top:16px;padding:8px 12px;background-color:#16213e;border-radius:4px;font-family:{FONTS}'>
+    st.markdown(f"""<div style='margin-top:16px;padding:8px 12px;background-color:#111827;border-radius:4px;font-family:{FONTS}'>
         <span style='font-size:11px;color:#9d9d9d'>EST: <span style='color:#cccccc'>{ct_now}</span>
         &nbsp;·&nbsp; <span style='color:#6d6d6d'>Auto-refreshes every 5 minutes · Click symbol for analysis</span></span></div>""", unsafe_allow_html=True)
 
