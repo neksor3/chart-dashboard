@@ -60,7 +60,7 @@ def _fetch_with_ua(url, timeout=10):
     except Exception:
         return None
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=900, show_spinner=False)
 def fetch_rss_feed(name, url):
     try:
         # Try with browser user-agent first (needed for Nikkei, etc)
@@ -94,13 +94,13 @@ def render_news_column(region, feeds):
     _hdr_bg = t.get('bg3', '#1a2744'); _body_bg = t.get('bg2', '#0f1522')
     _bdr = t.get('border', '#1e293b'); _txt = t.get('text', '#e2e8f0')
     _mut = t.get('muted', '#4a5568'); _link_c = t.get('text', '#c9d1d9')
-    _row_alt = '#f1f5f9' if t.get('mode') == 'light' else '#131b2e'
+    _row_alt = '#131b2e'
     all_items = []
     for name, url in feeds:
         all_items.extend(fetch_rss_feed(name, url))
     all_items.sort(key=lambda x: x['date'], reverse=True)
 
-    html = f"""<style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');</style>"""
+    html = ""
     html += f"""<div style='padding:8px 12px;background-color:{_hdr_bg};border-radius:4px 4px 0 0;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center'>
         <span style='color:{_txt};font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{region}</span>
         <span style='color:{_mut};font-size:9px'>{len(all_items)}</span>
