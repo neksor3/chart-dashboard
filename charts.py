@@ -522,7 +522,8 @@ def fetch_news(symbol):
 # =============================================================================
 
 def render_return_bars(metrics, sort_by='Default'):
-    """Butterfly bar chart — symbol dead center, bars extend left/right."""
+    """Butterfly bar chart — symbol dead center, bars extend left/right.
+    Height auto-matches scanner table: 40px header + n*28px rows + 6px padding."""
     t = get_theme(); pos_c = t['pos']; neg_c = t['neg']
     field_map = {
         'Default': ('change_day', 'DAY %', True), 'Day %': ('change_day', 'DAY %', True),
@@ -544,6 +545,9 @@ def render_return_bars(metrics, sort_by='Default'):
     max_abs = max(abs(v) for _, v in vals) or 1
 
     n = len(vals)
+    # Match scanner height: ~40px thead + n*28px rows + 2px border
+    scanner_h = 40 + n * 28 + 2
+    row_h = max((scanner_h - 46) // n, 18) if n > 0 else 22
 
     rows = ""
     for sym, v in vals:
@@ -570,16 +574,15 @@ def render_return_bars(metrics, sort_by='Default'):
             )
             right_content = ""
 
-        rows += f"""<div style='display:flex;align-items:center;height:25px'>
+        rows += f"""<div style='display:flex;align-items:center;height:{row_h}px'>
             <div style='flex:1;display:flex;align-items:center;justify-content:flex-end'>{left_content}</div>
             <span style='width:36px;text-align:center;color:{t.get("text2","#9d9d9d")};font-size:9px;font-weight:600;font-family:{FONTS};flex-shrink:0'>{sym}</span>
             <div style='flex:1;display:flex;align-items:center'>{right_content}</div>
         </div>"""
 
     _bg0 = t.get('bg3', '#0f1522'); _bdr0 = t.get('border', '#1e293b')
-    # Header ~42px to match scanner's double-row thead
-    html = f"""<div style='background:{_bg0};border:1px solid {_bdr0};border-radius:6px;padding:0 6px 4px 6px;overflow:hidden'>
-        <div style='display:flex;align-items:center;padding:6px 2px 4px;height:42px'>
+    html = f"""<div style='background:{_bg0};border:1px solid {_bdr0};border-radius:6px;padding:0 6px 0 6px;overflow:hidden;min-height:{scanner_h}px'>
+        <div style='display:flex;align-items:flex-end;height:46px;padding:0 2px'>
             <span style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
             <div style='flex:1;height:1px;background:{_bdr0};margin-left:8px'></div>
         </div>
@@ -1110,7 +1113,7 @@ def render_charts_tab(is_mobile, est):
         f"<span style='color:{_hdr_mut};font-size:10px;margin-left:6px;font-weight:400'>{_fn}</span></div>",
         unsafe_allow_html=True)
 
-    # Charts — full width, stacked
+    # Charts + Levels + News
     if is_mobile:
         with st.spinner('Loading charts...'):
             try:
@@ -1121,21 +1124,19 @@ def render_charts_tab(is_mobile, est):
         render_key_levels(st.session_state.symbol, levels)
         render_news_panel(st.session_state.symbol)
     else:
-        with st.spinner('Loading charts...'):
-            try:
-                fig, levels = create_4_chart_grid(st.session_state.symbol, st.session_state.chart_type, mobile=False)
-                st.plotly_chart(fig, use_container_width=True, config={
-                    'scrollZoom': True, 'displayModeBar': True,
-                    'modeBarButtonsToAdd': ['pan2d','zoom2d','resetScale2d'],
-                    'responsive': True})
-            except Exception as e:
-                st.error(f"Chart error: {str(e)}"); levels = {}
-
-        # Levels + News side by side below charts
-        col_levels, col_news = st.columns([45, 55])
-        with col_levels:
+        col_charts, col_right = st.columns([65, 35])
+        with col_charts:
+            with st.spinner('Loading charts...'):
+                try:
+                    fig, levels = create_4_chart_grid(st.session_state.symbol, st.session_state.chart_type, mobile=False)
+                    st.plotly_chart(fig, use_container_width=True, config={
+                        'scrollZoom': True, 'displayModeBar': True,
+                        'modeBarButtonsToAdd': ['pan2d','zoom2d','resetScale2d'],
+                        'responsive': True})
+                except Exception as e:
+                    st.error(f"Chart error: {str(e)}"); levels = {}
+        with col_right:
             render_key_levels(st.session_state.symbol, levels)
-        with col_news:
             render_news_panel(st.session_state.symbol)
 
     # Footer
