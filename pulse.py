@@ -453,17 +453,6 @@ def _render_pulse_news():
 # ── MAIN ─────────────────────────────────────────────────────────────────────
 
 def render_pulse_tab(is_mobile):
-    # Theme picker at top of PULSE
-    _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
-    col_spacer, col_theme = st.columns([8, 2])
-    with col_theme:
-        st.markdown(f"<div style='{_lbl}'>THEME</div>", unsafe_allow_html=True)
-        theme_names = list(THEMES.keys())
-        if st.session_state.get('theme') not in theme_names:
-            st.session_state.theme = theme_names[0]
-        st.selectbox("Theme", theme_names,
-            key='theme', label_visibility='collapsed')
-
     with st.spinner('Scanning markets...'):
         data = _fetch_pulse_batch()
         spark_data = _fetch_sparklines()

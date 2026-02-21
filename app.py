@@ -1101,6 +1101,14 @@ def main():
     elif st.session_state.theme not in THEMES:
         st.session_state.theme = list(THEMES.keys())[0]
 
+    # Theme picker in sidebar
+    with st.sidebar:
+        st.markdown(f"<div style='font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS};margin-bottom:4px'>THEME</div>", unsafe_allow_html=True)
+        theme_names = list(THEMES.keys())
+        if st.session_state.get('theme') not in theme_names:
+            st.session_state.theme = theme_names[0]
+        st.selectbox("Theme", theme_names, key='theme', label_visibility='collapsed')
+
     is_mobile = _detect_mobile()
     est = pytz.timezone('US/Eastern'); sgt = pytz.timezone('Asia/Singapore')
     ts_est = datetime.now(est).strftime('%a %d %b %Y  %H:%M %Z')
