@@ -1052,6 +1052,7 @@ def _detect_mobile():
 # =============================================================================
 
 def main():
+    from pulse import render_pulse_tab
     from spreads import render_spreads_tab
     from portfolio import render_portfolio_tab
     from news import render_news_tab
@@ -1107,7 +1108,10 @@ def main():
     """, unsafe_allow_html=True)
 
     # Tabs — clean uppercase, blue underline
-    tab_charts, tab_spreads, tab_portfolio, tab_news = st.tabs(["CHARTS", "SPREADS", "PORTFOLIO", "NEWS"])
+    tab_pulse, tab_charts, tab_spreads, tab_portfolio, tab_news = st.tabs(["PULSE", "CHARTS", "SPREADS", "PORTFOLIO", "NEWS"])
+
+    with tab_pulse:
+        render_pulse_tab(is_mobile)
 
     with tab_charts:
         _render_charts_tab(is_mobile, est)
