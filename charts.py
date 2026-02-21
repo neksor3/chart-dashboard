@@ -612,7 +612,7 @@ def render_scanner_table(metrics, selected_symbol):
         c = zc.get(status, _mut)
         if status == 'above_high': ico = f"<span style='color:{c};font-weight:700;font-size:8px'>▲</span>"
         elif status == 'below_low': ico = f"<span style='color:{c};font-weight:700;font-size:8px'>▼</span>"
-        if reversal: ico += "<span style='color:#facc15;font-weight:700;font-size:8px'>↺</span>"
+        if reversal: ico += "<span style='color:#facc15;font-size:7px'>●</span>"
         return f"<span style='display:inline-block;width:20px;text-align:left;vertical-align:middle;margin-left:2px'>{ico}</span>"
 
     def _chg(val, status, reversal=False):
@@ -785,8 +785,8 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                     if len(prev_seg) > 0:
                         rh = prev_seg['High'].expanding().max(); rl = prev_seg['Low'].expanding().min()
                         rx = list(range(ps, pe))
-                        fig.add_trace(go.Scatter(x=rx, y=((rh + prev_b.prev_low)/2).values, mode='lines', line=dict(color='#be185d', width=1, dash='dot'), showlegend=False, hovertemplate='Retrace Buy: %{y:.2f}<extra></extra>'), row=row, col=col)
-                        fig.add_trace(go.Scatter(x=rx, y=((rl + prev_b.prev_high)/2).values, mode='lines', line=dict(color='#0284c7', width=1, dash='dot'), showlegend=False, hovertemplate='Retrace Sell: %{y:.2f}<extra></extra>'), row=row, col=col)
+                        fig.add_trace(go.Scatter(x=rx, y=((rh + prev_b.prev_low)/2).values, mode='lines', line=dict(color='#f472b6', width=0.8, dash='dash'), showlegend=False, hovertemplate='Retrace Buy: %{y:.2f}<extra></extra>'), row=row, col=col)
+                        fig.add_trace(go.Scatter(x=rx, y=((rl + prev_b.prev_high)/2).values, mode='lines', line=dict(color='#60a5fa', width=0.8, dash='dash'), showlegend=False, hovertemplate='Retrace Sell: %{y:.2f}<extra></extra>'), row=row, col=col)
 
             first_tracked = boundaries[-2].idx if len(boundaries) >= 2 else boundary_idx
             if first_tracked > 0 and chart_type == 'line':
@@ -826,12 +826,12 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
         num_boundaries = min(2, len(boundaries))
         for j in range(num_boundaries):
             b = boundaries[-(j+1)]; px = b.idx; ex = len(hist)-1 if j == 0 else boundaries[-1].idx
-            fig.add_vline(x=px, line=dict(color='#6b7280', width=1, dash='dot'), row=row, col=col)
+            fig.add_vline(x=px, line=dict(color='#475569', width=1, dash='dot'), row=row, col=col)
             ml = (b.prev_high + b.prev_low) / 2
             fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_high]*2, mode='lines', line=dict(color=zc['above_high'], width=1.2), showlegend=False, hovertemplate=f'High: {b.prev_high:.2f}<extra></extra>'), row=row, col=col)
             fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_low]*2, mode='lines', line=dict(color=zc['below_low'], width=1.2), showlegend=False, hovertemplate=f'Low: {b.prev_low:.2f}<extra></extra>'), row=row, col=col)
-            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_close]*2, mode='lines', line=dict(color='#9ca3af', width=0.8, dash='dot'), showlegend=False, hovertemplate=f'Close: {b.prev_close:.2f}<extra></extra>'), row=row, col=col)
-            fig.add_trace(go.Scatter(x=[px,ex], y=[ml]*2, mode='lines', line=dict(color='#fbbf24', width=0.8, dash='dot'), showlegend=False, hovertemplate=f'50%: {ml:.2f}<extra></extra>'), row=row, col=col)
+            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_close]*2, mode='lines', line=dict(color='#6b7280', width=0.7, dash='dash'), showlegend=False, hovertemplate=f'Close: {b.prev_close:.2f}<extra></extra>'), row=row, col=col)
+            fig.add_trace(go.Scatter(x=[px,ex], y=[ml]*2, mode='lines', line=dict(color='#fbbf24', width=0.8, dash='dash'), showlegend=False, hovertemplate=f'50%: {ml:.2f}<extra></extra>'), row=row, col=col)
 
         # Retrace lines (current period)
         if boundaries:
@@ -839,8 +839,8 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             if len(cp) > 0:
                 rh = cp['High'].expanding().max(); rl = cp['Low'].expanding().min()
                 rx = list(range(last_b.idx, last_b.idx+len(cp)))
-                fig.add_trace(go.Scatter(x=rx, y=((rh+last_b.prev_low)/2).values, mode='lines', line=dict(color='#be185d', width=1, dash='dot'), showlegend=False, hovertemplate='Retrace Buy: %{y:.2f}<extra></extra>'), row=row, col=col)
-                fig.add_trace(go.Scatter(x=rx, y=((rl+last_b.prev_high)/2).values, mode='lines', line=dict(color='#0284c7', width=1, dash='dot'), showlegend=False, hovertemplate='Retrace Sell: %{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=rx, y=((rh+last_b.prev_low)/2).values, mode='lines', line=dict(color='#f472b6', width=0.8, dash='dash'), showlegend=False, hovertemplate='Retrace Buy: %{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=rx, y=((rl+last_b.prev_high)/2).values, mode='lines', line=dict(color='#60a5fa', width=0.8, dash='dash'), showlegend=False, hovertemplate='Retrace Sell: %{y:.2f}<extra></extra>'), row=row, col=col)
 
         # Reversal dots
         if boundaries:
