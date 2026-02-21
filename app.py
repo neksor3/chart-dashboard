@@ -1116,7 +1116,7 @@ def main():
     neg_c = t['neg']
     ring_c = '#cbd5e1' if is_light else '#1e293b'
     title_c = '#1e293b' if is_light else '#f8fafc'
-    time_c = t['muted']
+    time_c = t.get('muted', '#475569')
     st.markdown(f"""
         <style>
             @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
