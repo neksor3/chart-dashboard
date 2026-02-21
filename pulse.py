@@ -202,9 +202,9 @@ def _render_market_status_bar():
         glow = f'box-shadow:0 0 6px {t["pos"]}80;' if m['open'] else ''
         pulse = 'animation:pulse-dot 2s ease-in-out infinite;' if m['open'] else ''
         # Country name: strong text
-        nc = ('#0f172a' if is_light else '#f1f5f9') if m['open'] else ('#64748b' if is_light else '#64748b')
+        nc = ('#0f172a' if is_light else '#f8fafc') if m['open'] else ('#64748b' if is_light else '#f8fafc')
         # Time: always visible
-        tc = ('#334155' if is_light else '#e2e8f0') if m['open'] else ('#94a3b8' if is_light else '#8899aa')
+        tc = ('#334155' if is_light else '#f8fafc') if m['open'] else ('#94a3b8' if is_light else '#f8fafc')
         dots += (
             f"<div style='display:flex;align-items:center;gap:4px'>"
             f"<div style='width:6px;height:6px;border-radius:50%;background:{color};{glow}{pulse}'></div>"
@@ -249,7 +249,7 @@ def _render_hero_row(data):
 
         # Force high contrast price color
         price_c = '#0f172a' if is_light else '#f8fafc'
-        label_c = '#475569' if is_light else s['muted']
+        label_c = '#475569' if is_light else '#f8fafc'
 
         cards += (
             f"<div style='flex:1;min-width:110px;padding:10px 12px;"
