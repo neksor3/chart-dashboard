@@ -78,38 +78,34 @@ def _inject_theme_css():
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stStatusWidget"] {{visibility: hidden;}}
-    /* Discreet theme picker — hide text, just show arrow */
+    /* Discreet theme picker — arrow only, no text visible */
     [data-testid="stSelectbox"][data-st-key="_theme_pick"] {{
-        max-width: 42px !important;
-        min-width: 42px !important;
+        max-width: 36px !important;
+        min-width: 36px !important;
     }}
     [data-testid="stSelectbox"][data-st-key="_theme_pick"] [data-baseweb="select"] > div {{
         background: transparent !important;
-        border: 1px solid {bdr} !important;
-        border-radius: 4px !important;
-        padding: 2px 4px !important;
-        min-height: 28px !important;
+        border: none !important;
+        padding: 0 !important;
+        min-height: 24px !important;
         cursor: pointer;
-        color: transparent !important;
-        font-size: 0 !important;
     }}
     [data-testid="stSelectbox"][data-st-key="_theme_pick"] [data-baseweb="select"] > div > div:first-child {{
-        color: transparent !important;
-        font-size: 0 !important;
+        visibility: hidden !important;
         width: 0 !important;
         padding: 0 !important;
-        overflow: hidden !important;
+        position: absolute !important;
     }}
     [data-testid="stSelectbox"][data-st-key="_theme_pick"] svg {{
         color: {muted} !important;
-        width: 14px !important;
-        height: 14px !important;
-    }}
-    [data-testid="stSelectbox"][data-st-key="_theme_pick"] [data-baseweb="select"] > div:hover {{
-        border-color: {accent} !important;
+        width: 16px !important;
+        height: 16px !important;
+        opacity: 0.5;
+        transition: opacity 0.2s;
     }}
     [data-testid="stSelectbox"][data-st-key="_theme_pick"] [data-baseweb="select"] > div:hover svg {{
         color: {accent} !important;
+        opacity: 1;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -1185,6 +1181,7 @@ def main():
             </div>
         """, unsafe_allow_html=True)
     with theme_col:
+        st.markdown("<div style='padding-top:14px'></div>", unsafe_allow_html=True)
         theme_names = list(THEMES.keys())
         if st.session_state.get('theme') not in theme_names:
             st.session_state.theme = theme_names[0]
