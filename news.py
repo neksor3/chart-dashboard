@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 _UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 
 def get_theme():
-    tn = st.session_state.get('theme', 'Terminal')
-    return THEMES.get(tn, THEMES['Terminal'])
+    tn = st.session_state.get('theme', 'Dark')
+    return THEMES.get(tn, THEMES['Dark'])
 
 NEWS_FEEDS = {
     'Singapore': [

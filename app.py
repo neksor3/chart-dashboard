@@ -32,16 +32,17 @@ st.set_page_config(page_title="SANPO", layout="wide", initial_sidebar_state="col
 def _inject_theme_css():
     t = get_theme()
     is_light = t.get('mode') == 'light'
-    bg = t.get('bg', '#1e1e1e'); bg2 = t.get('bg2', '#0a0f1a'); bg3 = t.get('bg3', '#0f172a'); bdr = t.get('border', '#1e293b')
-    txt = t.get('text', '#e2e8f0'); txt2 = t.get('text2', '#94a3b8'); muted = t.get('muted', '#475569'); accent = t.get('accent', '#60a5fa')
+    bg = t.get('bg', '#0f1117'); bg2 = t.get('bg2', '#0a0f1a'); bg3 = t.get('bg3', '#0f172a'); bdr = t.get('border', '#1e293b')
+    txt = t.get('text', '#e2e8f0'); txt2 = t.get('text2', '#94a3b8'); muted = t.get('muted', '#475569'); accent = t.get('accent', '#4ade80')
     sb_bg = '#f1f5f9' if is_light else '#1a2744'
     sel_bg = '#f1f5f9' if is_light else '#1a2744'
     sel_c = '#334155' if is_light else '#b0b0b0'
     sel_bdr = '#e2e8f0' if is_light else '#1e293b'
-    tab_bg = bg3 if is_light else '#0f172a'
+    tab_bg = 'transparent'
     tab_bdr = bdr
-    tab_c = muted
-    tab_sel_c = txt
+    # Tabs: high contrast — black on white, light on dark
+    tab_c = '#64748b' if is_light else '#7a8a9e'
+    tab_sel_c = '#0f172a' if is_light else '#f1f5f9'
     radio_bg = bg3 if is_light else '#1a2744'
     radio_bdr = bdr
     btn_bg = bg3 if is_light else '#1a2744'
@@ -59,11 +60,11 @@ def _inject_theme_css():
     .stTabs [data-baseweb="tab"] {{
         background-color: transparent; color: {tab_c}; border: none;
         border-bottom: 2px solid transparent;
-        padding: 8px 20px; font-size: 11px; font-weight: 600;
+        padding: 8px 20px; font-size: 12px; font-weight: 600;
         letter-spacing: 0.1em; text-transform: uppercase;
         font-family: 'Inter', sans-serif;
     }}
-    .stTabs [aria-selected="true"] {{ background-color: transparent; color: {tab_sel_c}; border-bottom: 2px solid {accent}; }}
+    .stTabs [aria-selected="true"] {{ background-color: transparent; color: {tab_sel_c}; border-bottom: 2px solid {accent}; font-weight: 700; }}
     .stRadio > div {{ flex-direction: row; gap: 8px; }}
     .stRadio > div > label {{ background-color: {radio_bg}; padding: 4px 12px; border-radius: 3px;
         border: 1px solid {radio_bdr}; color: {sel_c}; font-size: 12px; }}
@@ -78,23 +79,27 @@ def _inject_theme_css():
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stStatusWidget"] {{visibility: hidden;}}
-    /* Theme popover: minimal, just chevron */
+    /* Theme popover: fully transparent bg, just the chevron arrow */
+    [data-testid="stPopover"] {{
+        display: flex;
+        justify-content: flex-end;
+    }}
     [data-testid="stPopover"] > button {{
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
+        outline: none !important;
         padding: 4px !important;
         min-height: 20px !important;
         min-width: 20px !important;
-        opacity: 0.35;
-        transition: opacity 0.15s;
+        color: {muted} !important;
     }}
     [data-testid="stPopover"] > button:hover {{
-        opacity: 1;
+        color: {txt} !important;
     }}
-    [data-testid="stPopover"] {{
-        display: flex;
-        justify-content: flex-end;
+    [data-testid="stPopover"] > button > div {{
+        background: transparent !important;
+        border: none !important;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -105,8 +110,8 @@ def _inject_theme_css():
 # (THEMES imported from config.py)
 
 def get_theme():
-    name = st.session_state.get('theme', 'Terminal')
-    return THEMES.get(name, THEMES['Terminal'])
+    name = st.session_state.get('theme', 'Dark')
+    return THEMES.get(name, THEMES['Dark'])
 
 def zone_colors():
     t = get_theme()

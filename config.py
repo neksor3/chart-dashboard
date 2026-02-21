@@ -61,49 +61,27 @@ SYMBOL_NAMES = {
 # =============================================================================
 
 THEMES = {
-    'Terminal': {
+    'Dark': {
         'mode': 'dark',
         'pos': '#4ade80', 'neg': '#f59e0b',
         'zone_hi': '#4ade80', 'zone_amid': '#86efac', 'zone_bmid': '#fbbf24', 'zone_lo': '#f59e0b',
         'str_up': '#4ade80', 'str_dn': '#f59e0b', 'pull': '#fbbf24', 'bnce': '#93c5fd',
         'long': '#4ade80', 'short': '#f59e0b',
-        'bg': '#1e1e1e', 'bg2': '#0a0f1a', 'bg3': '#0f172a',
+        'bg': '#0f1117', 'bg2': '#0a0f1a', 'bg3': '#0f172a',
         'border': '#1e293b', 'text': '#e2e8f0', 'text2': '#94a3b8', 'muted': '#475569',
         'accent': '#4ade80',
-        'plot_bg': '#121212', 'grid': '#1f1f1f', 'axis_line': '#2a2a2a', 'tick': '#888888',
+        'plot_bg': '#0f1117', 'grid': '#1a1f2e', 'axis_line': '#2a2a2a', 'tick': '#888888',
     },
-    'Neon': {
-        'mode': 'dark',
-        'pos': '#38bdf8', 'neg': '#fb7185',
-        'zone_hi': '#38bdf8', 'zone_amid': '#7dd3fc', 'zone_bmid': '#fda4af', 'zone_lo': '#fb7185',
-        'str_up': '#38bdf8', 'str_dn': '#fb7185', 'pull': '#fbbf24', 'bnce': '#a78bfa',
-        'long': '#38bdf8', 'short': '#fb7185',
-        'bg': '#0c0c14', 'bg2': '#08081a', 'bg3': '#10102a',
-        'border': '#1a1a3e', 'text': '#e2e8f0', 'text2': '#8888bb', 'muted': '#555580',
-        'accent': '#38bdf8',
-        'plot_bg': '#0c0c14', 'grid': '#151530', 'axis_line': '#1a1a3e', 'tick': '#8888bb',
-    },
-    'Daylight': {
+    'Light': {
         'mode': 'light',
-        'pos': '#16a34a', 'neg': '#b45309',
-        'zone_hi': '#16a34a', 'zone_amid': '#4ade80', 'zone_bmid': '#fbbf24', 'zone_lo': '#b45309',
-        'str_up': '#16a34a', 'str_dn': '#b45309', 'pull': '#d97706', 'bnce': '#2563eb',
-        'long': '#16a34a', 'short': '#b45309',
+        'pos': '#16a34a', 'neg': '#d97706',
+        'zone_hi': '#16a34a', 'zone_amid': '#4ade80', 'zone_bmid': '#fbbf24', 'zone_lo': '#d97706',
+        'str_up': '#16a34a', 'str_dn': '#d97706', 'pull': '#d97706', 'bnce': '#2563eb',
+        'long': '#16a34a', 'short': '#d97706',
         'bg': '#ffffff', 'bg2': '#f8fafc', 'bg3': '#f1f5f9',
         'border': '#e2e8f0', 'text': '#1e293b', 'text2': '#64748b', 'muted': '#94a3b8',
         'accent': '#16a34a',
         'plot_bg': '#ffffff', 'grid': '#f1f5f9', 'axis_line': '#e2e8f0', 'tick': '#64748b',
-    },
-    'Frost': {
-        'mode': 'light',
-        'pos': '#2563eb', 'neg': '#dc2626',
-        'zone_hi': '#2563eb', 'zone_amid': '#60a5fa', 'zone_bmid': '#fca5a5', 'zone_lo': '#dc2626',
-        'str_up': '#2563eb', 'str_dn': '#dc2626', 'pull': '#d97706', 'bnce': '#7c3aed',
-        'long': '#2563eb', 'short': '#dc2626',
-        'bg': '#ffffff', 'bg2': '#f0f4ff', 'bg3': '#e8eeff',
-        'border': '#dbe4f0', 'text': '#1e293b', 'text2': '#5b6b85', 'muted': '#8896ab',
-        'accent': '#2563eb',
-        'plot_bg': '#ffffff', 'grid': '#f0f4ff', 'axis_line': '#dbe4f0', 'tick': '#5b6b85',
     },
 }
 

@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 def get_theme():
-    tn = st.session_state.get('theme', 'Terminal')
-    return THEMES.get(tn, THEMES['Terminal'])
+    tn = st.session_state.get('theme', 'Dark')
+    return THEMES.get(tn, THEMES['Dark'])
 
 
 def _s():
@@ -199,18 +199,21 @@ def _render_market_status_bar():
     markets = _market_status()
     t = get_theme()
     s = _s()
+    is_light = t.get('mode') == 'light'
     dots = ''
     for m in markets:
         color = t['pos'] if m['open'] else s['off_dot']
         glow = f'box-shadow:0 0 6px {t["pos"]}80;' if m['open'] else ''
         pulse = 'animation:pulse-dot 2s ease-in-out infinite;' if m['open'] else ''
-        nc = s['text'] if m['open'] else s['off_name']
-        tc = s['text'] if m['open'] else s['text2']
+        # Country name: strong text
+        nc = ('#0f172a' if is_light else '#f1f5f9') if m['open'] else ('#64748b' if is_light else '#64748b')
+        # Time: always visible
+        tc = ('#334155' if is_light else '#e2e8f0') if m['open'] else ('#94a3b8' if is_light else '#8899aa')
         dots += (
             f"<div style='display:flex;align-items:center;gap:4px'>"
             f"<div style='width:6px;height:6px;border-radius:50%;background:{color};{glow}{pulse}'></div>"
             f"<span style='color:{nc};font-size:9px;font-weight:600;letter-spacing:0.06em'>{m['name']}</span>"
-            f"<span style='color:{tc};font-size:9px;font-weight:500'>{m['time']}</span>"
+            f"<span style='color:{tc};font-size:9px;font-weight:600'>{m['time']}</span>"
             f"</div>"
         )
     html = (
@@ -248,15 +251,19 @@ def _render_hero_row(data):
             card_bg = f'background:linear-gradient(135deg,{s["bg3"]},{s["bg2"]});'
             glow = f'text-shadow:0 0 20px {color}40;'
 
+        # Force high contrast price color
+        price_c = '#0f172a' if is_light else '#f8fafc'
+        label_c = '#475569' if is_light else s['muted']
+
         cards += (
             f"<div style='flex:1;min-width:110px;padding:10px 12px;"
             f"{card_bg}"
             f"border:1px solid {s['border']};border-radius:6px;position:relative;overflow:hidden'>"
             f"<div style='position:absolute;top:0;left:0;right:0;height:2px;"
             f"background:linear-gradient(90deg,transparent,{color}40,transparent)'></div>"
-            f"<div style='color:{s['muted']};font-size:8px;font-weight:600;letter-spacing:0.12em;"
+            f"<div style='color:{label_c};font-size:8px;font-weight:600;letter-spacing:0.12em;"
             f"text-transform:uppercase;margin-bottom:4px'>{cfg['label']}</div>"
-            f"<div style='color:{s['text']};font-size:17px;font-weight:700;"
+            f"<div style='color:{price_c};font-size:17px;font-weight:700;"
             f"font-variant-numeric:tabular-nums;letter-spacing:-0.02em;"
             f"{glow}'>{price_str}</div>"
             f"<div style='margin-top:3px;display:flex;align-items:center;gap:4px'>"
