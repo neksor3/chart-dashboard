@@ -423,8 +423,7 @@ def _render_movers(data):
 
 def _render_pulse_news():
     from news import NEWS_FEEDS, fetch_rss_feed
-    t = get_theme()
-    s = _s()
+    t = get_theme(); s = _s()
     pos_c = t['pos']
     all_items = []
     for region in ['Global', 'Singapore']:
@@ -440,24 +439,29 @@ def _render_pulse_news():
     for i, item in enumerate(all_items):
         bg = s['bg2'] if i % 2 == 0 else s['row_alt']
         rows += (
-            f"<div style='padding:5px 10px;background:{bg};border-bottom:1px solid {s['border']}10'>"
-            f"<div style='font-size:10px;line-height:1.35'>"
-            f"<a href='{item['url']}' target='_blank'>{item['title']}</a></div>"
-            f"<div style='font-size:7px;margin-top:1px'>"
-            f"<span style='color:{pos_c};font-weight:600'>{item['source']}</span>"
-            f" <span style='color:{s['muted']}'>&#183;</span> "
-            f"<span style='color:{s['muted']}'>{item['date']}</span>"
+            f"<div style='padding:8px 12px;background:{bg};border-bottom:1px solid {s['border']}10;"
+            f"transition:background 0.15s'>"
+            f"<a href='{item['url']}' target='_blank' style='color:{s['link']};text-decoration:none;"
+            f"font-size:11.5px;font-weight:500;line-height:1.45;letter-spacing:-0.01em;"
+            f"font-family:{FONTS};display:block'>{item['title']}</a>"
+            f"<div style='font-size:9px;margin-top:3px;display:flex;align-items:center;gap:6px;"
+            f"font-family:{FONTS}'>"
+            f"<span style='color:{pos_c};font-weight:600;letter-spacing:0.02em'>{item['source']}</span>"
+            f"<span style='color:{s['border']}'>|</span>"
+            f"<span style='color:{s['muted']};font-weight:400'>{item['date']}</span>"
             f"</div></div>"
         )
 
     html = (
-        f"<div style='background:{s['bg2']};border:1px solid {s['border']};border-radius:6px;overflow:hidden'>"
-        f"<div style='padding:6px 10px;display:flex;justify-content:space-between;align-items:center'>"
+        f"<div style='background:{s['bg2']};border:1px solid {s['border']};border-radius:6px;overflow:hidden;"
+        f"font-family:{FONTS}'>"
+        f"<div style='padding:8px 12px;display:flex;justify-content:space-between;align-items:center;"
+        f"border-bottom:1px solid {s['border']}'>"
         f"<span style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.1em'>LATEST</span>"
-        f"<span style='color:{s['muted']};font-size:8px'>{len(all_items)} headlines</span></div>"
-        f"<div style='max-height:320px;overflow-y:auto'>{rows}</div></div>"
+        f"<span style='color:{s['muted']};font-size:9px;font-weight:500'>{len(all_items)} headlines</span></div>"
+        f"<div style='max-height:340px;overflow-y:auto'>{rows}</div></div>"
     )
-    _wrap(html, min(len(all_items) * 36 + 30, 350))
+    _wrap(html, min(len(all_items) * 42 + 36, 380))
 
 
 # ── MAIN ─────────────────────────────────────────────────────────────────────
