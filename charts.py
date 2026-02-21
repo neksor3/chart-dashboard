@@ -759,7 +759,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                 seg_dt = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in datetimes[start_i:seg_end]] if datetimes is not None else None
                 hover = '%{customdata}<br>%{y:.2f}<extra></extra>' if seg_dt else '%{y:.2f}<extra></extra>'
                 fig.add_trace(go.Scatter(x=seg_x, y=seg_y, mode='lines',
-                    line=dict(color=zc[zone], width=1.5),
+                    line=dict(color=zc[zone], width=1.3),
                     showlegend=False, customdata=seg_dt, hovertemplate=hover), row=row, col=col)
 
         if boundaries:
@@ -785,13 +785,13 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                     if len(prev_seg) > 0:
                         rh = prev_seg['High'].expanding().max(); rl = prev_seg['Low'].expanding().min()
                         rx = list(range(ps, pe))
-                        fig.add_trace(go.Scatter(x=rx, y=((rh + prev_b.prev_low)/2).values, mode='lines', line=dict(color='#f472b6', width=0.8, dash='dash'), showlegend=False, hovertemplate='Retrace Buy: %{y:.2f}<extra></extra>'), row=row, col=col)
-                        fig.add_trace(go.Scatter(x=rx, y=((rl + prev_b.prev_high)/2).values, mode='lines', line=dict(color='#60a5fa', width=0.8, dash='dash'), showlegend=False, hovertemplate='Retrace Sell: %{y:.2f}<extra></extra>'), row=row, col=col)
+                        fig.add_trace(go.Scatter(x=rx, y=((rh + prev_b.prev_low)/2).values, mode='lines', line=dict(color='#be185d', width=0.6, dash='dot'), showlegend=False, hovertemplate='Retrace Buy: %{y:.2f}<extra></extra>'), row=row, col=col)
+                        fig.add_trace(go.Scatter(x=rx, y=((rl + prev_b.prev_high)/2).values, mode='lines', line=dict(color='#0369a1', width=0.6, dash='dot'), showlegend=False, hovertemplate='Retrace Sell: %{y:.2f}<extra></extra>'), row=row, col=col)
 
             first_tracked = boundaries[-2].idx if len(boundaries) >= 2 else boundary_idx
             if first_tracked > 0 and chart_type == 'line':
                 dt_labels = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in hist.index[:first_tracked]]
-                fig.add_trace(go.Scatter(x=x_vals[:first_tracked], y=hist['Close'].values[:first_tracked], mode='lines', line=dict(color='#6b7280', width=1.5), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=x_vals[:first_tracked], y=hist['Close'].values[:first_tracked], mode='lines', line=dict(color='#4b5563', width=1.2), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
 
             if boundary_idx < len(hist) and chart_type == 'line':
                 plot_colored_segments(x_vals[boundary_idx:], hist['Close'].values[boundary_idx:], last_b.prev_high, last_b.prev_low, mid, boundary_idx, hist.index[boundary_idx:])
@@ -805,7 +805,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                     showlegend=False, line=dict(width=1)), row=row, col=col)
             else:
                 dt_labels = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in hist.index]
-                fig.add_trace(go.Scatter(x=x_vals, y=hist['Close'].values, mode='lines', line=dict(color='#6b7280', width=1.5), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=x_vals, y=hist['Close'].values, mode='lines', line=dict(color='#4b5563', width=1.2), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
 
         if boundaries:
             zone_status = get_zone(current_price, last_b.prev_high, last_b.prev_low, mid)
@@ -818,20 +818,20 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
         if boundary_type == 'year':
             ma_20 = hist['Close'].rolling(window=20).mean(); ma_40 = hist['Close'].rolling(window=40).mean()
             if ma_20.notna().any():
-                fig.add_trace(go.Scatter(x=x_vals, y=ma_20.values, mode='lines', line=dict(color='#ffffff', width=0.8), showlegend=False, hovertemplate='MA20: %{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=x_vals, y=ma_20.values, mode='lines', line=dict(color='#ffffff50', width=0.7), showlegend=False, hovertemplate='MA20: %{y:.2f}<extra></extra>'), row=row, col=col)
             if ma_40.notna().any():
-                fig.add_trace(go.Scatter(x=x_vals, y=ma_40.values, mode='lines', line=dict(color='#a855f7', width=0.8), showlegend=False, hovertemplate='MA40: %{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=x_vals, y=ma_40.values, mode='lines', line=dict(color='#a855f780', width=0.7), showlegend=False, hovertemplate='MA40: %{y:.2f}<extra></extra>'), row=row, col=col)
 
         # Boundary lines
         num_boundaries = min(2, len(boundaries))
         for j in range(num_boundaries):
             b = boundaries[-(j+1)]; px = b.idx; ex = len(hist)-1 if j == 0 else boundaries[-1].idx
-            fig.add_vline(x=px, line=dict(color='#475569', width=1, dash='dot'), row=row, col=col)
+            fig.add_vline(x=px, line=dict(color='#334155', width=0.8, dash='dot'), row=row, col=col)
             ml = (b.prev_high + b.prev_low) / 2
-            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_high]*2, mode='lines', line=dict(color=zc['above_high'], width=1.2), showlegend=False, hovertemplate=f'High: {b.prev_high:.2f}<extra></extra>'), row=row, col=col)
-            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_low]*2, mode='lines', line=dict(color=zc['below_low'], width=1.2), showlegend=False, hovertemplate=f'Low: {b.prev_low:.2f}<extra></extra>'), row=row, col=col)
-            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_close]*2, mode='lines', line=dict(color='#6b7280', width=0.7, dash='dash'), showlegend=False, hovertemplate=f'Close: {b.prev_close:.2f}<extra></extra>'), row=row, col=col)
-            fig.add_trace(go.Scatter(x=[px,ex], y=[ml]*2, mode='lines', line=dict(color='#fbbf24', width=0.8, dash='dash'), showlegend=False, hovertemplate=f'50%: {ml:.2f}<extra></extra>'), row=row, col=col)
+            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_high]*2, mode='lines', line=dict(color=zc['above_high'], width=0.9), showlegend=False, hovertemplate=f'High: {b.prev_high:.2f}<extra></extra>'), row=row, col=col)
+            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_low]*2, mode='lines', line=dict(color=zc['below_low'], width=0.9), showlegend=False, hovertemplate=f'Low: {b.prev_low:.2f}<extra></extra>'), row=row, col=col)
+            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_close]*2, mode='lines', line=dict(color='#475569', width=0.6, dash='dot'), showlegend=False, hovertemplate=f'Close: {b.prev_close:.2f}<extra></extra>'), row=row, col=col)
+            fig.add_trace(go.Scatter(x=[px,ex], y=[ml]*2, mode='lines', line=dict(color='#d97706', width=0.6, dash='dot'), showlegend=False, hovertemplate=f'50%: {ml:.2f}<extra></extra>'), row=row, col=col)
 
         # Retrace lines (current period)
         if boundaries:
@@ -839,8 +839,8 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             if len(cp) > 0:
                 rh = cp['High'].expanding().max(); rl = cp['Low'].expanding().min()
                 rx = list(range(last_b.idx, last_b.idx+len(cp)))
-                fig.add_trace(go.Scatter(x=rx, y=((rh+last_b.prev_low)/2).values, mode='lines', line=dict(color='#f472b6', width=0.8, dash='dash'), showlegend=False, hovertemplate='Retrace Buy: %{y:.2f}<extra></extra>'), row=row, col=col)
-                fig.add_trace(go.Scatter(x=rx, y=((rl+last_b.prev_high)/2).values, mode='lines', line=dict(color='#60a5fa', width=0.8, dash='dash'), showlegend=False, hovertemplate='Retrace Sell: %{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=rx, y=((rh+last_b.prev_low)/2).values, mode='lines', line=dict(color='#be185d', width=0.6, dash='dot'), showlegend=False, hovertemplate='Retrace Buy: %{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=rx, y=((rl+last_b.prev_high)/2).values, mode='lines', line=dict(color='#0369a1', width=0.6, dash='dot'), showlegend=False, hovertemplate='Retrace Sell: %{y:.2f}<extra></extra>'), row=row, col=col)
 
         # Reversal dots
         if boundaries:
@@ -858,7 +858,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                     if c0 < pb.prev_low and c1 >= pb.prev_low: rev_x.append(j + 1); rev_y.append(c1)
             if rev_x:
                 fig.add_trace(go.Scatter(x=rev_x, y=rev_y, mode='markers',
-                    marker=dict(color='#facc15', size=7, symbol='circle', line=dict(color='#a16207', width=1)),
+                    marker=dict(color='#facc15', size=5, symbol='circle', line=dict(color='#92400e', width=0.8)),
                     showlegend=False, hovertemplate='Reversal: %{y:.2f}<extra></extra>'), row=row, col=col)
 
         # Axis formatting
@@ -893,21 +893,21 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             if status:
                 c = stc.get(status, '#9d9d9d')
                 parts.append(f"<b><span style='color:{c}'>[{status}]</span></b>")
-            ann['text'] = '  '.join(parts); ann['font'] = dict(color='#9d9d9d', size=11)
+            ann['text'] = '  '.join(parts); ann['font'] = dict(color='#94a3b8', size=10)
 
     _t = get_theme()
     _pbg = _t.get('plot_bg', '#121212'); _grd = _t.get('grid', '#1f1f1f')
     _axl = _t.get('axis_line', '#2a2a2a'); _tk = _t.get('tick', '#888888')
     _tpl = 'plotly_white' if _t.get('mode') == 'light' else 'plotly_dark'
 
-    fig.update_layout(template=_tpl, height=1200 if mobile else 1100, margin=dict(l=50,r=90,t=60,b=40),
+    fig.update_layout(template=_tpl, height=1100 if mobile else 950, margin=dict(l=40,r=80,t=50,b=30),
         showlegend=False, plot_bgcolor=_pbg, paper_bgcolor=_pbg,
         dragmode='pan', hovermode='closest', autosize=True)
     fig.update_xaxes(gridcolor=_grd, linecolor=_axl, tickfont=dict(color=_tk, size=8),
         showgrid=True, showticklabels=True, tickangle=-45, rangeslider=dict(visible=False),
-        fixedrange=False, showspikes=True, spikecolor='#6b7280', spikethickness=1, spikedash='dot', spikemode='across')
+        fixedrange=False, showspikes=True, spikecolor='#475569', spikethickness=0.5, spikedash='dot', spikemode='across')
     fig.update_yaxes(gridcolor=_grd, linecolor=_axl, showgrid=True, side='right',
-        fixedrange=False, showspikes=True, spikecolor='#6b7280', spikethickness=1, spikedash='dot', spikemode='across')
+        fixedrange=False, showspikes=True, spikecolor='#475569', spikethickness=0.5, spikedash='dot', spikemode='across')
 
     return fig, computed_levels
 
@@ -1015,6 +1015,38 @@ def render_news_panel(symbol):
             )
         html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
+
+def _render_chart_legend():
+    """Compact chart legend showing what each line/marker means."""
+    t = get_theme(); zc = zone_colors()
+    _bg = t.get('bg3', '#1a2744'); _bdr = t.get('border', '#2a2a2a'); _mut = t.get('muted', '#475569')
+    items = [
+        (zc['above_high'], 'solid', 'Prev High'),
+        (zc['below_low'], 'solid', 'Prev Low'),
+        ('#475569', 'dotted', 'Prev Close'),
+        ('#d97706', 'dotted', '50% Mid'),
+        ('#be185d', 'dotted', 'Retrace Buy'),
+        ('#0369a1', 'dotted', 'Retrace Sell'),
+        ('#ffffff', 'solid', 'MA 20'),
+        ('#a855f7', 'solid', 'MA 40'),
+    ]
+    rows = ""
+    for color, style, label in items:
+        rows += (
+            f"<div style='display:flex;align-items:center;gap:8px;padding:2px 0'>"
+            f"<div style='width:20px;height:0;border-top:2px {style} {color};flex-shrink:0'></div>"
+            f"<span style='color:{_mut};font-size:9px'>{label}</span></div>"
+        )
+    rows += (
+        f"<div style='display:flex;align-items:center;gap:8px;padding:2px 0'>"
+        f"<div style='width:6px;height:6px;border-radius:50%;background:#facc15;flex-shrink:0;margin:0 7px'></div>"
+        f"<span style='color:{_mut};font-size:9px'>Reversal</span></div>"
+    )
+    html = f"""<div style='padding:8px 12px;background:{_bg};border:1px solid {_bdr};border-radius:4px;margin-top:8px;font-family:{FONTS}'>
+        <div style='color:{_mut};font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px'>LEGEND</div>
+        {rows}</div>"""
+    st.markdown(html, unsafe_allow_html=True)
+
 
 def render_charts_tab(is_mobile, est):
     """Chart tab content — sector scanner, asset charts, levels, news."""
@@ -1138,6 +1170,7 @@ def render_charts_tab(is_mobile, est):
         with col_right:
             render_key_levels(st.session_state.symbol, levels)
             render_news_panel(st.session_state.symbol)
+            _render_chart_legend()
 
     # Footer
     ct_now = datetime.now(est).strftime('%H:%M %Z')
