@@ -78,6 +78,22 @@ def _inject_theme_css():
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stStatusWidget"] {{visibility: hidden;}}
+    /* Theme popover: tiny arrow button */
+    [data-testid="stPopover"] > button {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: {muted} !important;
+        font-size: 14px !important;
+        padding: 2px 6px !important;
+        min-height: 20px !important;
+        opacity: 0.4;
+        transition: opacity 0.15s;
+    }}
+    [data-testid="stPopover"] > button:hover {{
+        opacity: 1;
+        color: {accent} !important;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1152,36 +1168,19 @@ def main():
             </div>
         """, unsafe_allow_html=True)
     with theme_col:
-        st.markdown("""<div style='padding-top:14px'></div>
-        <style>
-            /* Hide theme selectbox text — show arrow only */
-            [data-st-key="_theme_pick"] { max-width:28px !important; overflow:hidden !important; }
-            [data-st-key="_theme_pick"] [data-baseweb="select"] > div {
-                background:transparent !important; border:none !important;
-                padding:0 !important; min-height:20px !important;
-                box-shadow:none !important;
-            }
-            [data-st-key="_theme_pick"] [data-baseweb="select"] > div > div {
-                visibility:hidden !important; width:0 !important;
-                height:0 !important; overflow:hidden !important;
-                position:absolute !important;
-            }
-            [data-st-key="_theme_pick"] [data-baseweb="select"] svg {
-                visibility:visible !important; opacity:0.4;
-                width:16px !important; height:16px !important;
-            }
-            [data-st-key="_theme_pick"]:hover svg { opacity:1; }
-        </style>""", unsafe_allow_html=True)
-        theme_names = list(THEMES.keys())
-        if st.session_state.get('theme') not in theme_names:
-            st.session_state.theme = theme_names[0]
-        cur_idx = theme_names.index(st.session_state.theme)
-        picked = st.selectbox("t", theme_names, index=cur_idx,
-            key='_theme_pick', label_visibility='collapsed')
-        if picked != st.session_state.theme:
-            st.session_state.theme = picked
-            st.query_params['theme'] = picked
-            st.rerun()
+        muted_c = t.get('muted', '#475569')
+        st.markdown(f"<div style='padding-top:10px'></div>", unsafe_allow_html=True)
+        with st.popover("▾"):
+            theme_names = list(THEMES.keys())
+            if st.session_state.get('theme') not in theme_names:
+                st.session_state.theme = theme_names[0]
+            for tn in theme_names:
+                is_cur = tn == st.session_state.theme
+                label = f"● {tn}" if is_cur else f"  {tn}"
+                if st.button(label, key=f'_tb_{tn}', use_container_width=True):
+                    st.session_state.theme = tn
+                    st.query_params['theme'] = tn
+                    st.rerun()
 
     # Tabs — clean uppercase
     tab_pulse, tab_charts, tab_spreads, tab_portfolio, tab_news = st.tabs(["PULSE", "CHARTS", "SPREADS", "PORTFOLIO", "NEWS"])
