@@ -175,12 +175,12 @@ def _market_status():
     now_utc = datetime.now(pytz.utc)
     results = []
     markets = [
-        ('US',     'US/Eastern',     9, 30, 16, 0),
-        ('LONDON', 'Europe/London',  8, 0,  16, 30),
-        ('EUROPE', 'Europe/Berlin',  9, 0,  17, 30),
-        ('TOKYO',  'Asia/Tokyo',     9, 0,  15, 0),
-        ('HK',     'Asia/Hong_Kong', 9, 30, 16, 0),
-        ('SGP',    'Asia/Singapore', 9, 0,  17, 0),
+        ('SG',  'Asia/Singapore', 9, 0,  17, 0),
+        ('HK',  'Asia/Hong_Kong', 9, 30, 16, 0),
+        ('JP',  'Asia/Tokyo',     9, 0,  15, 0),
+        ('EU',  'Europe/Berlin',  9, 0,  17, 30),
+        ('UK',  'Europe/London',  8, 0,  16, 30),
+        ('US',  'US/Eastern',     9, 30, 16, 0),
     ]
     for name, tz_str, oh, om, ch, cm in markets:
         tz = pytz.timezone(tz_str)
@@ -205,11 +205,12 @@ def _render_market_status_bar():
         glow = f'box-shadow:0 0 6px {t["pos"]}80;' if m['open'] else ''
         pulse = 'animation:pulse-dot 2s ease-in-out infinite;' if m['open'] else ''
         nc = s['text'] if m['open'] else s['off_name']
+        tc = s['text'] if m['open'] else s['text2']
         dots += (
-            f"<div style='display:flex;align-items:center;gap:5px'>"
+            f"<div style='display:flex;align-items:center;gap:4px'>"
             f"<div style='width:6px;height:6px;border-radius:50%;background:{color};{glow}{pulse}'></div>"
-            f"<span style='color:{nc};font-size:9px;font-weight:600;letter-spacing:0.08em'>{m['name']}</span>"
-            f"<span style='color:{s['off_name']};font-size:8px'>{m['time']}</span>"
+            f"<span style='color:{nc};font-size:9px;font-weight:600;letter-spacing:0.06em'>{m['name']}</span>"
+            f"<span style='color:{tc};font-size:9px;font-weight:500'>{m['time']}</span>"
             f"</div>"
         )
     html = (
@@ -308,7 +309,7 @@ def _render_heatmap_grid(data):
         opacity = 0.15 + (abs_c / 5) * 0.55 if is_light else 0.25 + (abs_c / 5) * 0.75
         base = pos if change >= 0 else neg
         r, g, b = int(base[1:3], 16), int(base[3:5], 16), int(base[5:7], 16)
-        return f'rgba({r},{g},{b},{opacity:.2f})'
+        return f'rgba({r},{g},{b},{opacity:.2f})', abs_c
 
     sectors_html = ''
     active_sectors = 0
@@ -322,15 +323,21 @@ def _render_heatmap_grid(data):
             has_data = True
             change = d['change']
             name = clean_symbol(sym)
-            bg = _bg(change, pos_c, neg_c)
-            tc = pos_c if change >= 0 else neg_c
+            bg, intensity = _bg(change, pos_c, neg_c)
+            # Dynamic text: use high-contrast on strong backgrounds
+            if intensity > 3:
+                name_c = '#ffffff' if not is_light else '#1e293b'
+                val_c = '#ffffff' if not is_light else '#1e293b'
+            else:
+                name_c = s['hm_txt']
+                val_c = pos_c if change >= 0 else neg_c
             sign = '+' if change >= 0 else ''
             cell_border = 'rgba(0,0,0,0.06)' if is_light else 'rgba(255,255,255,0.04)'
             cells += (
                 f"<div style='flex:1;min-width:60px;padding:6px 8px;background:{bg};"
                 f"border-radius:3px;border:1px solid {cell_border};text-align:center'>"
-                f"<div style='color:{s['hm_txt']};font-size:10px;font-weight:600'>{name}</div>"
-                f"<div style='color:{tc};font-size:11px;font-weight:700;margin-top:1px;"
+                f"<div style='color:{name_c};font-size:10px;font-weight:600'>{name}</div>"
+                f"<div style='color:{val_c};font-size:11px;font-weight:700;margin-top:1px;"
                 f"font-variant-numeric:tabular-nums'>{sign}{change:.2f}%</div>"
                 f"</div>"
             )

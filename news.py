@@ -100,20 +100,23 @@ def render_news_column(region, feeds):
         all_items.extend(fetch_rss_feed(name, url))
     all_items.sort(key=lambda x: x['date'], reverse=True)
 
-    html = f"""<div style='padding:6px 10px;background-color:{_hdr_bg};border-radius:4px 4px 0 0;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center'>
+    html = f"""<style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');</style>"""
+    html += f"""<div style='padding:8px 12px;background-color:{_hdr_bg};border-radius:4px 4px 0 0;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center'>
         <span style='color:{_txt};font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{region}</span>
-        <span style='color:{_mut};font-size:8px'>{len(all_items)}</span>
+        <span style='color:{_mut};font-size:9px'>{len(all_items)}</span>
     </div>"""
     html += f"<div style='background:{_body_bg};border:1px solid {_bdr};border-top:none;border-radius:0 0 4px 4px;max-height:600px;overflow-y:auto'>"
     if not all_items:
-        html += f"<div style='padding:16px;color:{_mut};font-size:10px;font-family:{FONTS};text-align:center'>Feeds loading…</div>"
+        html += f"<div style='padding:16px;color:{_mut};font-size:11px;font-family:{FONTS};text-align:center'>Feeds loading…</div>"
     else:
+        _txt2 = t.get('text2', '#94a3b8')
+        _accent = t.get('accent', pos_c)
         for i, item in enumerate(all_items[:30]):
             bg = _body_bg if i % 2 == 0 else _row_alt
-            a = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:10.5px;line-height:1.4'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:10.5px'>{item['title']}</span>"
-            html += f"""<div style='padding:6px 10px;border-bottom:1px solid {_bdr};background:{bg};font-family:{FONTS}'>
+            a = f"<a href='{item['url']}' target='_blank' style='color:{_txt};text-decoration:none;font-size:11px;font-weight:400;line-height:1.5;font-family:{FONTS}'>{item['title']}</a>" if item['url'] else f"<span style='color:{_txt};font-size:11px;font-family:{FONTS}'>{item['title']}</span>"
+            html += f"""<div style='padding:7px 12px;border-bottom:1px solid {_bdr};background:{bg}'>
                 <div>{a}</div>
-                <div style='font-size:8px;margin-top:2px'><span style='color:{pos_c};font-weight:600'>{item['source']}</span> <span style='color:{_mut}'>·</span> <span style='color:{_mut}'>{item['date']}</span></div>
+                <div style='font-size:9px;margin-top:3px;font-family:{FONTS}'><span style='color:{_accent};font-weight:600'>{item['source']}</span> <span style='color:{_mut}'>&middot;</span> <span style='color:{_txt2}'>{item['date']}</span></div>
             </div>"""
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)

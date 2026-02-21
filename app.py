@@ -78,25 +78,6 @@ def _inject_theme_css():
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stStatusWidget"] {{visibility: hidden;}}
-    /* Theme popover button */
-    [data-testid="stPopover"] > button {{
-        background: transparent !important;
-        border: none !important;
-        color: {muted} !important;
-        font-size: 18px !important;
-        padding: 2px 6px !important;
-        min-height: 28px !important;
-        opacity: 0.5;
-        transition: opacity 0.2s;
-    }}
-    [data-testid="stPopover"] > button:hover {{
-        opacity: 1;
-        color: {accent} !important;
-    }}
-    [data-testid="stPopover"] [data-testid="stPopoverBody"] {{
-        background: {bg3};
-        border: 1px solid {bdr};
-    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1133,24 +1114,24 @@ def main():
     # Inject theme-aware CSS
     _inject_theme_css()
 
-    # SANPO logo header with theme popover
+    # SANPO logo header — clean layout
     t = get_theme()
     is_light = t.get('mode') == 'light'
     pos_c = t['pos']
     neg_c = t['neg']
     ring_c = '#cbd5e1' if is_light else '#1e293b'
     title_c = '#1e293b' if is_light else '#f8fafc'
-    time_c = t.get('muted', '#475569')
+    time_c = t.get('text', '#e2e8f0')
+    time_dim = t.get('text2', '#94a3b8')
 
-    col_logo, col_time = st.columns([7, 3])
-    with col_logo:
-        st.markdown(f"""
-            <style>
-                @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
-                @keyframes sanpo-blink {{ 0%,100% {{ opacity: 0.9; }} 50% {{ opacity: 0.1; }} }}
-                @keyframes sanpo-glow {{ 0%,100% {{ filter: drop-shadow(0 0 3px {pos_c}40); }} 50% {{ filter: drop-shadow(0 0 8px {pos_c}90); }} }}
-            </style>
-            <div style='display:flex;align-items:center;gap:14px;padding:10px 0'>
+    st.markdown(f"""
+        <style>
+            @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
+            @keyframes sanpo-blink {{ 0%,100% {{ opacity: 0.9; }} 50% {{ opacity: 0.1; }} }}
+            @keyframes sanpo-glow {{ 0%,100% {{ filter: drop-shadow(0 0 3px {pos_c}40); }} 50% {{ filter: drop-shadow(0 0 8px {pos_c}90); }} }}
+        </style>
+        <div style='display:flex;align-items:center;justify-content:space-between;padding:10px 4px;margin-bottom:2px'>
+            <div style='display:flex;align-items:center;gap:14px'>
                 <svg width="44" height="44" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
                     <circle cx="20" cy="20" r="18" stroke="{ring_c}" stroke-width="0.8"/>
                     <circle cx="20" cy="20" r="12.5" stroke="{ring_c}" stroke-width="0.6"/>
@@ -1171,32 +1152,28 @@ def main():
                 </svg>
                 <span style='font-family:Orbitron,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:{title_c};line-height:1'>SANPO</span>
             </div>
-        """, unsafe_allow_html=True)
-    with col_time:
-        # Timestamp + theme popover on one line
-        tcol, pcol = st.columns([6, 1])
-        with tcol:
-            st.markdown(f"<div style='text-align:right;padding-top:18px;font-family:{FONTS};color:{time_c};font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</div>", unsafe_allow_html=True)
-        with pcol:
-            st.markdown("<div style='padding-top:12px'></div>", unsafe_allow_html=True)
-            with st.popover("◎"):
-                theme_names = list(THEMES.keys())
-                if st.session_state.get('theme') not in theme_names:
-                    st.session_state.theme = theme_names[0]
-                cur = st.session_state.theme
-                cur_t = THEMES[cur]
-                # Show current theme indicator
-                st.markdown(f"<div style='font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#64748b;margin-bottom:8px'>THEME</div>", unsafe_allow_html=True)
-                for tn in theme_names:
-                    td = THEMES[tn]
-                    icon = '◉' if tn == cur else '○'
-                    mode_tag = '☀' if td.get('mode') == 'light' else '🌙'
-                    if st.button(f"{icon} {mode_tag} {tn}", key=f'theme_btn_{tn}', use_container_width=True):
-                        st.session_state.theme = tn
-                        st.query_params['theme'] = tn
-                        st.rerun()
+            <span style='font-family:{FONTS};font-size:11px;letter-spacing:0.04em'>
+                <span style='color:{time_c};font-weight:600'>{ts_sgt}</span>
+                <span style='color:{time_dim};font-size:9px'>&nbsp; {ts_est}</span>
+            </span>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # Tabs — clean uppercase, blue underline
+    # Tabs + tiny theme selector on the right of the tab bar
+    tab_col, theme_col = st.columns([9, 1])
+    with theme_col:
+        theme_names = list(THEMES.keys())
+        if st.session_state.get('theme') not in theme_names:
+            st.session_state.theme = theme_names[0]
+        cur_idx = theme_names.index(st.session_state.theme)
+        picked = st.selectbox("t", theme_names, index=cur_idx,
+            key='_theme_pick', label_visibility='collapsed')
+        if picked != st.session_state.theme:
+            st.session_state.theme = picked
+            st.query_params['theme'] = picked
+            st.rerun()
+
+    # Tabs — clean uppercase
     tab_pulse, tab_charts, tab_spreads, tab_portfolio, tab_news = st.tabs(["PULSE", "CHARTS", "SPREADS", "PORTFOLIO", "NEWS"])
 
     with tab_pulse:
