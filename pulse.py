@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 def get_theme():
-    tn = st.session_state.get('theme', 'Emerald / Amber')
-    return THEMES.get(tn, THEMES['Emerald / Amber'])
+    tn = st.session_state.get('theme', 'Terminal')
+    return THEMES.get(tn, THEMES['Terminal'])
 
 
 def _s():

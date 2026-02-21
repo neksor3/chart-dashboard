@@ -61,23 +61,38 @@ SYMBOL_NAMES = {
 # =============================================================================
 
 THEMES = {
-    'Emerald / Amber': {
+    'Terminal': {
+        'mode': 'dark',
         'pos': '#4ade80', 'neg': '#f59e0b',
         'zone_hi': '#4ade80', 'zone_amid': '#86efac', 'zone_bmid': '#fbbf24', 'zone_lo': '#f59e0b',
         'str_up': '#4ade80', 'str_dn': '#f59e0b', 'pull': '#fbbf24', 'bnce': '#93c5fd',
         'long': '#4ade80', 'short': '#f59e0b',
+        'bg': '#1e1e1e', 'bg2': '#0a0f1a', 'bg3': '#0f172a',
+        'border': '#1e293b', 'text': '#e2e8f0', 'text2': '#94a3b8', 'muted': '#475569',
+        'accent': '#4ade80',
+        'plot_bg': '#121212', 'grid': '#1f1f1f', 'axis_line': '#2a2a2a', 'tick': '#888888',
     },
     'Neon': {
-        'pos': '#00d4ff', 'neg': '#ff3366',
-        'zone_hi': '#00d4ff', 'zone_amid': '#67e8f9', 'zone_bmid': '#ff8fab', 'zone_lo': '#ff3366',
-        'str_up': '#00d4ff', 'str_dn': '#ff3366', 'pull': '#fbbf24', 'bnce': '#a78bfa',
-        'long': '#00d4ff', 'short': '#ff3366',
+        'mode': 'dark',
+        'pos': '#38bdf8', 'neg': '#fb7185',
+        'zone_hi': '#38bdf8', 'zone_amid': '#7dd3fc', 'zone_bmid': '#fda4af', 'zone_lo': '#fb7185',
+        'str_up': '#38bdf8', 'str_dn': '#fb7185', 'pull': '#fbbf24', 'bnce': '#a78bfa',
+        'long': '#38bdf8', 'short': '#fb7185',
+        'bg': '#0c0c14', 'bg2': '#08081a', 'bg3': '#10102a',
+        'border': '#1a1a3e', 'text': '#e2e8f0', 'text2': '#8888bb', 'muted': '#555580',
+        'accent': '#38bdf8',
+        'plot_bg': '#0c0c14', 'grid': '#151530', 'axis_line': '#1a1a3e', 'tick': '#8888bb',
     },
     'Light': {
+        'mode': 'light',
         'pos': '#16a34a', 'neg': '#dc2626',
         'zone_hi': '#16a34a', 'zone_amid': '#4ade80', 'zone_bmid': '#fca5a5', 'zone_lo': '#dc2626',
         'str_up': '#16a34a', 'str_dn': '#dc2626', 'pull': '#d97706', 'bnce': '#2563eb',
         'long': '#16a34a', 'short': '#dc2626',
+        'bg': '#ffffff', 'bg2': '#f8fafc', 'bg3': '#f1f5f9',
+        'border': '#e2e8f0', 'text': '#1e293b', 'text2': '#64748b', 'muted': '#94a3b8',
+        'accent': '#2563eb',
+        'plot_bg': '#ffffff', 'grid': '#f1f5f9', 'axis_line': '#e2e8f0', 'tick': '#64748b',
     },
 }
 

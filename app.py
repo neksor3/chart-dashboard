@@ -87,8 +87,8 @@ def _inject_theme_css():
 # (THEMES imported from config.py)
 
 def get_theme():
-    name = st.session_state.get('theme', 'Emerald / Amber')
-    return THEMES.get(name, THEMES['Emerald / Amber'])
+    name = st.session_state.get('theme', 'Terminal')
+    return THEMES.get(name, THEMES['Terminal'])
 
 def zone_colors():
     t = get_theme()
