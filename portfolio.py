@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import logging
 
-from config import FUTURES_GROUPS, THEMES, SYMBOL_NAMES, FONTS, MONO, clean_symbol
+from config import FUTURES_GROUPS, THEMES, SYMBOL_NAMES, FONTS, clean_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +16,11 @@ logger = logging.getLogger(__name__)
 # CONSTANTS
 # =============================================================================
 
-C_POS = '#60a5fa'; C_NEG = '#fb7185'; C_TXT = '#cccccc'; C_TXT2 = '#9d9d9d'
-C_MUTE = '#6d6d6d'; C_BG = '#1e1e1e'; C_HDR = '#16213e'; C_BORDER = '#3c3c3c'
+C_POS = '#60a5fa'; C_NEG = '#fb7185'; C_TXT = '#e2e8f0'; C_TXT2 = '#94a3b8'
+C_MUTE = '#475569'; C_BG = '#0f172a'; C_HDR = '#0f172a'; C_BORDER = '#1e293b'
 C_GOLD = '#fbbf24'
-TH = "padding:3px 6px;border-bottom:1px solid #3a3a3a;color:#8a8a8a;font-weight:500;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
-TD = "padding:4px 6px;border-bottom:1px solid #2a2a2a;"
+TH = f"padding:4px 8px;border-bottom:1px solid #1e293b;color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
+TD = f"padding:5px 8px;border-bottom:1px solid #1e293b22;"
 
 def _short(sym):
     return SYMBOL_NAMES.get(sym, sym.replace('=F','').replace('=X','').replace('.SI',''))
@@ -78,7 +78,7 @@ SCORE_TO_RANK = {
 # DATA FETCHING
 # =============================================================================
 
-@st.cache_data(ttl=600, show_spinner=False)
+@st.cache_data(ttl=900, show_spinner=False)
 def fetch_symbol_history(symbols_tuple, days=1800):
     symbols = list(symbols_tuple)
     if not symbols: return None, []
@@ -388,7 +388,7 @@ def render_ranking_table(grid, rank_by='win_rate'):
     items.sort(key=lambda x: x[1].get(rank_by, 0), reverse=reverse)
     best_name = items[0][0] if items else None
 
-    html = f"<div style='background:{C_BG};overflow-x:auto'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>"
+    html = f"<div style='overflow-x:auto;border:1px solid {C_BORDER};border-radius:6px'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>"
     html += "<thead><tr>"
     for label, align in [('#','left'),('Approach','left'),('Win%','right'),('Sharpe','right'),
                           ('Sortino','right'),('MAR','right'),('R²','right'),('Total','right'),
@@ -476,7 +476,7 @@ def render_weights_table(grid, approach_name):
     n_assets = len(syms); eq_w = 1.0 / n_assets
     sorted_idx = np.argsort(-w)
 
-    html = f"<div style='background:{C_BG};overflow-x:auto'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>"
+    html = f"<div style='overflow-x:auto;border:1px solid {C_BORDER};border-radius:6px'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>"
     html += f"<thead><tr><th style='{TH}text-align:left'>Asset</th><th style='{TH}text-align:left;width:60px'>Ticker</th>"
     html += f"<th style='{TH}text-align:right'>Weight</th><th style='{TH}text-align:right'>vs EW</th>"
     html += f"<th style='{TH}text-align:left;width:140px'>Allocation</th></tr></thead><tbody>"
@@ -491,7 +491,7 @@ def render_weights_table(grid, approach_name):
         ds = '+' if delta > 0 else ''
         bar_pct = min(abs(wi) / 0.50 * 100, 100)
         bar_color = C_NEG if wi < 0 else C_POS
-        bar = (f"<div style='background:#2a2a2a;border-radius:2px;height:10px;width:100%'>"
+        bar = (f"<div style='background:{C_BORDER};border-radius:2px;height:10px;width:100%'>"
                f"<div style='background:{bar_color};border-radius:2px;height:10px;width:{bar_pct:.0f}%'></div></div>")
         html += f"<tr><td style='{TD}color:{wc};font-weight:600'>{sn}</td>"
         html += f"<td style='{TD}color:{C_MUTE};font-size:10px'>{sym}</td>"
@@ -536,7 +536,7 @@ def render_oos_chart(grid, approach_name):
     for wh in wf['weight_history']:
         if wh['date'] >= oos.index[0]:
             fig.add_vline(x=wh['date'], line=dict(color=C_GOLD, width=0.6, dash='dot'), opacity=0.4, row=1, col=1)
-    fig.add_hline(y=1.0, line=dict(color='#333333', width=0.8, dash='dash'), row=1, col=1)
+    fig.add_hline(y=1.0, line=dict(color='#1f1f1f', width=0.8, dash='dash'), row=1, col=1)
 
     # End value annotations
     fig.add_annotation(x=oos.index[-1], y=opt_cum[-1], text=f'${opt_cum[-1]:.2f}',
@@ -555,7 +555,7 @@ def render_oos_chart(grid, approach_name):
     params = st.session_state.get('port_params', {})
     title_name = params.get('preset_name', 'Portfolio').upper()
     fig.update_layout(template='plotly_dark', height=400, margin=dict(l=55, r=55, t=35, b=25),
-        plot_bgcolor='#0a0a0a', paper_bgcolor='#0a0a0a', showlegend=True,
+        plot_bgcolor='#121212', paper_bgcolor='#121212', showlegend=True,
         legend=dict(x=0.01, y=0.88, bgcolor='rgba(0,0,0,0)',
                     font=dict(size=12, color='#ffffff', family=FONTS), borderwidth=0),
         hovermode='x unified', font=dict(family=FONTS))
@@ -563,11 +563,11 @@ def render_oos_chart(grid, approach_name):
         x=0.01, y=0.99, xref='paper', yref='paper', showarrow=False,
         font=dict(size=14, color='#ffffff', family=FONTS), xanchor='left', yanchor='top')
     # White axes
-    fig.update_xaxes(gridcolor='#1a1a1a', linecolor='#333', tickfont=dict(size=9, color='#cccccc', family=FONTS))
-    fig.update_yaxes(gridcolor='#1a1a1a', linecolor='#333', tickfont=dict(size=9, color='#cccccc', family=FONTS), side='right')
+    fig.update_xaxes(gridcolor='#1f1f1f', linecolor='#2a2a2a', tickfont=dict(size=9, color='#94a3b8', family=FONTS))
+    fig.update_yaxes(gridcolor='#1f1f1f', linecolor='#2a2a2a', tickfont=dict(size=9, color='#94a3b8', family=FONTS), side='right')
     fig.update_yaxes(tickprefix='$', tickformat='.2f', row=1, col=1)
     fig.update_yaxes(ticksuffix='%', row=2, col=1)
-    st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': True, 'responsive': True})
+    st.plotly_chart(fig, use_container_width=True, config={'scrollZoom': True, 'displayModeBar': False, 'responsive': True})
 
 # =============================================================================
 # DISPLAY: MONTHLY RETURNS
@@ -578,7 +578,7 @@ def render_monthly_table(oos_returns):
         lambda x: float((1 + x).prod() - 1))
     years = sorted(monthly.index.get_level_values(0).unique())
     mlbl = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-    html = f"<div style='background:{C_BG};overflow-x:auto'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>"
+    html = f"<div style='overflow-x:auto;border:1px solid {C_BORDER};border-radius:6px'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>"
     html += f"<thead><tr><th style='{TH}text-align:left'>Year</th>"
     for m in mlbl: html += f"<th style='{TH}text-align:right'>{m}</th>"
     html += f"<th style='{TH}text-align:right;font-weight:700'>YTD</th></tr></thead><tbody>"
@@ -602,8 +602,9 @@ def render_monthly_table(oos_returns):
 
 def _section(title, subtitle=''):
     sub = f"<span style='color:{C_MUTE};font-size:10px;margin-left:8px'>{subtitle}</span>" if subtitle else ""
-    st.markdown(f"""<div style='margin-top:12px;padding:6px 10px;background:{C_HDR};font-family:{FONTS}'>
-        <span style='color:#e2e8f0;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{title}</span>{sub}
+    st.markdown(f"""<div style='margin-top:12px;padding:8px 12px;background:linear-gradient(90deg,{C_POS}12,{C_HDR});
+        border-left:2px solid {C_POS};font-family:{FONTS};border-radius:4px'>
+        <span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{title}</span>{sub}
     </div>""", unsafe_allow_html=True)
 
 # =============================================================================
@@ -694,10 +695,10 @@ def render_portfolio_tab(is_mobile):
         cost_str = st.text_input("Cost", key='port_cost', label_visibility='collapsed')
 
     # Run button
-    run_clicked = st.button('▶  RUN GRID', key='port_run', type='primary', use_container_width=False)
+    run_clicked = st.button('▶  OPTIMIZE', key='port_run', type='primary', use_container_width=False)
 
     if not run_clicked and 'port_grid' not in st.session_state:
-        st.markdown(f"<div style='padding:20px;color:{C_MUTE};font-size:11px;font-family:{FONTS}'>Configure parameters and click RUN GRID to start walk-forward optimization</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='padding:20px;color:{C_MUTE};font-size:11px;font-family:{FONTS}'>Configure parameters and click OPTIMIZE to start walk-forward optimization</div>", unsafe_allow_html=True)
         return
 
     if run_clicked:
@@ -798,8 +799,8 @@ def render_portfolio_tab(is_mobile):
     star = f"<span style='color:{C_GOLD}'>★</span> " if is_best else ""
 
     # 2. Summary bar
-    st.markdown(f"""<div style='margin-top:12px;padding:5px 10px;background:{C_BG};font-family:{FONTS};
-        font-size:10px;color:#8a8a8a;display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px'>
+    st.markdown(f"""<div style='margin-top:12px;padding:5px 10px;background:{C_BG};font-family:{FONTS};border-radius:4px;
+        font-size:10px;color:{C_TXT2};display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px'>
         <span>{star}<b style='color:{C_TXT}'>{selected_approach}</b>
         &nbsp;·&nbsp;{sm['n_days']} OOS days · {sm['oos_years']}y · {sm['n_rebalances']} rebalances</span>
         <span>Win% <b style='color:{C_POS}'>{sm["win_rate"]*100:.1f}%</b>
