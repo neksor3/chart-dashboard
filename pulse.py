@@ -6,62 +6,83 @@ from datetime import datetime
 from collections import OrderedDict
 import pytz
 import logging
+from streamlit.components.v1 import html as st_html
 
 from config import FUTURES_GROUPS, THEMES, SYMBOL_NAMES, FONTS, clean_symbol
 
 logger = logging.getLogger(__name__)
 
 # =============================================================================
-# THEME
+# THEME + WRAPPER
 # =============================================================================
 
 def get_theme():
     tn = st.session_state.get('theme', 'Emerald / Amber')
     return THEMES.get(tn, THEMES['Emerald / Amber'])
 
+def _wrap(body, height):
+    """Wrap HTML body in a dark-bg page so iframe blends with Streamlit theme."""
+    page = (
+        "<!DOCTYPE html><html><head><meta charset='utf-8'>"
+        "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap' rel='stylesheet'>"
+        "<style>"
+        "* { margin:0; padding:0; box-sizing:border-box; }"
+        f"body {{ background:#1e1e1e; font-family:{FONTS}; color:#ccc; overflow:hidden; }}"
+        "a { color:#c9d1d9; text-decoration:none; }"
+        "a:hover { text-decoration:underline; }"
+        "::-webkit-scrollbar { width:4px; }"
+        "::-webkit-scrollbar-track { background:#0a0f1a; }"
+        "::-webkit-scrollbar-thumb { background:#1e293b; border-radius:2px; }"
+        "</style></head><body>"
+        f"{body}"
+        "</body></html>"
+    )
+    st_html(page, height=height)
+
 # =============================================================================
 # DATA
 # =============================================================================
 
 HERO_SYMBOLS = OrderedDict([
-    ('ES=F',     {'label': 'S&P 500',    'fmt': ',.0f'}),
-    ('NQ=F',     {'label': 'NASDAQ',     'fmt': ',.0f'}),
-    ('BTC-USD',  {'label': 'BITCOIN',    'fmt': ',.0f'}),
-    ('GC=F',     {'label': 'GOLD',       'fmt': ',.0f'}),
-    ('CL=F',     {'label': 'CRUDE',      'fmt': ',.2f'}),
-    ('ZN=F',     {'label': '10Y NOTE',   'fmt': ',.2f'}),
-    ('USDSGD=X', {'label': 'USD/SGD',    'fmt': ',.4f'}),
-    ('6E=F',     {'label': 'EUR/USD',    'fmt': ',.4f'}),
+    ('ES=F',     {'label': 'S&P 500',  'fmt': ',.0f'}),
+    ('NQ=F',     {'label': 'NASDAQ',   'fmt': ',.0f'}),
+    ('BTC-USD',  {'label': 'BITCOIN',  'fmt': ',.0f'}),
+    ('GC=F',     {'label': 'GOLD',     'fmt': ',.0f'}),
+    ('CL=F',     {'label': 'CRUDE',    'fmt': ',.2f'}),
+    ('ZN=F',     {'label': '10Y NOTE', 'fmt': ',.2f'}),
+    ('USDSGD=X', {'label': 'USD/SGD',  'fmt': ',.4f'}),
+    ('6E=F',     {'label': 'EUR/USD',  'fmt': ',.4f'}),
 ])
 
 HEATMAP_SECTORS = OrderedDict([
-    ('Indices',    ['ES=F', 'NQ=F', 'YM=F', 'RTY=F', 'NKD=F']),
-    ('Crypto',     ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD']),
-    ('Energy',     ['CL=F', 'NG=F', 'RB=F', 'HO=F']),
-    ('Metals',     ['GC=F', 'SI=F', 'PL=F', 'HG=F']),
-    ('Grains',     ['ZC=F', 'ZS=F', 'ZW=F', 'ZM=F']),
-    ('Softs',      ['SB=F', 'KC=F', 'CC=F', 'CT=F']),
-    ('Rates',      ['ZB=F', 'ZN=F', 'ZF=F', 'ZT=F']),
-    ('FX',         ['6E=F', '6J=F', '6B=F', '6A=F']),
-    ('Singapore',  ['ES3.SI', 'S68.SI']),
+    ('Indices',   ['ES=F', 'NQ=F', 'YM=F', 'RTY=F', 'NKD=F']),
+    ('Crypto',    ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD']),
+    ('Energy',    ['CL=F', 'NG=F', 'RB=F', 'HO=F']),
+    ('Metals',    ['GC=F', 'SI=F', 'PL=F', 'HG=F']),
+    ('Grains',    ['ZC=F', 'ZS=F', 'ZW=F', 'ZM=F']),
+    ('Softs',     ['SB=F', 'KC=F', 'CC=F', 'CT=F']),
+    ('Rates',     ['ZB=F', 'ZN=F', 'ZF=F', 'ZT=F']),
+    ('FX',        ['6E=F', '6J=F', '6B=F', '6A=F']),
+    ('Singapore', ['ES3.SI', 'S68.SI']),
 ])
 
 SPARKLINE_SYMBOLS = ['ES=F', 'BTC-USD', 'GC=F', 'CL=F', 'ZN=F']
 
+# =============================================================================
+# FETCH
+# =============================================================================
 
 @st.cache_data(ttl=180, show_spinner=False)
 def _fetch_pulse_batch():
-    """Fetch all pulse symbols in one batch."""
     all_syms = list(HERO_SYMBOLS.keys())
     for syms in HEATMAP_SECTORS.values():
         all_syms.extend(syms)
     all_syms = list(OrderedDict.fromkeys(all_syms))
-
     result = {}
     try:
         batch = yf.download(all_syms, period='5d', group_by='ticker', threads=True, progress=False)
     except Exception as e:
-        logger.warning(f"Pulse batch download failed: {e}")
+        logger.warning(f"Pulse batch failed: {e}")
         batch = pd.DataFrame()
 
     for sym in all_syms:
@@ -74,27 +95,19 @@ def _fetch_pulse_batch():
                 hist = batch[sym].dropna(how='all')
             else:
                 hist = yf.Ticker(sym).history(period='5d')
-
             if hist.empty:
                 continue
-
             current = float(hist['Close'].iloc[-1])
             prev_close = float(hist['Close'].iloc[-2]) if len(hist) >= 2 else current
             change = ((current - prev_close) / prev_close) * 100 if prev_close else 0
-
-            result[sym] = {
-                'price': current,
-                'change': round(change, 2),
-            }
+            result[sym] = {'price': current, 'change': round(change, 2)}
         except Exception as e:
             logger.debug(f"[{sym}] pulse fetch error: {e}")
-
     return result
 
 
 @st.cache_data(ttl=300, show_spinner=False)
 def _fetch_sparklines():
-    """Fetch 30-day close data for sparkline charts."""
     result = {}
     for sym in SPARKLINE_SYMBOLS:
         try:
@@ -124,7 +137,7 @@ def _svg_sparkline(data, width=100, height=28, pos_color='#4ade80', neg_color='#
     fill_points = f'0,{height} {points} {width},{height}'
     uid = f'sp{abs(hash(tuple(data))) % 99999}'
     return (
-        f"<svg width='{width}' height='{height}' viewBox='0 0 {width} {height}' xmlns='http://www.w3.org/2000/svg'>"
+        f"<svg width='{width}' height='{height}' viewBox='0 0 {width} {height}'>"
         f"<defs><linearGradient id='{uid}' x1='0' y1='0' x2='0' y2='1'>"
         f"<stop offset='0%' stop-color='{color}' stop-opacity='0.3'/>"
         f"<stop offset='100%' stop-color='{color}' stop-opacity='0'/>"
@@ -163,40 +176,41 @@ def _market_status():
 
 
 # =============================================================================
-# RENDER — table-based layouts for Streamlit HTML compatibility
+# RENDER
 # =============================================================================
 
 def _render_market_status_bar():
     markets = _market_status()
     t = get_theme()
-    cells = ""
+    dots = ''
     for m in markets:
-        dot_c = t['pos'] if m['open'] else '#3a3a3a'
-        nm_c = '#e2e8f0' if m['open'] else '#4a5568'
-        cells += (
-            "<td style='padding:4px 8px;white-space:nowrap'>"
-            "<span style='display:inline-block;width:6px;height:6px;border-radius:50%;"
-            f"background:{dot_c};vertical-align:middle'></span> "
-            f"<span style='color:{nm_c};font-size:9px;font-weight:600;letter-spacing:0.08em'>{m['name']}</span> "
+        color = t['pos'] if m['open'] else '#3a3a3a'
+        glow = f'box-shadow:0 0 6px {t["pos"]}80;' if m['open'] else ''
+        pulse = 'animation:pulse-dot 2s ease-in-out infinite;' if m['open'] else ''
+        nc = '#e2e8f0' if m['open'] else '#4a5568'
+        dots += (
+            f"<div style='display:flex;align-items:center;gap:5px'>"
+            f"<div style='width:6px;height:6px;border-radius:50%;background:{color};{glow}{pulse}'></div>"
+            f"<span style='color:{nc};font-size:9px;font-weight:600;letter-spacing:0.08em'>{m['name']}</span>"
             f"<span style='color:#4a5568;font-size:8px'>{m['time']}</span>"
-            "</td>"
+            f"</div>"
         )
-    st.markdown(
-        "<table style='width:100%;background:#0a0f1a;border:1px solid #1e293b;"
-        f"border-radius:4px;border-collapse:collapse;margin-bottom:10px;font-family:{FONTS}'>"
-        "<tr>"
-        "<td style='padding:4px 8px;color:#334155;font-size:8px;font-weight:600;"
-        "letter-spacing:0.1em;white-space:nowrap'>MARKETS</td>"
-        f"{cells}"
-        "</tr></table>",
-        unsafe_allow_html=True,
+    html = (
+        "<style>@keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:0.4; } }</style>"
+        "<div style='display:flex;gap:16px;flex-wrap:wrap;padding:6px 12px;background:#0a0f1a;"
+        "border:1px solid #1e293b;border-radius:4px'>"
+        "<span style='color:#334155;font-size:8px;font-weight:600;letter-spacing:0.1em;"
+        "align-self:center'>MARKETS</span>"
+        f"{dots}"
+        "</div>"
     )
+    _wrap(html, 36)
 
 
 def _render_hero_row(data):
     t = get_theme()
     pos_c, neg_c = t['pos'], t['neg']
-    cells = ""
+    cards = ''
     for sym, cfg in HERO_SYMBOLS.items():
         d = data.get(sym)
         if not d:
@@ -205,33 +219,31 @@ def _render_hero_row(data):
         change = d['change']
         color = pos_c if change >= 0 else neg_c
         sign = '+' if change >= 0 else ''
-        arrow = '&#9650;' if change > 0 else '&#9660;' if change < 0 else '&#8211;'
+        arrow = '▲' if change > 0 else '▼' if change < 0 else '–'
         price_str = f'{price:{cfg["fmt"]}}'
-        cells += (
-            "<td style='padding:10px 12px;background:linear-gradient(135deg,#0f172a,#0a0f1a);"
-            "border:1px solid #1e293b;border-radius:6px;vertical-align:top'>"
+        cards += (
+            f"<div style='flex:1;min-width:110px;padding:10px 12px;"
+            f"background:linear-gradient(135deg,#0f172a 0%,#0a0f1a 100%);"
+            f"border:1px solid #1e293b;border-radius:6px;position:relative;overflow:hidden'>"
+            f"<div style='position:absolute;top:0;left:0;right:0;height:2px;"
+            f"background:linear-gradient(90deg,transparent,{color}40,transparent)'></div>"
             f"<div style='color:#4a5568;font-size:8px;font-weight:600;letter-spacing:0.12em;"
             f"text-transform:uppercase;margin-bottom:4px'>{cfg['label']}</div>"
-            f"<div style='color:#f1f5f9;font-size:17px;font-weight:700;"
-            f"font-variant-numeric:tabular-nums;letter-spacing:-0.02em;"
-            f"text-shadow:0 0 20px {color}40'>{price_str}</div>"
-            f"<div style='margin-top:3px'>"
-            f"<span style='color:{color};font-size:10px'>{arrow}</span> "
+            f"<div style='color:#f1f5f9;font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;"
+            f"letter-spacing:-0.02em;text-shadow:0 0 20px {color}40'>{price_str}</div>"
+            f"<div style='margin-top:3px;display:flex;align-items:center;gap:4px'>"
+            f"<span style='color:{color};font-size:10px'>{arrow}</span>"
             f"<span style='color:{color};font-size:11px;font-weight:700'>{sign}{change:.2f}%</span>"
-            "</div></td>"
+            f"</div></div>"
         )
-    st.markdown(
-        "<table style='width:100%;border-collapse:separate;border-spacing:6px 0;"
-        f"margin-bottom:10px;font-family:{FONTS}'>"
-        f"<tr>{cells}</tr></table>",
-        unsafe_allow_html=True,
-    )
+    html = f"<div style='display:flex;gap:6px;flex-wrap:wrap'>{cards}</div>"
+    _wrap(html, 88)
 
 
 def _render_sparkline_row(spark_data, pulse_data):
     t = get_theme()
     pos_c, neg_c = t['pos'], t['neg']
-    cells = ""
+    cards = ''
     for sym in SPARKLINE_SYMBOLS:
         sdata = spark_data.get(sym)
         pdata = pulse_data.get(sym)
@@ -242,23 +254,19 @@ def _render_sparkline_row(spark_data, pulse_data):
         color = pos_c if change >= 0 else neg_c
         sign = '+' if change >= 0 else ''
         svg = _svg_sparkline(sdata, width=100, height=28, pos_color=pos_c, neg_color=neg_c)
-        cells += (
-            "<td style='padding:8px 10px;background:#0f172a;border:1px solid #1e293b;"
-            "border-radius:4px;vertical-align:top'>"
-            f"<span style='color:#94a3b8;font-size:9px;font-weight:600;"
-            f"letter-spacing:0.06em'>{short}</span> "
-            f"<span style='color:{color};font-size:9px;font-weight:700;"
-            f"float:right'>{sign}{change:.2f}%</span>"
-            f"<div style='margin-top:4px'>{svg}</div>"
-            "<div style='color:#475569;font-size:7px;margin-top:2px;text-align:right'>30 DAY</div>"
-            "</td>"
+        cards += (
+            f"<div style='flex:1;min-width:140px;padding:8px 10px;background:#0f172a;"
+            f"border:1px solid #1e293b;border-radius:4px'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:4px'>"
+            f"<span style='color:#94a3b8;font-size:9px;font-weight:600;letter-spacing:0.06em'>{short}</span>"
+            f"<span style='color:{color};font-size:9px;font-weight:700'>{sign}{change:.2f}%</span>"
+            f"</div>"
+            f"{svg}"
+            f"<div style='color:#475569;font-size:7px;margin-top:2px;text-align:right'>30 DAY</div>"
+            f"</div>"
         )
-    st.markdown(
-        "<table style='width:100%;border-collapse:separate;border-spacing:6px 0;"
-        f"margin-bottom:10px;font-family:{FONTS}'>"
-        f"<tr>{cells}</tr></table>",
-        unsafe_allow_html=True,
-    )
+    html = f"<div style='display:flex;gap:6px;flex-wrap:wrap'>{cards}</div>"
+    _wrap(html, 78)
 
 
 def _render_heatmap_grid(data):
@@ -272,9 +280,9 @@ def _render_heatmap_grid(data):
         r, g, b = int(base[1:3], 16), int(base[3:5], 16), int(base[5:7], 16)
         return f'rgba({r},{g},{b},{opacity:.2f})'
 
-    sectors_html = ""
+    sectors_html = ''
     for sector, syms in HEATMAP_SECTORS.items():
-        cells = ""
+        cells = ''
         for sym in syms:
             d = data.get(sym)
             if not d:
@@ -285,33 +293,33 @@ def _render_heatmap_grid(data):
             tc = pos_c if change >= 0 else neg_c
             sign = '+' if change >= 0 else ''
             cells += (
-                f"<td style='padding:6px 8px;background:{bg};border-radius:3px;"
-                "text-align:center;border:1px solid rgba(255,255,255,0.04)'>"
+                f"<div style='flex:1;min-width:60px;padding:6px 8px;background:{bg};"
+                f"border-radius:3px;border:1px solid rgba(255,255,255,0.04);text-align:center'>"
                 f"<div style='color:#e2e8f0;font-size:10px;font-weight:600'>{name}</div>"
                 f"<div style='color:{tc};font-size:11px;font-weight:700;margin-top:1px;"
                 f"font-variant-numeric:tabular-nums'>{sign}{change:.2f}%</div>"
-                "</td>"
+                f"</div>"
             )
         sectors_html += (
             f"<div style='margin-bottom:6px'>"
             f"<div style='color:#334155;font-size:8px;font-weight:600;letter-spacing:0.1em;"
             f"text-transform:uppercase;margin-bottom:4px;padding-left:2px'>{sector}</div>"
-            f"<table style='border-collapse:separate;border-spacing:4px 0;width:100%'>"
-            f"<tr>{cells}</tr></table></div>"
+            f"<div style='display:flex;gap:4px;flex-wrap:wrap'>{cells}</div>"
+            f"</div>"
         )
 
-    st.markdown(
-        "<div style='padding:10px 12px;background:#0a0f1a;border:1px solid #1e293b;"
-        f"border-radius:6px;margin-bottom:10px;font-family:{FONTS}'>"
-        "<div style='margin-bottom:8px'>"
-        "<span style='color:#64748b;font-size:9px;font-weight:600;"
-        "letter-spacing:0.1em;text-transform:uppercase'>MARKET HEATMAP</span>"
-        " <span style='color:#334155;font-size:8px;float:right'>Day Change %</span>"
+    html = (
+        "<div style='padding:10px 12px;background:#0a0f1a;border:1px solid #1e293b;border-radius:6px'>"
+        "<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px'>"
+        "<span style='color:#64748b;font-size:9px;font-weight:600;letter-spacing:0.1em;"
+        "text-transform:uppercase'>MARKET HEATMAP</span>"
+        "<span style='color:#334155;font-size:8px'>Day Change %</span>"
         "</div>"
         f"{sectors_html}"
-        "</div>",
-        unsafe_allow_html=True,
+        "</div>"
     )
+    n_sectors = len([s for s in HEATMAP_SECTORS.values() if any(data.get(sym) for sym in s)])
+    _wrap(html, 46 * n_sectors + 50)
 
 
 def _render_movers(data):
@@ -326,52 +334,52 @@ def _render_movers(data):
 
     def _rows(items, color, is_gain):
         if not items:
-            return "<tr><td style='color:#334155;font-size:10px;padding:8px'>—</td></tr>"
+            return "<div style='color:#334155;font-size:10px;padding:8px'>—</div>"
         max_abs = max(abs(c) for _, c in items) or 1
-        html = ""
+        html = ''
         for sym, change in items:
             short = clean_symbol(sym)
             bar_pct = max(abs(change) / max_abs * 85, 8)
             sign = '+' if change >= 0 else ''
-            if is_gain:
-                bar = (f"<div style='background:linear-gradient(90deg,{color}20,{color}60);"
-                       f"width:{bar_pct}%;height:16px;border-radius:2px'></div>")
-            else:
-                bar = (f"<div style='background:linear-gradient(270deg,{color}20,{color}60);"
-                       f"width:{bar_pct}%;height:16px;border-radius:2px;margin-left:auto'></div>")
+            direction = 'right' if is_gain else 'left'
+            align = 'left' if is_gain else 'right'
+            grad_dir = '90deg' if is_gain else '270deg'
             html += (
-                "<tr>"
-                f"<td style='padding:3px 0;width:50px;color:#e2e8f0;font-size:10px;font-weight:600'>{short}</td>"
-                f"<td style='padding:3px 0'>{bar}</td>"
-                f"<td style='padding:3px 4px;width:55px;text-align:right;color:{color};"
-                f"font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;"
-                f"white-space:nowrap'>{sign}{change:.2f}%</td>"
-                "</tr>"
+                f"<div style='display:flex;align-items:center;padding:5px 0;gap:6px'>"
+                f"<div style='width:45px;flex-shrink:0'>"
+                f"<span style='color:#e2e8f0;font-size:10px;font-weight:600'>{short}</span>"
+                f"</div>"
+                f"<div style='flex:1;position:relative;height:18px;background:#0f172a;border-radius:2px;overflow:hidden'>"
+                f"<div style='position:absolute;top:0;{align}:0;height:100%;width:{bar_pct}%;"
+                f"background:linear-gradient({grad_dir},{color}20,{color}60);"
+                f"border-radius:2px'></div>"
+                f"<span style='position:absolute;top:50%;transform:translateY(-50%);{align}:6px;"
+                f"color:{color};font-size:10px;font-weight:700;font-variant-numeric:tabular-nums'>"
+                f"{sign}{change:.2f}%</span>"
+                f"</div></div>"
             )
         return html
 
     gain_html = _rows(gainers, pos_c, True)
     lose_html = _rows(losers, neg_c, False)
 
-    st.markdown(
-        "<div style='padding:10px 12px;background:#0a0f1a;border:1px solid #1e293b;"
-        f"border-radius:6px;margin-bottom:10px;font-family:{FONTS}'>"
-        "<table style='width:100%;border-collapse:collapse'><tr>"
-        # Gainers
-        "<td style='vertical-align:top;width:50%;padding-right:10px'>"
-        f"<div style='color:{pos_c};font-size:9px;font-weight:600;"
-        "letter-spacing:0.1em;margin-bottom:6px'>&#9650; TOP GAINERS</div>"
-        f"<table style='width:100%;border-collapse:collapse'>{gain_html}</table>"
-        "</td>"
-        # Losers
-        "<td style='vertical-align:top;width:50%;padding-left:10px;border-left:1px solid #1e293b'>"
-        f"<div style='color:{neg_c};font-size:9px;font-weight:600;"
-        "letter-spacing:0.1em;margin-bottom:6px'>&#9660; TOP LOSERS</div>"
-        f"<table style='width:100%;border-collapse:collapse'>{lose_html}</table>"
-        "</td>"
-        "</tr></table></div>",
-        unsafe_allow_html=True,
+    html = (
+        "<div style='display:grid;grid-template-columns:1fr 1fr;gap:16px;"
+        "padding:10px 12px;background:#0a0f1a;border:1px solid #1e293b;border-radius:6px'>"
+        f"<div>"
+        f"<div style='color:{pos_c};font-size:9px;font-weight:600;letter-spacing:0.1em;"
+        f"margin-bottom:6px;display:flex;align-items:center;gap:4px'>"
+        f"<span style='font-size:12px'>▲</span> TOP GAINERS</div>"
+        f"{gain_html}</div>"
+        f"<div>"
+        f"<div style='color:{neg_c};font-size:9px;font-weight:600;letter-spacing:0.1em;"
+        f"margin-bottom:6px;display:flex;align-items:center;gap:4px'>"
+        f"<span style='font-size:12px'>▼</span> TOP LOSERS</div>"
+        f"{lose_html}</div>"
+        "</div>"
     )
+    n_rows = max(len(gainers), len(losers), 1)
+    _wrap(html, 28 * n_rows + 50)
 
 
 def _render_pulse_news():
@@ -389,37 +397,34 @@ def _render_pulse_news():
     if not all_items:
         return
 
-    rows = ""
+    rows = ''
     for i, item in enumerate(all_items):
         bg = '#0a0f1a' if i % 2 == 0 else '#0d1321'
-        link = (f"<a href='{item['url']}' target='_blank' style='color:#c9d1d9;"
-                f"text-decoration:none;font-size:10px;line-height:1.35'>{item['title']}</a>"
-                if item['url'] else
-                f"<span style='color:#c9d1d9;font-size:10px'>{item['title']}</span>")
+        link = (
+            f"<a href='{item['url']}' target='_blank'>{item['title']}</a>"
+            if item['url'] else
+            f"<span>{item['title']}</span>"
+        )
         rows += (
-            f"<tr style='background:{bg}'>"
-            "<td style='padding:5px 10px;border-bottom:1px solid #1e293b10'>"
-            f"{link}"
+            f"<div style='padding:5px 10px;background:{bg};border-bottom:1px solid #1e293b10'>"
+            f"<div style='font-size:10px;line-height:1.35'>{link}</div>"
             f"<div style='font-size:7px;margin-top:1px'>"
-            f"<span style='color:{pos_c};font-weight:600'>{item['source']}</span> "
-            f"<span style='color:#334155'>&#183;</span> "
+            f"<span style='color:{pos_c};font-weight:600'>{item['source']}</span>"
+            f" <span style='color:#334155'>·</span> "
             f"<span style='color:#475569'>{item['date']}</span>"
-            "</div></td></tr>"
+            f"</div></div>"
         )
 
-    st.markdown(
-        "<div style='background:#0a0f1a;border:1px solid #1e293b;"
-        f"border-radius:6px;overflow:hidden;font-family:{FONTS}'>"
-        "<div style='padding:6px 10px'>"
-        "<span style='color:#64748b;font-size:9px;font-weight:600;"
-        "letter-spacing:0.1em'>LATEST</span> "
-        f"<span style='color:#334155;font-size:8px;float:right'>{len(all_items)} headlines</span>"
+    html = (
+        "<div style='background:#0a0f1a;border:1px solid #1e293b;border-radius:6px;overflow:hidden'>"
+        "<div style='padding:6px 10px;display:flex;justify-content:space-between;align-items:center'>"
+        "<span style='color:#64748b;font-size:9px;font-weight:600;letter-spacing:0.1em'>LATEST</span>"
+        f"<span style='color:#334155;font-size:8px'>{len(all_items)} headlines</span>"
         "</div>"
-        "<div style='max-height:320px;overflow-y:auto'>"
-        f"<table style='width:100%;border-collapse:collapse'>{rows}</table>"
-        "</div></div>",
-        unsafe_allow_html=True,
+        f"<div style='max-height:320px;overflow-y:auto'>{rows}</div>"
+        "</div>"
     )
+    _wrap(html, min(len(all_items) * 36 + 30, 350))
 
 
 # =============================================================================
