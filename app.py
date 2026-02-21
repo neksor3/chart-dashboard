@@ -78,6 +78,39 @@ def _inject_theme_css():
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stStatusWidget"] {{visibility: hidden;}}
+    /* Discreet theme picker — hide text, just show arrow */
+    [data-testid="stSelectbox"][data-st-key="_theme_pick"] {{
+        max-width: 42px !important;
+        min-width: 42px !important;
+    }}
+    [data-testid="stSelectbox"][data-st-key="_theme_pick"] [data-baseweb="select"] > div {{
+        background: transparent !important;
+        border: 1px solid {bdr} !important;
+        border-radius: 4px !important;
+        padding: 2px 4px !important;
+        min-height: 28px !important;
+        cursor: pointer;
+        color: transparent !important;
+        font-size: 0 !important;
+    }}
+    [data-testid="stSelectbox"][data-st-key="_theme_pick"] [data-baseweb="select"] > div > div:first-child {{
+        color: transparent !important;
+        font-size: 0 !important;
+        width: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }}
+    [data-testid="stSelectbox"][data-st-key="_theme_pick"] svg {{
+        color: {muted} !important;
+        width: 14px !important;
+        height: 14px !important;
+    }}
+    [data-testid="stSelectbox"][data-st-key="_theme_pick"] [data-baseweb="select"] > div:hover {{
+        border-color: {accent} !important;
+    }}
+    [data-testid="stSelectbox"][data-st-key="_theme_pick"] [data-baseweb="select"] > div:hover svg {{
+        color: {accent} !important;
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1108,8 +1141,6 @@ def main():
 
     is_mobile = _detect_mobile()
     est = pytz.timezone('US/Eastern'); sgt = pytz.timezone('Asia/Singapore')
-    ts_est = datetime.now(est).strftime('%a %d %b %Y  %H:%M %Z')
-    ts_sgt = datetime.now(sgt).strftime('%H:%M SGT')
 
     # Inject theme-aware CSS
     _inject_theme_css()
@@ -1121,17 +1152,17 @@ def main():
     neg_c = t['neg']
     ring_c = '#cbd5e1' if is_light else '#1e293b'
     title_c = '#1e293b' if is_light else '#f8fafc'
-    time_c = t.get('text', '#e2e8f0')
-    time_dim = t.get('text2', '#94a3b8')
 
-    st.markdown(f"""
-        <style>
-            @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
-            @keyframes sanpo-blink {{ 0%,100% {{ opacity: 0.9; }} 50% {{ opacity: 0.1; }} }}
-            @keyframes sanpo-glow {{ 0%,100% {{ filter: drop-shadow(0 0 3px {pos_c}40); }} 50% {{ filter: drop-shadow(0 0 8px {pos_c}90); }} }}
-        </style>
-        <div style='display:flex;align-items:center;justify-content:space-between;padding:10px 4px;margin-bottom:2px'>
-            <div style='display:flex;align-items:center;gap:14px'>
+    # Header row: logo left, discreet theme picker right (aligned)
+    logo_col, spacer_col, theme_col = st.columns([4, 5, 1])
+    with logo_col:
+        st.markdown(f"""
+            <style>
+                @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
+                @keyframes sanpo-blink {{ 0%,100% {{ opacity: 0.9; }} 50% {{ opacity: 0.1; }} }}
+                @keyframes sanpo-glow {{ 0%,100% {{ filter: drop-shadow(0 0 3px {pos_c}40); }} 50% {{ filter: drop-shadow(0 0 8px {pos_c}90); }} }}
+            </style>
+            <div style='display:flex;align-items:center;gap:14px;padding:6px 0'>
                 <svg width="44" height="44" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
                     <circle cx="20" cy="20" r="18" stroke="{ring_c}" stroke-width="0.8"/>
                     <circle cx="20" cy="20" r="12.5" stroke="{ring_c}" stroke-width="0.6"/>
@@ -1152,15 +1183,7 @@ def main():
                 </svg>
                 <span style='font-family:Orbitron,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:{title_c};line-height:1'>SANPO</span>
             </div>
-            <span style='font-family:{FONTS};font-size:11px;letter-spacing:0.04em'>
-                <span style='color:{time_c};font-weight:600'>{ts_sgt}</span>
-                <span style='color:{time_dim};font-size:9px'>&nbsp; {ts_est}</span>
-            </span>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # Tabs + tiny theme selector on the right of the tab bar
-    tab_col, theme_col = st.columns([9, 1])
+        """, unsafe_allow_html=True)
     with theme_col:
         theme_names = list(THEMES.keys())
         if st.session_state.get('theme') not in theme_names:
