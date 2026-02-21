@@ -641,7 +641,7 @@ def render_scanner_table(metrics, selected_symbol):
         return f"{conf} <span style='color:{sc};font-size:9px;font-weight:600'>{sig}</span>"
 
     _bdr = t.get('border', '#1e293b'); _bg3 = t.get('bg3', '#0f172a'); _mut = t.get('muted', '#475569')
-    th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:{_mut};font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
+    th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
     td = f"padding:5px 8px;border-bottom:1px solid {_bdr}22;"
 
     html = f"""<div style='overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid {_bdr};border-radius:6px'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
@@ -954,11 +954,11 @@ def render_key_levels(symbol, levels):
 
     html += f"""<div style='background-color:{_body_bg};border:1px solid {_bdr_ln};border-top:none;border-radius:0 0 4px 4px'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
         <thead><tr>
-            <th style='padding:5px 8px;color:{_mut};text-align:left;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln};font-weight:600'></th>
-            <th style='padding:5px 8px;color:{_mut};text-align:right;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln};font-weight:600'>HIGH</th>
-            <th style='padding:5px 8px;color:{_mut};text-align:right;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln};font-weight:600'>MID</th>
-            <th style='padding:5px 8px;color:{_mut};text-align:right;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln};font-weight:600'>LOW</th>
-            <th style='padding:5px 8px;color:{_mut};text-align:center;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln};font-weight:600'>STATUS</th>
+            <th style='padding:5px 8px;color:#f8fafc;text-align:left;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln};font-weight:600'></th>
+            <th style='padding:5px 8px;color:#f8fafc;text-align:right;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln};font-weight:600'>HIGH</th>
+            <th style='padding:5px 8px;color:#f8fafc;text-align:right;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln};font-weight:600'>MID</th>
+            <th style='padding:5px 8px;color:#f8fafc;text-align:right;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln};font-weight:600'>LOW</th>
+            <th style='padding:5px 8px;color:#f8fafc;text-align:center;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln};font-weight:600'>STATUS</th>
         </tr></thead><tbody>"""
 
     if price is not None:
