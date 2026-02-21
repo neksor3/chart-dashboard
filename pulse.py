@@ -176,10 +176,6 @@ def _market_status():
     results = []
     markets = [
         ('SG',  'Asia/Singapore', 9, 0,  17, 0),
-        ('HK',  'Asia/Hong_Kong', 9, 30, 16, 0),
-        ('JP',  'Asia/Tokyo',     9, 0,  15, 0),
-        ('EU',  'Europe/Berlin',  9, 0,  17, 30),
-        ('UK',  'Europe/London',  8, 0,  16, 30),
         ('US',  'US/Eastern',     9, 30, 16, 0),
     ]
     for name, tz_str, oh, om, ch, cm in markets:
@@ -220,7 +216,7 @@ def _render_market_status_bar():
         "<style>@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.4}}</style>"
         f"<div style='display:flex;gap:16px;flex-wrap:wrap;padding:6px 12px;background:{s['bg2']};"
         f"border:1px solid {s['border']};border-radius:4px'>"
-        f"<span style='color:{s['muted']};font-size:8px;font-weight:600;letter-spacing:0.1em;"
+        f"<span style='color:#f8fafc;font-size:8px;font-weight:600;letter-spacing:0.1em;"
         f"align-self:center'>MARKETS</span>"
         f"{dots}</div>"
     )
@@ -361,7 +357,7 @@ def _render_heatmap_grid(data):
     html = (
         f"<div style='padding:10px 12px;background:{s['bg2']};border:1px solid {s['border']};border-radius:6px'>"
         f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px'>"
-        f"<span style='color:{s['text2']};font-size:9px;font-weight:600;letter-spacing:0.1em;"
+        f"<span style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.1em;"
         f"text-transform:uppercase'>MARKET HEATMAP</span>"
         f"<span style='color:{s['muted']};font-size:8px'>Day Change %</span>"
         f"</div>"
@@ -412,14 +408,14 @@ def _render_movers(data):
         f"<div style='display:grid;grid-template-columns:1fr 1fr;gap:16px;"
         f"padding:10px 12px;background:{s['bg2']};border:1px solid {s['border']};border-radius:6px'>"
         f"<div>"
-        f"<div style='color:{pos_c};font-size:9px;font-weight:600;letter-spacing:0.1em;"
+        f"<div style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.1em;"
         f"margin-bottom:6px;display:flex;align-items:center;gap:4px'>"
-        f"<span style='font-size:12px'>&#9650;</span> TOP GAINERS</div>"
+        f"<span style='color:{pos_c};font-size:12px'>&#9650;</span> TOP GAINERS</div>"
         f"{gain_html}</div>"
         f"<div>"
-        f"<div style='color:{neg_c};font-size:9px;font-weight:600;letter-spacing:0.1em;"
+        f"<div style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.1em;"
         f"margin-bottom:6px;display:flex;align-items:center;gap:4px'>"
-        f"<span style='font-size:12px'>&#9660;</span> TOP LOSERS</div>"
+        f"<span style='color:{neg_c};font-size:12px'>&#9660;</span> TOP LOSERS</div>"
         f"{lose_html}</div></div>"
     )
     _wrap(html, 28 * n_rows + 50)
@@ -457,7 +453,7 @@ def _render_pulse_news():
     html = (
         f"<div style='background:{s['bg2']};border:1px solid {s['border']};border-radius:6px;overflow:hidden'>"
         f"<div style='padding:6px 10px;display:flex;justify-content:space-between;align-items:center'>"
-        f"<span style='color:{s['text2']};font-size:9px;font-weight:600;letter-spacing:0.1em'>LATEST</span>"
+        f"<span style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.1em'>LATEST</span>"
         f"<span style='color:{s['muted']};font-size:8px'>{len(all_items)} headlines</span></div>"
         f"<div style='max-height:320px;overflow-y:auto'>{rows}</div></div>"
     )
