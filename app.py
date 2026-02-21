@@ -79,28 +79,6 @@ def _inject_theme_css():
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stStatusWidget"] {{visibility: hidden;}}
-    /* Theme popover: fully transparent bg, just the chevron arrow */
-    [data-testid="stPopover"] {{
-        display: flex;
-        justify-content: flex-end;
-    }}
-    [data-testid="stPopover"] > button {{
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        outline: none !important;
-        padding: 4px !important;
-        min-height: 20px !important;
-        min-width: 20px !important;
-        color: {muted} !important;
-    }}
-    [data-testid="stPopover"] > button:hover {{
-        color: {txt} !important;
-    }}
-    [data-testid="stPopover"] > button > div {{
-        background: transparent !important;
-        border: none !important;
-    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1120,75 +1098,50 @@ def main():
     if 'symbol' not in st.session_state: st.session_state.symbol = 'ES=F'
     if 'chart_type' not in st.session_state: st.session_state.chart_type = 'line'
 
-    # Theme: read from query params first (survives auto-refresh), then session state
-    _qp_theme = st.query_params.get('theme', None)
-    if _qp_theme and _qp_theme in THEMES:
-        st.session_state.theme = _qp_theme
-    if 'theme' not in st.session_state or st.session_state.theme not in THEMES:
-        st.session_state.theme = list(THEMES.keys())[0]
-    # Keep query param in sync so auto-refresh preserves theme
-    st.query_params['theme'] = st.session_state.theme
+    st.session_state.theme = 'Dark'
 
     is_mobile = _detect_mobile()
     est = pytz.timezone('US/Eastern'); sgt = pytz.timezone('Asia/Singapore')
 
-    # Inject theme-aware CSS
     _inject_theme_css()
 
-    # SANPO logo header — clean layout
+    # SANPO logo header
     t = get_theme()
-    is_light = t.get('mode') == 'light'
     pos_c = t['pos']
     neg_c = t['neg']
-    ring_c = '#cbd5e1' if is_light else '#1e293b'
-    title_c = '#1e293b' if is_light else '#f8fafc'
+    ring_c = '#1e293b'
+    title_c = '#f8fafc'
 
-    # Header row: logo left, theme picker flush right
-    logo_col, theme_col = st.columns([19, 1])
-    with logo_col:
-        st.markdown(f"""
-            <style>
-                @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
-                @keyframes sanpo-blink {{ 0%,100% {{ opacity: 0.9; }} 50% {{ opacity: 0.1; }} }}
-                @keyframes sanpo-glow {{ 0%,100% {{ filter: drop-shadow(0 0 3px {pos_c}40); }} 50% {{ filter: drop-shadow(0 0 8px {pos_c}90); }} }}
-            </style>
-            <div style='display:flex;align-items:center;gap:14px;padding:6px 0'>
-                <svg width="44" height="44" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
-                    <circle cx="20" cy="20" r="18" stroke="{ring_c}" stroke-width="0.8"/>
-                    <circle cx="20" cy="20" r="12.5" stroke="{ring_c}" stroke-width="0.6"/>
-                    <circle cx="20" cy="20" r="7" stroke="{ring_c}" stroke-width="0.5"/>
-                    <circle cx="20" cy="20" r="3" fill="{pos_c}"/>
-                    <circle cx="20" cy="20" r="5" fill="{pos_c}" opacity="0.15"/>
-                    <line x1="20" y1="20" x2="20" y2="3" stroke="url(#sanpoSweepG)" stroke-width="1.5" stroke-linecap="round" style="animation:sanpo-sweep 4s linear infinite;transform-origin:20px 20px"/>
-                    <circle cx="13" cy="9" r="2.2" fill="{pos_c}" style="animation:sanpo-blink 1.8s ease-in-out infinite"/>
-                    <circle cx="30" cy="13" r="2" fill="{neg_c}" style="animation:sanpo-blink 2.2s ease-in-out infinite 0.4s"/>
-                    <circle cx="28" cy="29" r="1.8" fill="{pos_c}" style="animation:sanpo-blink 2s ease-in-out infinite 0.9s"/>
-                    <circle cx="9" cy="25" r="1.7" fill="{neg_c}" style="animation:sanpo-blink 1.6s ease-in-out infinite 1.3s"/>
-                    <circle cx="25" cy="8" r="1.5" fill="{pos_c}" style="animation:sanpo-blink 2.4s ease-in-out infinite 0.6s"/>
-                    <circle cx="10" cy="15" r="1.3" fill="{pos_c}" style="animation:sanpo-blink 2.0s ease-in-out infinite 1.7s"/>
-                    <defs><linearGradient id="sanpoSweepG" x1="20" y1="20" x2="20" y2="3">
-                        <stop offset="0%" stop-color="{pos_c}" stop-opacity="0.7"/>
-                        <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
-                    </linearGradient></defs>
-                </svg>
-                <span style='font-family:Orbitron,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:{title_c};line-height:1'>SANPO</span>
-            </div>
-        """, unsafe_allow_html=True)
-    with theme_col:
-        st.markdown("<div style='padding-top:10px;display:flex;justify-content:flex-end'></div>", unsafe_allow_html=True)
-        with st.popover(""):
-            theme_names = list(THEMES.keys())
-            if st.session_state.get('theme') not in theme_names:
-                st.session_state.theme = theme_names[0]
-            for tn in theme_names:
-                is_cur = tn == st.session_state.theme
-                label = f"● {tn}" if is_cur else f"  {tn}"
-                if st.button(label, key=f'_tb_{tn}', use_container_width=True):
-                    st.session_state.theme = tn
-                    st.query_params['theme'] = tn
-                    st.rerun()
+    st.markdown(f"""
+        <style>
+            @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
+            @keyframes sanpo-blink {{ 0%,100% {{ opacity: 0.9; }} 50% {{ opacity: 0.1; }} }}
+            @keyframes sanpo-glow {{ 0%,100% {{ filter: drop-shadow(0 0 3px {pos_c}40); }} 50% {{ filter: drop-shadow(0 0 8px {pos_c}90); }} }}
+        </style>
+        <div style='display:flex;align-items:center;gap:14px;padding:6px 0'>
+            <svg width="44" height="44" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
+                <circle cx="20" cy="20" r="18" stroke="{ring_c}" stroke-width="0.8"/>
+                <circle cx="20" cy="20" r="12.5" stroke="{ring_c}" stroke-width="0.6"/>
+                <circle cx="20" cy="20" r="7" stroke="{ring_c}" stroke-width="0.5"/>
+                <circle cx="20" cy="20" r="3" fill="{pos_c}"/>
+                <circle cx="20" cy="20" r="5" fill="{pos_c}" opacity="0.15"/>
+                <line x1="20" y1="20" x2="20" y2="3" stroke="url(#sanpoSweepG)" stroke-width="1.5" stroke-linecap="round" style="animation:sanpo-sweep 4s linear infinite;transform-origin:20px 20px"/>
+                <circle cx="13" cy="9" r="2.2" fill="{pos_c}" style="animation:sanpo-blink 1.8s ease-in-out infinite"/>
+                <circle cx="30" cy="13" r="2" fill="{neg_c}" style="animation:sanpo-blink 2.2s ease-in-out infinite 0.4s"/>
+                <circle cx="28" cy="29" r="1.8" fill="{pos_c}" style="animation:sanpo-blink 2s ease-in-out infinite 0.9s"/>
+                <circle cx="9" cy="25" r="1.7" fill="{neg_c}" style="animation:sanpo-blink 1.6s ease-in-out infinite 1.3s"/>
+                <circle cx="25" cy="8" r="1.5" fill="{pos_c}" style="animation:sanpo-blink 2.4s ease-in-out infinite 0.6s"/>
+                <circle cx="10" cy="15" r="1.3" fill="{pos_c}" style="animation:sanpo-blink 2.0s ease-in-out infinite 1.7s"/>
+                <defs><linearGradient id="sanpoSweepG" x1="20" y1="20" x2="20" y2="3">
+                    <stop offset="0%" stop-color="{pos_c}" stop-opacity="0.7"/>
+                    <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
+                </linearGradient></defs>
+            </svg>
+            <span style='font-family:Orbitron,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:{title_c};line-height:1'>SANPO</span>
+        </div>
+    """, unsafe_allow_html=True)
 
-    # Tabs — clean uppercase
+    # Tabs
     tab_pulse, tab_charts, tab_spreads, tab_portfolio, tab_news = st.tabs(["PULSE", "CHARTS", "SPREADS", "PORTFOLIO", "NEWS"])
 
     with tab_pulse:

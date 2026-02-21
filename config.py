@@ -72,17 +72,6 @@ THEMES = {
         'accent': '#4ade80',
         'plot_bg': '#0f1117', 'grid': '#1a1f2e', 'axis_line': '#2a2a2a', 'tick': '#888888',
     },
-    'Light': {
-        'mode': 'light',
-        'pos': '#16a34a', 'neg': '#d97706',
-        'zone_hi': '#16a34a', 'zone_amid': '#4ade80', 'zone_bmid': '#fbbf24', 'zone_lo': '#d97706',
-        'str_up': '#16a34a', 'str_dn': '#d97706', 'pull': '#d97706', 'bnce': '#2563eb',
-        'long': '#16a34a', 'short': '#d97706',
-        'bg': '#ffffff', 'bg2': '#f8fafc', 'bg3': '#f1f5f9',
-        'border': '#e2e8f0', 'text': '#1e293b', 'text2': '#64748b', 'muted': '#94a3b8',
-        'accent': '#16a34a',
-        'plot_bg': '#ffffff', 'grid': '#f1f5f9', 'axis_line': '#e2e8f0', 'tick': '#64748b',
-    },
 }
 
 CHART_CONFIGS = [
