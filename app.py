@@ -78,34 +78,6 @@ def _inject_theme_css():
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stStatusWidget"] {{visibility: hidden;}}
-    /* Discreet theme picker — arrow only, no text visible */
-    [data-testid="stSelectbox"][data-st-key="_theme_pick"] {{
-        max-width: 32px !important;
-        min-width: 32px !important;
-        overflow: hidden !important;
-    }}
-    [data-testid="stSelectbox"][data-st-key="_theme_pick"] * {{
-        font-size: 0 !important;
-        color: transparent !important;
-    }}
-    [data-testid="stSelectbox"][data-st-key="_theme_pick"] [data-baseweb="select"] > div {{
-        background: transparent !important;
-        border: none !important;
-        padding: 0 4px !important;
-        min-height: 24px !important;
-        cursor: pointer;
-    }}
-    [data-testid="stSelectbox"][data-st-key="_theme_pick"] svg {{
-        color: {muted} !important;
-        width: 16px !important;
-        height: 16px !important;
-        opacity: 0.45;
-        transition: opacity 0.2s;
-    }}
-    [data-testid="stSelectbox"][data-st-key="_theme_pick"]:hover svg {{
-        color: {accent} !important;
-        opacity: 1;
-    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1180,7 +1152,26 @@ def main():
             </div>
         """, unsafe_allow_html=True)
     with theme_col:
-        st.markdown("<div style='padding-top:14px'></div>", unsafe_allow_html=True)
+        st.markdown("""<div style='padding-top:14px'></div>
+        <style>
+            /* Hide theme selectbox text — show arrow only */
+            [data-st-key="_theme_pick"] { max-width:28px !important; overflow:hidden !important; }
+            [data-st-key="_theme_pick"] [data-baseweb="select"] > div {
+                background:transparent !important; border:none !important;
+                padding:0 !important; min-height:20px !important;
+                box-shadow:none !important;
+            }
+            [data-st-key="_theme_pick"] [data-baseweb="select"] > div > div {
+                visibility:hidden !important; width:0 !important;
+                height:0 !important; overflow:hidden !important;
+                position:absolute !important;
+            }
+            [data-st-key="_theme_pick"] [data-baseweb="select"] svg {
+                visibility:visible !important; opacity:0.4;
+                width:16px !important; height:16px !important;
+            }
+            [data-st-key="_theme_pick"]:hover svg { opacity:1; }
+        </style>""", unsafe_allow_html=True)
         theme_names = list(THEMES.keys())
         if st.session_state.get('theme') not in theme_names:
             st.session_state.theme = theme_names[0]
