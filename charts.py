@@ -607,10 +607,10 @@ def render_scanner_table(metrics, selected_symbol):
     def _dot(status, reversal=False):
         ico = ""
         c = zc.get(status, _mut)
-        if status == 'above_high': ico = f"<span style='color:{c};font-weight:700;border:1px solid #ffffff80;padding:0 2px;border-radius:2px;font-size:8px'>▲</span>"
-        elif status == 'below_low': ico = f"<span style='color:{c};font-weight:700;border:1px solid #ffffff80;padding:0 2px;border-radius:2px;font-size:8px'>▼</span>"
-        if reversal: ico += "<span style='color:#facc15;font-weight:700;border:1px solid #ffffff80;padding:0 2px;border-radius:0;font-size:8px'>■</span>"
-        return f"<span style='display:inline-block;width:28px;text-align:left;vertical-align:middle;margin-left:3px'>{ico}</span>"
+        if status == 'above_high': ico = f"<span style='color:{c};font-weight:700;font-size:8px'>▲</span>"
+        elif status == 'below_low': ico = f"<span style='color:{c};font-weight:700;font-size:8px'>▼</span>"
+        if reversal: ico += "<span style='color:#facc15;font-weight:700;font-size:8px'>↺</span>"
+        return f"<span style='display:inline-block;width:20px;text-align:left;vertical-align:middle;margin-left:2px'>{ico}</span>"
 
     def _chg(val, status, reversal=False):
         return f"<span style='display:inline-block;width:56px;text-align:right;font-variant-numeric:tabular-nums'>{_fv(val)}</span>{_dot(status, reversal)}"
@@ -702,13 +702,13 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
     if mobile:
         fig = make_subplots(rows=4, cols=1,
             subplot_titles=[f"{display_symbol} {tf[0]}  ·  {tf[2]}" for tf in CHART_CONFIGS],
-            vertical_spacing=0.07)
+            vertical_spacing=0.06)
         positions = [(1,1),(2,1),(3,1),(4,1)]
     else:
-        fig = make_subplots(rows=2, cols=2,
+        fig = make_subplots(rows=4, cols=1,
             subplot_titles=[f"{display_symbol} {tf[0]}  ·  {tf[2]}" for tf in CHART_CONFIGS],
-            vertical_spacing=0.15, horizontal_spacing=0.12)
-        positions = [(1,1),(1,2),(2,1),(2,2)]
+            vertical_spacing=0.06)
+        positions = [(1,1),(2,1),(3,1),(4,1)]
     chart_statuses = {}; chart_rsis = {}; computed_levels = {}
 
     for chart_idx, (label, interval, zone_desc, boundary_type) in enumerate(CHART_CONFIGS):
@@ -823,12 +823,12 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
         num_boundaries = min(2, len(boundaries))
         for j in range(num_boundaries):
             b = boundaries[-(j+1)]; px = b.idx; ex = len(hist)-1 if j == 0 else boundaries[-1].idx
-            fig.add_vline(x=px, line=dict(color='#6b7280', width=1.5, dash='dot'), row=row, col=col)
+            fig.add_vline(x=px, line=dict(color='#6b7280', width=1, dash='dot'), row=row, col=col)
             ml = (b.prev_high + b.prev_low) / 2
-            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_high]*2, mode='lines', line=dict(color=zc['above_high'], width=1, dash='dot'), showlegend=False, hovertemplate=f'High: {b.prev_high:.2f}<extra></extra>'), row=row, col=col)
-            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_low]*2, mode='lines', line=dict(color=zc['below_low'], width=1, dash='dot'), showlegend=False, hovertemplate=f'Low: {b.prev_low:.2f}<extra></extra>'), row=row, col=col)
-            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_close]*2, mode='lines', line=dict(color='#e5e7eb', width=1, dash='dot'), showlegend=False, hovertemplate=f'Close: {b.prev_close:.2f}<extra></extra>'), row=row, col=col)
-            fig.add_trace(go.Scatter(x=[px,ex], y=[ml]*2, mode='lines', line=dict(color='#fbbf24', width=1, dash='dot'), showlegend=False, hovertemplate=f'50%: {ml:.2f}<extra></extra>'), row=row, col=col)
+            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_high]*2, mode='lines', line=dict(color=zc['above_high'], width=1.2), showlegend=False, hovertemplate=f'High: {b.prev_high:.2f}<extra></extra>'), row=row, col=col)
+            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_low]*2, mode='lines', line=dict(color=zc['below_low'], width=1.2), showlegend=False, hovertemplate=f'Low: {b.prev_low:.2f}<extra></extra>'), row=row, col=col)
+            fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_close]*2, mode='lines', line=dict(color='#9ca3af', width=0.8, dash='dot'), showlegend=False, hovertemplate=f'Close: {b.prev_close:.2f}<extra></extra>'), row=row, col=col)
+            fig.add_trace(go.Scatter(x=[px,ex], y=[ml]*2, mode='lines', line=dict(color='#fbbf24', width=0.8, dash='dot'), showlegend=False, hovertemplate=f'50%: {ml:.2f}<extra></extra>'), row=row, col=col)
 
         # Retrace lines (current period)
         if boundaries:
@@ -897,7 +897,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
     _axl = _t.get('axis_line', '#2a2a2a'); _tk = _t.get('tick', '#888888')
     _tpl = 'plotly_white' if _t.get('mode') == 'light' else 'plotly_dark'
 
-    fig.update_layout(template=_tpl, height=1200 if mobile else 650, margin=dict(l=50,r=90,t=60,b=60),
+    fig.update_layout(template=_tpl, height=1200 if mobile else 1100, margin=dict(l=50,r=90,t=60,b=40),
         showlegend=False, plot_bgcolor=_pbg, paper_bgcolor=_pbg,
         dragmode='pan', hovermode='closest', autosize=True)
     fig.update_xaxes(gridcolor=_grd, linecolor=_axl, tickfont=dict(color=_tk, size=8),
@@ -1098,7 +1098,19 @@ def render_charts_tab(is_mobile, est):
         with col_bars:
             render_return_bars(metrics, sort_by)
 
-    # Charts + Bar Chart + Levels + News
+    # Chart header
+    _sym = st.session_state.symbol
+    _ds = clean_symbol(_sym); _fn = SYMBOL_NAMES.get(_sym, _sym)
+    _hdr_bg = t.get('bg3', '#1a2744'); _bdr = t.get('border', '#1e293b')
+    _hdr_mut = t.get('muted', '#475569')
+    st.markdown(
+        f"<div style='padding:8px 12px;background:linear-gradient(90deg,{pos_c}12,{_hdr_bg});"
+        f"border-left:2px solid {pos_c};font-family:{FONTS};border-radius:4px;margin-top:8px'>"
+        f"<span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{_ds}</span>"
+        f"<span style='color:{_hdr_mut};font-size:10px;margin-left:6px;font-weight:400'>{_fn}</span></div>",
+        unsafe_allow_html=True)
+
+    # Charts — full width, stacked
     if is_mobile:
         with st.spinner('Loading charts...'):
             try:
@@ -1109,19 +1121,21 @@ def render_charts_tab(is_mobile, est):
         render_key_levels(st.session_state.symbol, levels)
         render_news_panel(st.session_state.symbol)
     else:
-        col_chart_area, col_right = st.columns([65, 35])
-        with col_chart_area:
-            with st.spinner('Loading charts...'):
-                try:
-                    fig, levels = create_4_chart_grid(st.session_state.symbol, st.session_state.chart_type, mobile=False)
-                    st.plotly_chart(fig, use_container_width=True, config={
-                        'scrollZoom': True, 'displayModeBar': True,
-                        'modeBarButtonsToAdd': ['pan2d','zoom2d','resetScale2d'],
-                        'responsive': True})
-                except Exception as e:
-                    st.error(f"Chart error: {str(e)}"); levels = {}
-        with col_right:
+        with st.spinner('Loading charts...'):
+            try:
+                fig, levels = create_4_chart_grid(st.session_state.symbol, st.session_state.chart_type, mobile=False)
+                st.plotly_chart(fig, use_container_width=True, config={
+                    'scrollZoom': True, 'displayModeBar': True,
+                    'modeBarButtonsToAdd': ['pan2d','zoom2d','resetScale2d'],
+                    'responsive': True})
+            except Exception as e:
+                st.error(f"Chart error: {str(e)}"); levels = {}
+
+        # Levels + News side by side below charts
+        col_levels, col_news = st.columns([45, 55])
+        with col_levels:
             render_key_levels(st.session_state.symbol, levels)
+        with col_news:
             render_news_panel(st.session_state.symbol)
 
     # Footer
