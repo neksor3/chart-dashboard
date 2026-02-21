@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 _UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
 
 def get_theme():
-    tn = st.session_state.get('theme', 'Emerald / Amber')
-    return THEMES.get(tn, THEMES['Emerald / Amber'])
+    tn = st.session_state.get('theme', 'Terminal')
+    return THEMES.get(tn, THEMES['Terminal'])
 
 NEWS_FEEDS = {
     'Singapore': [
@@ -91,25 +91,29 @@ def fetch_rss_feed(name, url):
 
 def render_news_column(region, feeds):
     t = get_theme(); pos_c = t['pos']
+    _hdr_bg = t.get('bg3', '#1a2744'); _body_bg = t.get('bg2', '#0f1522')
+    _bdr = t.get('border', '#1e293b'); _txt = t.get('text', '#e2e8f0')
+    _mut = t.get('muted', '#4a5568'); _link_c = t.get('text', '#c9d1d9')
+    _row_alt = '#f1f5f9' if t.get('mode') == 'light' else '#131b2e'
     all_items = []
     for name, url in feeds:
         all_items.extend(fetch_rss_feed(name, url))
     all_items.sort(key=lambda x: x['date'], reverse=True)
 
-    html = f"""<div style='padding:6px 10px;background-color:#1a2744;border-radius:4px 4px 0 0;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center'>
-        <span style='color:#e2e8f0;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{region}</span>
-        <span style='color:#4a5568;font-size:8px'>{len(all_items)}</span>
+    html = f"""<div style='padding:6px 10px;background-color:{_hdr_bg};border-radius:4px 4px 0 0;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center'>
+        <span style='color:{_txt};font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{region}</span>
+        <span style='color:{_mut};font-size:8px'>{len(all_items)}</span>
     </div>"""
-    html += "<div style='background:#0f1522;border:1px solid #1e293b;border-top:none;border-radius:0 0 4px 4px;max-height:600px;overflow-y:auto'>"
+    html += f"<div style='background:{_body_bg};border:1px solid {_bdr};border-top:none;border-radius:0 0 4px 4px;max-height:600px;overflow-y:auto'>"
     if not all_items:
-        html += f"<div style='padding:16px;color:#6d6d6d;font-size:10px;font-family:{FONTS};text-align:center'>Feeds loading…</div>"
+        html += f"<div style='padding:16px;color:{_mut};font-size:10px;font-family:{FONTS};text-align:center'>Feeds loading…</div>"
     else:
         for i, item in enumerate(all_items[:30]):
-            bg = '#0f1522' if i % 2 == 0 else '#131b2e'
-            a = f"<a href='{item['url']}' target='_blank' style='color:#c9d1d9;text-decoration:none;font-size:10.5px;line-height:1.4'>{item['title']}</a>" if item['url'] else f"<span style='color:#c9d1d9;font-size:10.5px'>{item['title']}</span>"
-            html += f"""<div style='padding:6px 10px;border-bottom:1px solid #1e293b;background:{bg};font-family:{FONTS}'>
+            bg = _body_bg if i % 2 == 0 else _row_alt
+            a = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:10.5px;line-height:1.4'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:10.5px'>{item['title']}</span>"
+            html += f"""<div style='padding:6px 10px;border-bottom:1px solid {_bdr};background:{bg};font-family:{FONTS}'>
                 <div>{a}</div>
-                <div style='font-size:8px;margin-top:2px'><span style='color:{pos_c};font-weight:600'>{item['source']}</span> <span style='color:#4a4a4a'>·</span> <span style='color:#6d6d6d'>{item['date']}</span></div>
+                <div style='font-size:8px;margin-top:2px'><span style='color:{pos_c};font-weight:600'>{item['source']}</span> <span style='color:{_mut}'>·</span> <span style='color:{_mut}'>{item['date']}</span></div>
             </div>"""
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)

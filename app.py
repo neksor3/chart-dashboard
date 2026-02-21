@@ -1115,10 +1115,15 @@ def main():
     if 'sector' not in st.session_state: st.session_state.sector = 'Indices'
     if 'symbol' not in st.session_state: st.session_state.symbol = 'ES=F'
     if 'chart_type' not in st.session_state: st.session_state.chart_type = 'line'
-    if 'theme' not in st.session_state:
+
+    # Theme: read from query params first (survives auto-refresh), then session state
+    _qp_theme = st.query_params.get('theme', None)
+    if _qp_theme and _qp_theme in THEMES:
+        st.session_state.theme = _qp_theme
+    if 'theme' not in st.session_state or st.session_state.theme not in THEMES:
         st.session_state.theme = list(THEMES.keys())[0]
-    elif st.session_state.theme not in THEMES:
-        st.session_state.theme = list(THEMES.keys())[0]
+    # Keep query param in sync so auto-refresh preserves theme
+    st.query_params['theme'] = st.session_state.theme
 
     is_mobile = _detect_mobile()
     est = pytz.timezone('US/Eastern'); sgt = pytz.timezone('Asia/Singapore')
@@ -1188,6 +1193,7 @@ def main():
                     mode_tag = '☀' if td.get('mode') == 'light' else '🌙'
                     if st.button(f"{icon} {mode_tag} {tn}", key=f'theme_btn_{tn}', use_container_width=True):
                         st.session_state.theme = tn
+                        st.query_params['theme'] = tn
                         st.rerun()
 
     # Tabs — clean uppercase, blue underline

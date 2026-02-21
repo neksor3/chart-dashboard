@@ -512,8 +512,8 @@ def render_weights_table(grid, approach_name):
 
 def render_oos_chart(grid, approach_name):
     # Read theme fresh from session state every time
-    theme_name = st.session_state.get('theme', 'Emerald / Amber')
-    theme = THEMES.get(theme_name, THEMES['Emerald / Amber'])
+    theme_name = st.session_state.get('theme', 'Terminal')
+    theme = THEMES.get(theme_name, THEMES['Terminal'])
     pos_c = theme['pos']; neg_c = theme['neg']
 
     wf = grid['results'][approach_name]['wf']
@@ -612,8 +612,8 @@ def _section(title, subtitle=''):
 
 def render_portfolio_tab(is_mobile):
     global C_POS, C_NEG
-    theme_name = st.session_state.get('theme', 'Emerald / Amber')
-    theme = THEMES.get(theme_name, THEMES['Emerald / Amber'])
+    theme_name = st.session_state.get('theme', 'Terminal')
+    theme = THEMES.get(theme_name, THEMES['Terminal'])
     C_POS = theme['pos']; C_NEG = theme['neg']
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
