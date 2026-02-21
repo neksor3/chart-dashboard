@@ -15,7 +15,7 @@ from html import escape as html_escape
 import re
 
 from config import (FUTURES_GROUPS, THEMES, SYMBOL_NAMES, CHART_CONFIGS,
-                     STATUS_LABELS, FONTS, MONO, clean_symbol)
+                     STATUS_LABELS, FONTS, clean_symbol)
 
 logger = logging.getLogger(__name__)
 
@@ -579,7 +579,7 @@ def render_return_bars(metrics, sort_by='Default'):
     _bg0 = t.get('bg3', '#0f1522'); _bdr0 = t.get('border', '#1e293b'); _mut0 = t.get('muted', '#8a8a8a')
     html = f"""<div style='background:{_bg0};border:1px solid {_bdr0};border-radius:6px;padding:0 6px 4px 6px;overflow:hidden'>
         <div style='display:flex;align-items:center;padding:6px 2px 4px'>
-            <span style='color:{_mut0};font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
+            <span style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
             <div style='flex:1;height:1px;background:{_bdr0};margin-left:8px'></div>
         </div>
         <div style='padding:2px 0;height:10px'></div>
@@ -590,20 +590,23 @@ def render_return_bars(metrics, sort_by='Default'):
 
 def render_scanner_table(metrics, selected_symbol):
     if not metrics:
-        st.markdown(f"<div style='padding:10px;color:#6d6d6d;font-size:11px;'>No data — markets may be closed</div>", unsafe_allow_html=True)
+        _mut0 = get_theme().get('muted', '#475569')
+        st.markdown(f"<div style='padding:10px;color:{_mut0};font-size:11px;'>No data — markets may be closed</div>", unsafe_allow_html=True)
         return
 
     t = get_theme(); zc = zone_colors()
     pos_c, neg_c = t['pos'], t['neg']
 
+    _mut = t.get('muted', '#475569')
+
     def _fv(val):
-        if pd.isna(val): return "<span style='color:#6d6d6d'>—</span>"
+        if pd.isna(val): return f"<span style='color:{_mut}'>—</span>"
         c = pos_c if val >= 0 else neg_c
         return f"<span style='color:{c};font-weight:600'>{'+' if val >= 0 else ''}{val:.2f}%</span>"
 
     def _dot(status, reversal=False):
         ico = ""
-        c = zc.get(status, '#3a3a3a')
+        c = zc.get(status, _mut)
         if status == 'above_high': ico = f"<span style='color:{c};font-weight:700;border:1px solid #ffffff80;padding:0 2px;border-radius:2px;font-size:8px'>▲</span>"
         elif status == 'below_low': ico = f"<span style='color:{c};font-weight:700;border:1px solid #ffffff80;padding:0 2px;border-radius:2px;font-size:8px'>▼</span>"
         if reversal: ico += "<span style='color:#facc15;font-weight:700;border:1px solid #ffffff80;padding:0 2px;border-radius:0;font-size:8px'>■</span>"
@@ -613,7 +616,7 @@ def render_scanner_table(metrics, selected_symbol):
         return f"<span style='display:inline-block;width:56px;text-align:right;font-variant-numeric:tabular-nums'>{_fv(val)}</span>{_dot(status, reversal)}"
 
     def _sharpe(val):
-        if pd.isna(val): return "<span style='color:#6d6d6d'>—</span>"
+        if pd.isna(val): return f"<span style='color:{_mut}'>—</span>"
         c = pos_c if val >= 0 else neg_c
         return f"<span style='color:{c};font-weight:600'>{val:+.2f}</span>"
 
@@ -652,15 +655,17 @@ def render_scanner_table(metrics, selected_symbol):
             <th style='{th}text-align:right'>MTD</th><th style='{th}text-align:right'>YTD</th>
         </tr></thead><tbody>"""
 
+    _txt1 = t.get('text', '#e2e8f0'); _txt2 = t.get('text2', '#94a3b8')
+
     for m in metrics:
         pf = f"{m.price:,.{m.decimals}f}"
         ss = clean_symbol(m.symbol)
         bg = (f'linear-gradient(90deg,{pos_c}08,{t.get("bg3","#1a2744")},{pos_c}08)' if m.symbol == selected_symbol else 'transparent')
-        hv = f"<span style='color:#9d9d9d'>{m.hist_vol:.1f}%</span>" if not pd.isna(m.hist_vol) else "<span style='color:#6d6d6d'>—</span>"
-        dd = f"<span style='color:{neg_c};font-weight:600'>{m.current_dd:.1f}%</span>" if not pd.isna(m.current_dd) else "<span style='color:#6d6d6d'>—</span>"
+        hv = f"<span style='color:{_txt2}'>{m.hist_vol:.1f}%</span>" if not pd.isna(m.hist_vol) else f"<span style='color:{_mut}'>—</span>"
+        dd = f"<span style='color:{neg_c};font-weight:600'>{m.current_dd:.1f}%</span>" if not pd.isna(m.current_dd) else f"<span style='color:{_mut}'>—</span>"
         html += f"""<tr style='background:{bg}'>
-            <td style='{td}color:#cccccc;font-weight:600;text-align:left;white-space:nowrap'>{ss}</td>
-            <td style='{td}color:white;font-weight:700;text-align:right'>{pf}</td>
+            <td style='{td}color:{_txt1};font-weight:600;text-align:left;white-space:nowrap'>{ss}</td>
+            <td style='{td}color:#f8fafc;font-weight:700;text-align:right'>{pf}</td>
             <td style='{td}text-align:left;white-space:nowrap'>{_chg(m.change_day, m.day_status, m.day_reversal)}</td>
             <td style='{td}text-align:left;white-space:nowrap'>{_chg(m.change_wtd, m.week_status, m.week_reversal)}</td>
             <td style='{td}text-align:left;white-space:nowrap'>{_chg(m.change_mtd, m.month_status, m.month_reversal)}</td>
@@ -938,7 +943,7 @@ def render_key_levels(symbol, levels):
     _mut = _t.get('muted', '#6d6d6d')
 
     html = f"""<div style='padding:8px 12px;background:linear-gradient(90deg,{pos_c}12,{_hdr_bg});border-left:2px solid {pos_c};display:flex;justify-content:space-between;align-items:center;font-family:{FONTS};border-radius:4px 4px 0 0'>
-        <span><span style='color:{_txt1};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{ds} LEVELS</span>
+        <span><span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{ds} LEVELS</span>
         <span style='color:{_mut};font-size:10px;margin-left:6px;font-weight:400'>{fn}</span></span>
         <span style='color:{sc};font-size:10px;font-weight:700;letter-spacing:0.05em'>{sig}</span></div>"""
 
@@ -983,22 +988,28 @@ def render_news_panel(symbol):
     news = fetch_news(symbol)
 
     html = f"""<div style='padding:8px 12px;background:linear-gradient(90deg,{pos_c}12,{_hdr_bg});border-left:2px solid {pos_c};font-family:{FONTS};margin-top:8px;border-radius:4px 4px 0 0'>
-        <span style='color:{_txt1};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{ds} NEWS</span>
+        <span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{ds} NEWS</span>
         <span style='color:{_mut};font-size:10px;margin-left:6px;font-weight:400'>{fn}</span></div>"""
 
     if not news:
         html += f"<div style='padding:12px;background-color:{_body_bg};border:1px solid {_bdr_ln};border-top:none;border-radius:0 0 4px 4px;color:{_mut};font-size:11px;font-family:{FONTS}'>No news available</div>"
     else:
-        html += f"<div style='background-color:{_body_bg};border:1px solid {_bdr_ln};border-top:none;border-radius:0 0 4px 4px;max-height:400px;overflow-y:auto'>"
-        _row_alt = '#131b2e'
+        _row_alt = t.get('bg3', '#131b2e')
+        html += f"<div style='background-color:{_body_bg};border:1px solid {_bdr_ln};border-top:none;border-radius:0 0 4px 4px;max-height:300px;overflow-y:auto'>"
         for i, item in enumerate(news):
             t_text = item['title']; u = item['url']; p = item['provider']; d = item['date']
             row_bg = _body_bg if i % 2 == 0 else _row_alt
-            title_html = f"<a href='{u}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:11px;line-height:1.5;font-weight:400'>{t_text}</a>" if u else f"<span style='color:{_link_c};font-size:11px'>{t_text}</span>"
-            meta = []
-            if p: meta.append(f"<span style='color:{t.get('accent','#4ade80')};font-weight:600'>{p}</span>")
-            if d: meta.append(f"<span style='color:{t.get('text2','#94a3b8')}'>{d}</span>")
-            html += f"<div style='padding:7px 12px;border-bottom:1px solid {_bdr_ln};font-family:{FONTS};background:{row_bg}'><div>{title_html}</div><div style='font-size:9px;margin-top:3px'>{' &middot; '.join(meta)}</div></div>"
+            title_el = f"<a href='{u}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:10.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis'>{t_text}</a>" if u else f"<span style='color:{_link_c};font-size:10.5px'>{t_text}</span>"
+            meta_parts = []
+            if p: meta_parts.append(f"<span style='color:{pos_c};font-weight:600'>{p}</span>")
+            if d: meta_parts.append(f"<span style='color:{_mut}'>{d}</span>")
+            meta_html = f" <span style='color:{_bdr_ln}'>|</span> ".join(meta_parts)
+            html += (
+                f"<div style='padding:5px 12px;border-bottom:1px solid {_bdr_ln}10;font-family:{FONTS};background:{row_bg};"
+                f"display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden'>"
+                f"<span style='font-size:9px;flex-shrink:0;display:flex;gap:6px;align-items:baseline'>{meta_html}</span>"
+                f"{title_el}</div>"
+            )
         html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
@@ -1024,9 +1035,8 @@ def render_charts_tab(is_mobile, est):
         if 'sel_asset' in st.session_state:
             del st.session_state.sel_asset
 
-    # Controls row: SECTOR + ASSET + SORT + CHART (theme moved to PULSE tab)
-    lbl_c = t.get('text', '#e2e8f0')
-    _lbl = f"color:{lbl_c};font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
+    # Controls row: SECTOR + ASSET + SORT + CHART
+    _lbl = f"color:#f8fafc;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
     if is_mobile:
         col_sec, col_ast, col_sort, col_ct = st.columns([3, 2, 2, 1])
@@ -1117,10 +1127,9 @@ def render_charts_tab(is_mobile, est):
     # Footer
     ct_now = datetime.now(est).strftime('%H:%M %Z')
     _ft = get_theme()
-    _ft_bg = _ft.get('bg3', '#1a2744'); _ft_t1 = _ft.get('text2', '#9d9d9d'); _ft_t2 = _ft.get('text', '#cccccc'); _ft_m = _ft.get('muted', '#6d6d6d')
-    st.markdown(f"""<div style='margin-top:16px;padding:8px 12px;background-color:{_ft_bg};border-radius:4px;font-family:{FONTS}'>
-        <span style='font-size:11px;color:{_ft_t1}'>EST: <span style='color:{_ft_t2}'>{ct_now}</span>
-        &nbsp;·&nbsp; <span style='color:{_ft_m}'>Auto-refreshes every 5 minutes · Click symbol for analysis</span></span></div>""", unsafe_allow_html=True)
+    _ft_bg = _ft.get('bg3', '#1a2744'); _ft_m = _ft.get('muted', '#475569')
+    st.markdown(f"<div style='margin-top:12px;padding:6px 12px;background-color:{_ft_bg};border-radius:4px;font-family:{FONTS}'>"
+        f"<span style='font-size:10px;color:{_ft_m}'>EST {ct_now}</span></div>", unsafe_allow_html=True)
 
     # Auto-refresh every 5 minutes
     from streamlit.components.v1 import html as st_html
