@@ -459,9 +459,9 @@ def _render_pulse_news():
         f"border-bottom:1px solid {s['border']}'>"
         f"<span style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.1em'>LATEST</span>"
         f"<span style='color:{s['muted']};font-size:9px;font-weight:500'>{len(all_items)} headlines</span></div>"
-        f"<div style='max-height:340px;overflow-y:auto'>{rows}</div></div>"
+        f"<div style='max-height:200px;overflow-y:auto'>{rows}</div></div>"
     )
-    _wrap(html, min(len(all_items) * 42 + 36, 380))
+    _wrap(html, min(len(all_items) * 42 + 36, 240))
 
 
 # ── MAIN ─────────────────────────────────────────────────────────────────────
@@ -479,15 +479,14 @@ def render_pulse_tab(is_mobile):
     _render_hero_row(data)
     if spark_data:
         _render_sparkline_row(spark_data, data)
+    _render_pulse_news()
 
     if is_mobile:
         _render_heatmap_grid(data)
         _render_movers(data)
-        _render_pulse_news()
     else:
         col_left, col_right = st.columns([55, 45])
         with col_left:
             _render_heatmap_grid(data)
         with col_right:
             _render_movers(data)
-            _render_pulse_news()
