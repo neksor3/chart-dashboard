@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import logging
 
-from config import FUTURES_GROUPS, THEMES, SYMBOL_NAMES, FONTS, MONO, clean_symbol
+from config import FUTURES_GROUPS, THEMES, SYMBOL_NAMES, FONTS, clean_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ LOOKBACK_OPTIONS = {
     '520 Days': 520,
 }
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=900, show_spinner=False)
 def fetch_sector_spread_data(sector, lookback_days=0):
     symbols = FUTURES_GROUPS.get(sector, [])
     if not symbols: return None
@@ -179,11 +179,13 @@ def sort_spread_pairs(pairs, sort_key='Composite', ascending=False):
 def render_spread_table(pairs, theme, top_n=10):
     show = pairs[:top_n]
     pos_c = theme['pos']; neg_c = theme['neg']; short_c = theme['short']
-    th = "padding:3px 6px;border-bottom:1px solid #3a3a3a;color:#8a8a8a;font-weight:500;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
-    td = "padding:4px 6px;border-bottom:1px solid #2a2a2a;"
+    _bg3 = theme.get('bg3', '#0f172a'); _bdr = theme.get('border', '#1e293b')
+    _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8'); _mut = theme.get('muted', '#475569')
+    th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:{_mut};font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
+    td = f"padding:5px 8px;border-bottom:1px solid {_bdr}22;"
 
-    html = f"""<div style='background:#1e1e1e;overflow-x:auto'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
-        <thead><tr>
+    html = f"""<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:6px'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
+        <thead style='background:{_bg3}'><tr>
             <th style='{th}text-align:left'>RANK</th>
             <th style='{th}text-align:left'>LONG</th>
             <th style='{th}text-align:left'>SHORT</th>
@@ -205,22 +207,22 @@ def render_spread_table(pairs, theme, top_n=10):
         sh_c = pos_c if p['Sharpe'] >= 0 else neg_c
         tot_c = pos_c if p['Tot%'] >= 0 else neg_c
         tot_s = '+' if p['Tot%'] >= 0 else ''
-        win_c = pos_c if p['Win%'] >= 55 else (neg_c if p['Win%'] < 45 else '#9d9d9d')
-        vs = f"<span style='color:{pos_c};font-weight:700'>▲</span>" if p['beats_long'] else "<span style='color:#4a4a4a'>—</span>"
-        bg = 'rgba(74,222,128,0.06)' if p['beats_long'] else 'transparent'
+        win_c = pos_c if p['Win%'] >= 55 else (neg_c if p['Win%'] < 45 else _txt2)
+        vs = f"<span style='color:{pos_c};font-weight:700'>▲</span>" if p['beats_long'] else f"<span style='color:{_mut}'>—</span>"
+        bg = f'linear-gradient(90deg,{pos_c}08,{_bg3},{pos_c}08)' if p['beats_long'] else 'transparent'
         html += f"""<tr style='background:{bg}'>
-            <td style='{td}color:#6d6d6d;text-align:left'>{rank}</td>
+            <td style='{td}color:{_mut};text-align:left'>{rank}</td>
             <td style='{td}color:{pos_c};font-weight:600;text-align:left'>{ln}</td>
             <td style='{td}color:{short_c};font-weight:600;text-align:left'>{sn}</td>
             <td style='{td}text-align:right'><span style='color:{sh_c};font-weight:700'>{p["Sharpe"]:.2f}</span></td>
-            <td style='{td}text-align:right;color:#cccccc'>{p["Sortino"]:.2f}</td>
-            <td style='{td}text-align:right;color:#cccccc'>{p["MAR"]:.2f}</td>
-            <td style='{td}text-align:right;color:#cccccc'>{p["R²"]:.3f}</td>
+            <td style='{td}text-align:right;color:{_txt2}'>{p["Sortino"]:.2f}</td>
+            <td style='{td}text-align:right;color:{_txt2}'>{p["MAR"]:.2f}</td>
+            <td style='{td}text-align:right;color:{_txt2}'>{p["R²"]:.3f}</td>
             <td style='{td}text-align:right'><span style='color:{win_c};font-weight:600'>{p["Win%"]:.0f}%</span></td>
             <td style='{td}text-align:right'><span style='color:{tot_c};font-weight:600'>{tot_s}{p["Tot%"]:.1f}%</span></td>
-            <td style='{td}text-align:right;color:#9d9d9d'>{p["Vol%"]:.1f}%</td>
+            <td style='{td}text-align:right;color:{_txt2}'>{p["Vol%"]:.1f}%</td>
             <td style='{td}text-align:right;color:{neg_c}'>{p["MDD%"]:.1f}%</td>
-            <td style='{td}text-align:right;color:#9d9d9d'>{p["Corr"]:.2f}</td>
+            <td style='{td}text-align:right;color:{_txt2}'>{p["Corr"]:.2f}</td>
             <td style='{td}text-align:center'>{vs}</td>
         </tr>"""
     html += "</tbody></table></div>"
@@ -233,6 +235,10 @@ def render_spread_table(pairs, theme, top_n=10):
 def render_spread_charts(pairs, data, theme, mobile=False):
     top_n = min(6, len(pairs))
     if top_n == 0: return
+
+    _pbg = theme.get('plot_bg', '#121212'); _grd = theme.get('grid', '#1f1f1f')
+    _axl = theme.get('axis_line', '#2a2a2a'); _tk = theme.get('tick', '#888888')
+    _mut = theme.get('muted', '#475569')
 
     n_cols = 1 if mobile else min(3, top_n)
     n_rows = (top_n + n_cols - 1) // n_cols
@@ -251,22 +257,22 @@ def render_spread_charts(pairs, data, theme, mobile=False):
     for i in range(top_n):
         p = pairs[i]; row = i // n_cols + 1; col = i % n_cols + 1
         fig.add_trace(go.Scatter(x=list(range(len(p['cum_long']))), y=p['cum_long'].values,
-            mode='lines', line=dict(color=theme['long'], width=1.5, shape='spline', smoothing=1.0),
+            mode='lines', line=dict(color=theme['long'], width=1.3, shape='spline', smoothing=1.0),
             showlegend=False, hovertemplate='Long: %{y:.1f}<extra></extra>'), row=row, col=col)
         fig.add_trace(go.Scatter(x=list(range(len(p['cum_short']))), y=p['cum_short'].values,
-            mode='lines', line=dict(color=theme['short'], width=1.5, shape='spline', smoothing=1.0),
+            mode='lines', line=dict(color=theme['short'], width=1.3, shape='spline', smoothing=1.0),
             showlegend=False, hovertemplate='Short: %{y:.1f}<extra></extra>'), row=row, col=col)
         fig.add_trace(go.Scatter(x=list(range(len(p['cum_spread']))), y=p['cum_spread'].values,
-            mode='lines', line=dict(color='#ffffff', width=1.8, dash='dot', shape='spline', smoothing=1.0),
+            mode='lines', line=dict(color='#ffffff', width=1.5, dash='dot', shape='spline', smoothing=1.0),
             showlegend=False, hovertemplate='Spread: %{y:.1f}<extra></extra>'), row=row, col=col)
-        fig.add_hline(y=100, line=dict(color='#333333', width=0.8, dash='dot'), row=row, col=col)
+        fig.add_hline(y=100, line=dict(color=_grd, width=0.8, dash='dot'), row=row, col=col)
 
         axis_idx = (row - 1) * n_cols + col
         fig.add_annotation(
             text=f"<b>{i+1}</b>", x=0.02, y=0.95,
             xref=f"x{'' if axis_idx == 1 else axis_idx} domain",
             yref=f"y{'' if axis_idx == 1 else axis_idx} domain",
-            showarrow=False, font=dict(size=14, color='#555555', family=MONO),
+            showarrow=False, font=dict(size=12, color=_mut, family=FONTS),
             xanchor='left', yanchor='top')
 
         n_ticks = 4; idx_step = max(1, len(data) // n_ticks)
@@ -280,21 +286,21 @@ def render_spread_charts(pairs, data, theme, mobile=False):
     for ann in fig['layout']['annotations']:
         xref_str = str(ann['xref']) if ann['xref'] else ''
         if 'domain' not in xref_str:
-            ann['font'] = dict(size=10, family=MONO)
+            ann['font'] = dict(size=10, family=FONTS)
 
     chart_h = 350 * n_rows if mobile else 220 * n_rows
     fig.update_layout(
         template='plotly_dark', height=chart_h,
         margin=dict(l=40, r=40, t=45, b=30),
-        plot_bgcolor='#121212', paper_bgcolor='#121212',
-        showlegend=False, hovermode='x unified', font=dict(family=MONO))
-    fig.update_xaxes(gridcolor='#1a1a1a', linecolor='#2a2a2a',
-        tickfont=dict(color='#555555', size=8, family=MONO), showgrid=False, tickangle=0)
-    fig.update_yaxes(gridcolor='#1a1a1a', linecolor='#2a2a2a',
-        tickfont=dict(color='#555555', size=8, family=MONO), side='right')
+        plot_bgcolor=_pbg, paper_bgcolor=_pbg,
+        showlegend=False, hovermode='x unified', font=dict(family=FONTS))
+    fig.update_xaxes(gridcolor=_grd, linecolor=_axl,
+        tickfont=dict(color=_tk, size=8, family=FONTS), showgrid=False, tickangle=0)
+    fig.update_yaxes(gridcolor=_grd, linecolor=_axl,
+        tickfont=dict(color=_tk, size=8, family=FONTS), side='right')
 
     st.plotly_chart(fig, use_container_width=True, config={
-        'scrollZoom': True, 'displayModeBar': not mobile, 'responsive': True})
+        'scrollZoom': True, 'displayModeBar': False, 'responsive': True})
 
 # =============================================================================
 # MAIN RENDER FUNCTION (called from app.py)
@@ -345,12 +351,12 @@ def render_spreads_tab(is_mobile):
         data = fetch_sector_spread_data(spread_sector, lookback_days)
 
     if data is None or len(data.columns) < 2:
-        st.markdown(f"<div style='padding:12px;color:#6d6d6d;font-size:11px;font-family:{FONTS}'>Need at least 2 assets with data for spread analysis</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='padding:12px;color:{theme.get('muted','#475569')};font-size:11px;font-family:{FONTS}'>Need at least 2 assets with data for spread analysis</div>", unsafe_allow_html=True)
         return
 
     pairs = compute_sector_spreads(data)
     if not pairs:
-        st.markdown(f"<div style='padding:12px;color:#6d6d6d;font-size:11px;font-family:{FONTS}'>No spreads computed</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='padding:12px;color:{theme.get('muted','#475569')};font-size:11px;font-family:{FONTS}'>No spreads computed</div>", unsafe_allow_html=True)
         return
 
     sorted_pairs = sort_spread_pairs(pairs, sort_key, ascending)
@@ -364,13 +370,14 @@ def render_spreads_tab(is_mobile):
     start_date = data.index[0].strftime('%d %b')
     end_date = data.index[-1].strftime('%d %b %Y')
 
-    beats_c = pos_c if n_beats > 0 else '#6d6d6d'
+    _bg3 = theme.get('bg3', '#0f172a'); _mut = theme.get('muted', '#475569'); _txt2 = theme.get('text2', '#94a3b8')
+    beats_c = pos_c if n_beats > 0 else _mut
     st.markdown(f"""
-        <div style='padding:5px 10px;background-color:#1e1e1e;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px'>
-            <span style='color:#6d6d6d;font-size:10px'>{n_combos} pairs · {start_date} → {end_date}</span>
-            <span style='color:#8a8a8a;font-size:10px'>
+        <div style='padding:5px 10px;background-color:{_bg3};font-family:{FONTS};display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;border-radius:4px'>
+            <span style='color:{_mut};font-size:10px'>{n_combos} pairs · {start_date} → {end_date}</span>
+            <span style='color:{_txt2};font-size:10px'>
                 Best long: <span style='color:{pos_c};font-weight:600'>{best_long_name}</span>
-                <span style='color:#6d6d6d'>Sharpe {best_long_sharpe:.2f}</span>
+                <span style='color:{_mut}'>Sharpe {best_long_sharpe:.2f}</span>
                 &nbsp;·&nbsp;
                 <span style='color:{beats_c}'>{n_beats} spread{"s" if n_beats != 1 else ""} beat{"s" if n_beats == 1 else ""} it</span>
             </span>
