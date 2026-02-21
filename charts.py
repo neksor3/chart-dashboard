@@ -560,29 +560,28 @@ def render_return_bars(metrics, sort_by='Default'):
         if v >= 0 or sort_by in ('HV',):
             left_content = ""
             right_content = (
-                f"<div style='height:14px;width:{bar_pct}%;background:linear-gradient(90deg,{c}15,{c}55);border-radius:0 3px 3px 0'></div>"
+                f"<div style='height:18px;width:{bar_pct}%;background:linear-gradient(90deg,{c}15,{c}55);border-radius:0 3px 3px 0'></div>"
                 f"<span style='color:{c};font-size:8px;font-weight:700;margin-left:3px;font-family:{FONTS};white-space:nowrap;font-variant-numeric:tabular-nums'>{fmt}</span>"
             )
         else:
             left_content = (
                 f"<span style='color:{c};font-size:8px;font-weight:700;margin-right:3px;font-family:{FONTS};white-space:nowrap;font-variant-numeric:tabular-nums'>{fmt}</span>"
-                f"<div style='height:14px;width:{bar_pct}%;background:linear-gradient(270deg,{c}15,{c}55);border-radius:3px 0 0 3px'></div>"
+                f"<div style='height:18px;width:{bar_pct}%;background:linear-gradient(270deg,{c}15,{c}55);border-radius:3px 0 0 3px'></div>"
             )
             right_content = ""
 
-        rows += f"""<div style='display:flex;align-items:center;padding:3px 0'>
+        rows += f"""<div style='display:flex;align-items:center;padding:5px 0'>
             <div style='flex:1;display:flex;align-items:center;justify-content:flex-end'>{left_content}</div>
             <span style='width:36px;text-align:center;color:{t.get("text2","#9d9d9d")};font-size:9px;font-weight:600;font-family:{FONTS};flex-shrink:0'>{sym}</span>
             <div style='flex:1;display:flex;align-items:center'>{right_content}</div>
         </div>"""
 
-    _bg0 = t.get('bg3', '#0f1522'); _bdr0 = t.get('border', '#1e293b'); _mut0 = t.get('muted', '#8a8a8a')
+    _bg0 = t.get('bg3', '#0f1522'); _bdr0 = t.get('border', '#1e293b')
     html = f"""<div style='background:{_bg0};border:1px solid {_bdr0};border-radius:6px;padding:0 6px 4px 6px;overflow:hidden'>
         <div style='display:flex;align-items:center;padding:6px 2px 4px'>
             <span style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
             <div style='flex:1;height:1px;background:{_bdr0};margin-left:8px'></div>
         </div>
-        <div style='padding:2px 0;height:10px'></div>
         {rows}
     </div>"""
     st.markdown(html, unsafe_allow_html=True)
