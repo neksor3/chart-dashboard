@@ -113,11 +113,17 @@ def render_news_column(region, feeds):
         _accent = t.get('accent', pos_c)
         for i, item in enumerate(all_items[:30]):
             bg = _body_bg if i % 2 == 0 else _row_alt
-            a = f"<a href='{item['url']}' target='_blank' style='color:{_txt};text-decoration:none;font-size:11px;font-weight:400;line-height:1.5;font-family:{FONTS}'>{item['title']}</a>" if item['url'] else f"<span style='color:{_txt};font-size:11px;font-family:{FONTS}'>{item['title']}</span>"
-            html += f"""<div style='padding:7px 12px;border-bottom:1px solid {_bdr};background:{bg}'>
-                <div>{a}</div>
-                <div style='font-size:9px;margin-top:3px;font-family:{FONTS}'><span style='color:{_accent};font-weight:600'>{item['source']}</span> <span style='color:{_mut}'>&middot;</span> <span style='color:{_txt2}'>{item['date']}</span></div>
-            </div>"""
+            title_el = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:10.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:10.5px'>{item['title']}</span>"
+            meta_parts = []
+            if item['source']: meta_parts.append(f"<span style='color:{_accent};font-weight:600'>{item['source']}</span>")
+            if item['date']: meta_parts.append(f"<span style='color:{_txt2}'>{item['date']}</span>")
+            meta_html = f" <span style='color:{_bdr}'>·</span> ".join(meta_parts)
+            html += (
+                f"<div style='padding:5px 12px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
+                f"display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden'>"
+                f"<span style='font-size:9px;flex-shrink:0;display:flex;gap:4px;align-items:baseline'>{meta_html}</span>"
+                f"{title_el}</div>"
+            )
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
