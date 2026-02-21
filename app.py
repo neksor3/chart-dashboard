@@ -88,10 +88,13 @@ def _inject_theme_css():
         min-width: 20px !important;
         opacity: 0.35;
         transition: opacity 0.15s;
-        float: right;
     }}
     [data-testid="stPopover"] > button:hover {{
         opacity: 1;
+    }}
+    [data-testid="stPopover"] {{
+        display: flex;
+        justify-content: flex-end;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -1135,8 +1138,8 @@ def main():
     ring_c = '#cbd5e1' if is_light else '#1e293b'
     title_c = '#1e293b' if is_light else '#f8fafc'
 
-    # Header row: logo left, theme picker far right
-    logo_col, theme_col = st.columns([9, 1])
+    # Header row: logo left, theme picker flush right
+    logo_col, theme_col = st.columns([19, 1])
     with logo_col:
         st.markdown(f"""
             <style>
@@ -1167,7 +1170,7 @@ def main():
             </div>
         """, unsafe_allow_html=True)
     with theme_col:
-        st.markdown(f"<div style='padding-top:10px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='padding-top:10px;display:flex;justify-content:flex-end'></div>", unsafe_allow_html=True)
         with st.popover(""):
             theme_names = list(THEMES.keys())
             if st.session_state.get('theme') not in theme_names:
