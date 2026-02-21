@@ -18,18 +18,46 @@ def get_theme():
     return THEMES.get(tn, THEMES['Emerald / Amber'])
 
 
+def _s():
+    """Return surface palette dict based on current theme."""
+    t = get_theme()
+    is_light = t.get('mode') == 'light'
+    bg = t.get('bg', '#1e1e1e')
+    bg2 = t.get('bg2', '#0a0f1a')
+    bg3 = t.get('bg3', '#0f172a')
+    bdr = t.get('border', '#1e293b')
+    txt = t.get('text', '#e2e8f0')
+    txt2 = t.get('text2', '#94a3b8')
+    muted = t.get('muted', '#475569')
+    if is_light:
+        return dict(
+            bg=bg, bg2=bg2, bg3=bg3, card=bg2,
+            border=bdr, text=txt, text2=txt2, muted=muted,
+            off_dot='#d1d5db', off_name='#9ca3af', link='#334155',
+            bar_bg=bdr, row_alt=bg3, hm_txt=txt,
+        )
+    else:
+        return dict(
+            bg=bg, bg2=bg2, bg3=bg3, card=bg3,
+            border=bdr, text=txt, text2=txt2, muted=muted,
+            off_dot='#3a3a3a', off_name='#4a5568', link='#c9d1d9',
+            bar_bg=bg3, row_alt='#0d1321', hm_txt=txt,
+        )
+
+
 def _wrap(body, height):
+    s = _s()
     page = (
         "<!DOCTYPE html><html><head><meta charset='utf-8'>"
         "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap' rel='stylesheet'>"
         "<style>"
         "* { margin:0; padding:0; box-sizing:border-box; }"
-        f"body {{ background:transparent; font-family:{FONTS}; color:#ccc; overflow:hidden; }}"
-        "a { color:#c9d1d9; text-decoration:none; }"
+        f"body {{ background:transparent; font-family:{FONTS}; color:{s['text']}; overflow:hidden; }}"
+        f"a {{ color:{s['link']}; text-decoration:none; }}"
         "a:hover { text-decoration:underline; }"
-        "::-webkit-scrollbar { width:4px; }"
-        "::-webkit-scrollbar-track { background:#0a0f1a; }"
-        "::-webkit-scrollbar-thumb { background:#1e293b; border-radius:2px; }"
+        f"::-webkit-scrollbar {{ width:4px; }}"
+        f"::-webkit-scrollbar-track {{ background:{s['bg2']}; }}"
+        f"::-webkit-scrollbar-thumb {{ background:{s['border']}; border-radius:2px; }}"
         "</style></head><body>"
         f"{body}"
         "</body></html>"
@@ -170,25 +198,26 @@ def _market_status():
 def _render_market_status_bar():
     markets = _market_status()
     t = get_theme()
+    s = _s()
     dots = ''
     for m in markets:
-        color = t['pos'] if m['open'] else '#3a3a3a'
+        color = t['pos'] if m['open'] else s['off_dot']
         glow = f'box-shadow:0 0 6px {t["pos"]}80;' if m['open'] else ''
         pulse = 'animation:pulse-dot 2s ease-in-out infinite;' if m['open'] else ''
-        nc = '#e2e8f0' if m['open'] else '#4a5568'
+        nc = s['text'] if m['open'] else s['off_name']
         dots += (
             f"<div style='display:flex;align-items:center;gap:5px'>"
             f"<div style='width:6px;height:6px;border-radius:50%;background:{color};{glow}{pulse}'></div>"
             f"<span style='color:{nc};font-size:9px;font-weight:600;letter-spacing:0.08em'>{m['name']}</span>"
-            f"<span style='color:#4a5568;font-size:8px'>{m['time']}</span>"
+            f"<span style='color:{s['off_name']};font-size:8px'>{m['time']}</span>"
             f"</div>"
         )
     html = (
         "<style>@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.4}}</style>"
-        "<div style='display:flex;gap:16px;flex-wrap:wrap;padding:6px 12px;background:#0a0f1a;"
-        "border:1px solid #1e293b;border-radius:4px'>"
-        "<span style='color:#334155;font-size:8px;font-weight:600;letter-spacing:0.1em;"
-        "align-self:center'>MARKETS</span>"
+        f"<div style='display:flex;gap:16px;flex-wrap:wrap;padding:6px 12px;background:{s['bg2']};"
+        f"border:1px solid {s['border']};border-radius:4px'>"
+        f"<span style='color:{s['muted']};font-size:8px;font-weight:600;letter-spacing:0.1em;"
+        f"align-self:center'>MARKETS</span>"
         f"{dots}</div>"
     )
     _wrap(html, 36)
@@ -196,7 +225,10 @@ def _render_market_status_bar():
 
 def _render_hero_row(data):
     t = get_theme()
+    s = _s()
     pos_c, neg_c = t['pos'], t['neg']
+    is_light = st.session_state.get('theme') == 'Light'
+
     cards = ''
     for sym, cfg in HERO_SYMBOLS.items():
         d = data.get(sym)
@@ -207,17 +239,25 @@ def _render_hero_row(data):
         sign = '+' if change >= 0 else ''
         arrow = '&#9650;' if change > 0 else '&#9660;' if change < 0 else '&#8211;'
         price_str = f'{price:{cfg["fmt"]}}'
+
+        if is_light:
+            card_bg = f'background:{s["bg2"]};'
+            glow = ''
+        else:
+            card_bg = f'background:linear-gradient(135deg,{s["bg3"]},{s["bg2"]});'
+            glow = f'text-shadow:0 0 20px {color}40;'
+
         cards += (
             f"<div style='flex:1;min-width:110px;padding:10px 12px;"
-            f"background:linear-gradient(135deg,#0f172a,#0a0f1a);"
-            f"border:1px solid #1e293b;border-radius:6px;position:relative;overflow:hidden'>"
+            f"{card_bg}"
+            f"border:1px solid {s['border']};border-radius:6px;position:relative;overflow:hidden'>"
             f"<div style='position:absolute;top:0;left:0;right:0;height:2px;"
             f"background:linear-gradient(90deg,transparent,{color}40,transparent)'></div>"
-            f"<div style='color:#4a5568;font-size:8px;font-weight:600;letter-spacing:0.12em;"
+            f"<div style='color:{s['muted']};font-size:8px;font-weight:600;letter-spacing:0.12em;"
             f"text-transform:uppercase;margin-bottom:4px'>{cfg['label']}</div>"
-            f"<div style='color:#f1f5f9;font-size:17px;font-weight:700;"
+            f"<div style='color:{s['text']};font-size:17px;font-weight:700;"
             f"font-variant-numeric:tabular-nums;letter-spacing:-0.02em;"
-            f"text-shadow:0 0 20px {color}40'>{price_str}</div>"
+            f"{glow}'>{price_str}</div>"
             f"<div style='margin-top:3px;display:flex;align-items:center;gap:4px'>"
             f"<span style='color:{color};font-size:10px'>{arrow}</span>"
             f"<span style='color:{color};font-size:11px;font-weight:700'>{sign}{change:.2f}%</span>"
@@ -229,6 +269,7 @@ def _render_hero_row(data):
 
 def _render_sparkline_row(spark_data, pulse_data):
     t = get_theme()
+    s = _s()
     pos_c, neg_c = t['pos'], t['neg']
     cards = ''
     for sym in SPARKLINE_SYMBOLS:
@@ -242,14 +283,14 @@ def _render_sparkline_row(spark_data, pulse_data):
         sign = '+' if change >= 0 else ''
         svg = _svg_sparkline(sdata, width=100, height=28, pos_color=pos_c, neg_color=neg_c)
         cards += (
-            f"<div style='flex:1;min-width:140px;padding:8px 10px;background:#0f172a;"
-            f"border:1px solid #1e293b;border-radius:4px'>"
+            f"<div style='flex:1;min-width:140px;padding:8px 10px;background:{s['card']};"
+            f"border:1px solid {s['border']};border-radius:4px'>"
             f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:4px'>"
-            f"<span style='color:#94a3b8;font-size:9px;font-weight:600;letter-spacing:0.06em'>{short}</span>"
+            f"<span style='color:{s['text2']};font-size:9px;font-weight:600;letter-spacing:0.06em'>{short}</span>"
             f"<span style='color:{color};font-size:9px;font-weight:700'>{sign}{change:.2f}%</span>"
             f"</div>"
             f"{svg}"
-            f"<div style='color:#475569;font-size:7px;margin-top:2px;text-align:right'>30 DAY</div>"
+            f"<div style='color:{s['muted']};font-size:7px;margin-top:2px;text-align:right'>30 DAY</div>"
             f"</div>"
         )
     html = f"<div style='display:flex;gap:6px;flex-wrap:wrap'>{cards}</div>"
@@ -258,11 +299,13 @@ def _render_sparkline_row(spark_data, pulse_data):
 
 def _render_heatmap_grid(data):
     t = get_theme()
+    s = _s()
     pos_c, neg_c = t['pos'], t['neg']
+    is_light = st.session_state.get('theme') == 'Light'
 
     def _bg(change, pos, neg):
         abs_c = min(abs(change), 5)
-        opacity = 0.25 + (abs_c / 5) * 0.75
+        opacity = 0.15 + (abs_c / 5) * 0.55 if is_light else 0.25 + (abs_c / 5) * 0.75
         base = pos if change >= 0 else neg
         r, g, b = int(base[1:3], 16), int(base[3:5], 16), int(base[5:7], 16)
         return f'rgba({r},{g},{b},{opacity:.2f})'
@@ -282,10 +325,11 @@ def _render_heatmap_grid(data):
             bg = _bg(change, pos_c, neg_c)
             tc = pos_c if change >= 0 else neg_c
             sign = '+' if change >= 0 else ''
+            cell_border = 'rgba(0,0,0,0.06)' if is_light else 'rgba(255,255,255,0.04)'
             cells += (
                 f"<div style='flex:1;min-width:60px;padding:6px 8px;background:{bg};"
-                f"border-radius:3px;border:1px solid rgba(255,255,255,0.04);text-align:center'>"
-                f"<div style='color:#e2e8f0;font-size:10px;font-weight:600'>{name}</div>"
+                f"border-radius:3px;border:1px solid {cell_border};text-align:center'>"
+                f"<div style='color:{s['hm_txt']};font-size:10px;font-weight:600'>{name}</div>"
                 f"<div style='color:{tc};font-size:11px;font-weight:700;margin-top:1px;"
                 f"font-variant-numeric:tabular-nums'>{sign}{change:.2f}%</div>"
                 f"</div>"
@@ -294,19 +338,19 @@ def _render_heatmap_grid(data):
             active_sectors += 1
             sectors_html += (
                 f"<div style='margin-bottom:6px'>"
-                f"<div style='color:#334155;font-size:8px;font-weight:600;letter-spacing:0.1em;"
+                f"<div style='color:{s['muted']};font-size:8px;font-weight:600;letter-spacing:0.1em;"
                 f"text-transform:uppercase;margin-bottom:4px;padding-left:2px'>{sector}</div>"
                 f"<div style='display:flex;gap:4px;flex-wrap:wrap'>{cells}</div>"
                 f"</div>"
             )
 
     html = (
-        "<div style='padding:10px 12px;background:#0a0f1a;border:1px solid #1e293b;border-radius:6px'>"
-        "<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px'>"
-        "<span style='color:#64748b;font-size:9px;font-weight:600;letter-spacing:0.1em;"
-        "text-transform:uppercase'>MARKET HEATMAP</span>"
-        "<span style='color:#334155;font-size:8px'>Day Change %</span>"
-        "</div>"
+        f"<div style='padding:10px 12px;background:{s['bg2']};border:1px solid {s['border']};border-radius:6px'>"
+        f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px'>"
+        f"<span style='color:{s['text2']};font-size:9px;font-weight:600;letter-spacing:0.1em;"
+        f"text-transform:uppercase'>MARKET HEATMAP</span>"
+        f"<span style='color:{s['muted']};font-size:8px'>Day Change %</span>"
+        f"</div>"
         f"{sectors_html}</div>"
     )
     _wrap(html, 46 * active_sectors + 50)
@@ -314,16 +358,17 @@ def _render_heatmap_grid(data):
 
 def _render_movers(data):
     t = get_theme()
+    s = _s()
     pos_c, neg_c = t['pos'], t['neg']
     all_items = [(sym, d['change']) for sym, d in data.items()]
     all_items.sort(key=lambda x: x[1], reverse=True)
-    gainers = [(s, c) for s, c in all_items if c > 0][:5]
-    losers = [(s, c) for s, c in all_items if c < 0][-5:]
+    gainers = [(sc, c) for sc, c in all_items if c > 0][:5]
+    losers = [(sc, c) for sc, c in all_items if c < 0][-5:]
     losers.reverse()
 
     def _rows(items, color, is_gain):
         if not items:
-            return "<div style='color:#334155;font-size:10px;padding:8px'>No data</div>"
+            return f"<div style='color:{s['muted']};font-size:10px;padding:8px'>No data</div>"
         max_abs = max(abs(c) for _, c in items) or 1
         html = ''
         for sym, change in items:
@@ -335,8 +380,8 @@ def _render_movers(data):
             html += (
                 f"<div style='display:flex;align-items:center;padding:5px 0;gap:6px'>"
                 f"<div style='width:45px;flex-shrink:0'>"
-                f"<span style='color:#e2e8f0;font-size:10px;font-weight:600'>{short}</span></div>"
-                f"<div style='flex:1;position:relative;height:18px;background:#0f172a;border-radius:2px;overflow:hidden'>"
+                f"<span style='color:{s['text']};font-size:10px;font-weight:600'>{short}</span></div>"
+                f"<div style='flex:1;position:relative;height:18px;background:{s['bar_bg']};border-radius:2px;overflow:hidden'>"
                 f"<div style='position:absolute;top:0;{align}:0;height:100%;width:{bar_pct}%;"
                 f"background:linear-gradient({grad_dir},{color}20,{color}60);border-radius:2px'></div>"
                 f"<span style='position:absolute;top:50%;transform:translateY(-50%);{align}:6px;"
@@ -350,8 +395,8 @@ def _render_movers(data):
     n_rows = max(len(gainers), len(losers), 1)
 
     html = (
-        "<div style='display:grid;grid-template-columns:1fr 1fr;gap:16px;"
-        "padding:10px 12px;background:#0a0f1a;border:1px solid #1e293b;border-radius:6px'>"
+        f"<div style='display:grid;grid-template-columns:1fr 1fr;gap:16px;"
+        f"padding:10px 12px;background:{s['bg2']};border:1px solid {s['border']};border-radius:6px'>"
         f"<div>"
         f"<div style='color:{pos_c};font-size:9px;font-weight:600;letter-spacing:0.1em;"
         f"margin-bottom:6px;display:flex;align-items:center;gap:4px'>"
@@ -369,6 +414,7 @@ def _render_movers(data):
 def _render_pulse_news():
     from news import NEWS_FEEDS, fetch_rss_feed
     t = get_theme()
+    s = _s()
     pos_c = t['pos']
     all_items = []
     for region in ['Global', 'Singapore']:
@@ -382,26 +428,23 @@ def _render_pulse_news():
 
     rows = ''
     for i, item in enumerate(all_items):
-        bg = '#0a0f1a' if i % 2 == 0 else '#0d1321'
-        link = (
-            f"<a href='{item['url']}' target='_blank'>{item['title']}</a>"
-            if item['url'] else item['title']
-        )
+        bg = s['bg2'] if i % 2 == 0 else s['row_alt']
         rows += (
-            f"<div style='padding:5px 10px;background:{bg};border-bottom:1px solid #1e293b10'>"
-            f"<div style='font-size:10px;line-height:1.35'>{link}</div>"
+            f"<div style='padding:5px 10px;background:{bg};border-bottom:1px solid {s['border']}10'>"
+            f"<div style='font-size:10px;line-height:1.35'>"
+            f"<a href='{item['url']}' target='_blank'>{item['title']}</a></div>"
             f"<div style='font-size:7px;margin-top:1px'>"
             f"<span style='color:{pos_c};font-weight:600'>{item['source']}</span>"
-            f" <span style='color:#334155'>&#183;</span> "
-            f"<span style='color:#475569'>{item['date']}</span>"
+            f" <span style='color:{s['muted']}'>&#183;</span> "
+            f"<span style='color:{s['muted']}'>{item['date']}</span>"
             f"</div></div>"
         )
 
     html = (
-        "<div style='background:#0a0f1a;border:1px solid #1e293b;border-radius:6px;overflow:hidden'>"
-        "<div style='padding:6px 10px;display:flex;justify-content:space-between;align-items:center'>"
-        "<span style='color:#64748b;font-size:9px;font-weight:600;letter-spacing:0.1em'>LATEST</span>"
-        f"<span style='color:#334155;font-size:8px'>{len(all_items)} headlines</span></div>"
+        f"<div style='background:{s['bg2']};border:1px solid {s['border']};border-radius:6px;overflow:hidden'>"
+        f"<div style='padding:6px 10px;display:flex;justify-content:space-between;align-items:center'>"
+        f"<span style='color:{s['text2']};font-size:9px;font-weight:600;letter-spacing:0.1em'>LATEST</span>"
+        f"<span style='color:{s['muted']};font-size:8px'>{len(all_items)} headlines</span></div>"
         f"<div style='max-height:320px;overflow-y:auto'>{rows}</div></div>"
     )
     _wrap(html, min(len(all_items) * 36 + 30, 350))
@@ -410,6 +453,17 @@ def _render_pulse_news():
 # ── MAIN ─────────────────────────────────────────────────────────────────────
 
 def render_pulse_tab(is_mobile):
+    # Theme picker at top of PULSE
+    _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
+    col_spacer, col_theme = st.columns([8, 2])
+    with col_theme:
+        st.markdown(f"<div style='{_lbl}'>THEME</div>", unsafe_allow_html=True)
+        theme_names = list(THEMES.keys())
+        if st.session_state.get('theme') not in theme_names:
+            st.session_state.theme = theme_names[0]
+        st.selectbox("Theme", theme_names,
+            key='theme', label_visibility='collapsed')
+
     with st.spinner('Scanning markets...'):
         data = _fetch_pulse_batch()
         spark_data = _fetch_sparklines()

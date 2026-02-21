@@ -28,39 +28,56 @@ logging.getLogger('yfinance').setLevel(logging.CRITICAL)
 
 st.set_page_config(page_title="SANPO", layout="wide", initial_sidebar_state="collapsed")
 
-# Dark theme CSS
-st.markdown("""
+# Theme-aware CSS — injected dynamically in main() after theme is known
+def _inject_theme_css():
+    t = get_theme()
+    is_light = t.get('mode') == 'light'
+    bg = t['bg']; bg2 = t['bg2']; bg3 = t['bg3']; bdr = t['border']
+    txt = t['text']; txt2 = t['text2']; muted = t['muted']; accent = t['accent']
+    sb_bg = '#f1f5f9' if is_light else '#1a2744'
+    sel_bg = '#f1f5f9' if is_light else '#1a2744'
+    sel_c = '#334155' if is_light else '#b0b0b0'
+    sel_bdr = '#e2e8f0' if is_light else '#1e293b'
+    tab_bg = bg3 if is_light else '#0f172a'
+    tab_bdr = bdr
+    tab_c = muted
+    tab_sel_c = txt
+    radio_bg = bg3 if is_light else '#1a2744'
+    radio_bdr = bdr
+    btn_bg = bg3 if is_light else '#1a2744'
+    btn_c = txt
+    st.markdown(f"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Orbitron:wght@500;700&display=swap');
-    .stApp { background-color: #1e1e1e; font-family: 'Inter', sans-serif; }
-    header[data-testid="stHeader"] { background-color: #1e1e1e; }
-    [data-testid="stSidebar"] { background-color: #1a2744; }
-    .stSelectbox > div > div { background-color: #1a2744; color: #b0b0b0; font-family: 'Inter', sans-serif; border: 1px solid #1e293b; }
-    .stTextInput > div > div > input { font-family: 'Inter', sans-serif; }
-    div[data-testid="stHorizontalBlock"] { gap: 0.3rem; }
-    .stTabs [data-baseweb="tab-list"] { gap: 0; background-color: #0f172a; padding: 0; border-radius: 0; border-bottom: 1px solid #2a4a6a; }
-    .stTabs [data-baseweb="tab"] {
-        background-color: transparent; color: #64748b; border: none;
+    .stApp {{ background-color: {bg}; font-family: 'Inter', sans-serif; }}
+    header[data-testid="stHeader"] {{ background-color: {bg}; }}
+    [data-testid="stSidebar"] {{ background-color: {sb_bg}; }}
+    .stSelectbox > div > div {{ background-color: {sel_bg}; color: {sel_c}; font-family: 'Inter', sans-serif; border: 1px solid {sel_bdr}; }}
+    .stTextInput > div > div > input {{ font-family: 'Inter', sans-serif; }}
+    div[data-testid="stHorizontalBlock"] {{ gap: 0.3rem; }}
+    .stTabs [data-baseweb="tab-list"] {{ gap: 0; background-color: {tab_bg}; padding: 0; border-radius: 0; border-bottom: 1px solid {tab_bdr}; }}
+    .stTabs [data-baseweb="tab"] {{
+        background-color: transparent; color: {tab_c}; border: none;
         border-bottom: 2px solid transparent;
         padding: 8px 20px; font-size: 11px; font-weight: 600;
         letter-spacing: 0.1em; text-transform: uppercase;
         font-family: 'Inter', sans-serif;
-    }
-    .stTabs [aria-selected="true"] { background-color: transparent; color: #e2e8f0; border-bottom: 2px solid #60a5fa; }
-    .stRadio > div { flex-direction: row; gap: 8px; }
-    .stRadio > div > label { background-color: #1a2744; padding: 4px 12px; border-radius: 3px;
-        border: 1px solid #2a4a6a; color: #b0b0b0; font-size: 12px; }
-    div[data-testid="stMarkdownContainer"] p { margin-bottom: 0; }
-    .block-container { padding-top: 2.5rem; padding-bottom: 0rem; }
-    button[kind="secondary"] { background-color: #1a2744; color: white; border: 1px solid #2a4a6a; font-family: 'Inter', sans-serif; }
-    .stButton > button { font-size: 11px !important; padding: 4px 8px !important; min-height: 30px !important; font-family: 'Inter', sans-serif !important; }
-    @media (max-width: 768px) {
-        .block-container { padding: 2.5rem 0.5rem 0 0.5rem !important; }
-        .stButton > button { font-size: 9px !important; padding: 2px 4px !important; min-height: 24px !important; }
-    }
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    [data-testid="stStatusWidget"] {visibility: hidden;}
+    }}
+    .stTabs [aria-selected="true"] {{ background-color: transparent; color: {tab_sel_c}; border-bottom: 2px solid {accent}; }}
+    .stRadio > div {{ flex-direction: row; gap: 8px; }}
+    .stRadio > div > label {{ background-color: {radio_bg}; padding: 4px 12px; border-radius: 3px;
+        border: 1px solid {radio_bdr}; color: {sel_c}; font-size: 12px; }}
+    div[data-testid="stMarkdownContainer"] p {{ margin-bottom: 0; }}
+    .block-container {{ padding-top: 2.5rem; padding-bottom: 0rem; }}
+    button[kind="secondary"] {{ background-color: {btn_bg}; color: {btn_c}; border: 1px solid {tab_bdr}; font-family: 'Inter', sans-serif; }}
+    .stButton > button {{ font-size: 11px !important; padding: 4px 8px !important; min-height: 30px !important; font-family: 'Inter', sans-serif !important; }}
+    @media (max-width: 768px) {{
+        .block-container {{ padding: 2.5rem 0.5rem 0 0.5rem !important; }}
+        .stButton > button {{ font-size: 9px !important; padding: 2px 4px !important; min-height: 24px !important; }}
+    }}
+    #MainMenu {{visibility: hidden;}}
+    footer {{visibility: hidden;}}
+    [data-testid="stStatusWidget"] {{visibility: hidden;}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -625,15 +642,16 @@ def render_return_bars(metrics, sort_by='Default'):
 
         rows += f"""<div style='display:flex;align-items:center;padding:4px 0'>
             <div style='flex:1;display:flex;align-items:center;justify-content:flex-end'>{left_content}</div>
-            <span style='width:36px;text-align:center;color:#9d9d9d;font-size:9px;font-weight:600;font-family:{FONTS};flex-shrink:0'>{sym}</span>
+            <span style='width:36px;text-align:center;color:{t.get("text2","#9d9d9d")};font-size:9px;font-weight:600;font-family:{FONTS};flex-shrink:0'>{sym}</span>
             <div style='flex:1;display:flex;align-items:center'>{right_content}</div>
         </div>"""
 
     # 2 header rows to match scanner thead, then data rows
-    html = f"""<div style='background:#0f1522;border:1px solid #1e293b;border-radius:6px;padding:0 4px;overflow:hidden'>
+    _bg0 = t.get('bg3', '#0f1522'); _bdr0 = t.get('border', '#1e293b'); _mut0 = t.get('muted', '#8a8a8a'); _txt0 = t.get('text2', '#9d9d9d')
+    html = f"""<div style='background:{_bg0};border:1px solid {_bdr0};border-radius:6px;padding:0 4px;overflow:hidden'>
         <div style='display:flex;align-items:center;padding:3px 2px'>
-            <span style='color:#8a8a8a;font-size:9px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
-            <div style='flex:1;height:1px;background:#1e293b;margin-left:6px'></div>
+            <span style='color:{_mut0};font-size:9px;font-weight:500;letter-spacing:0.06em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
+            <div style='flex:1;height:1px;background:{_bdr0};margin-left:6px'></div>
         </div>
         <div style='padding:3px 2px;height:14px'></div>
         {rows}
@@ -707,7 +725,7 @@ def render_scanner_table(metrics, selected_symbol):
     for m in metrics:
         pf = f"{m.price:,.{m.decimals}f}"
         ss = clean_symbol(m.symbol)
-        bg = '#1a2744' if m.symbol == selected_symbol else 'transparent'
+        bg = (t.get('bg3', '#1a2744') if m.symbol == selected_symbol else 'transparent')
         hv = f"<span style='color:#9d9d9d'>{m.hist_vol:.1f}%</span>" if not pd.isna(m.hist_vol) else "<span style='color:#6d6d6d'>—</span>"
         dd = f"<span style='color:{neg_c};font-weight:600'>{m.current_dd:.1f}%</span>" if not pd.isna(m.current_dd) else "<span style='color:#6d6d6d'>—</span>"
         html += f"""<tr style='background:{bg}'>
@@ -939,13 +957,18 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                 parts.append(f"<b><span style='color:{c}'>[{status}]</span></b>")
             ann['text'] = '  '.join(parts); ann['font'] = dict(color='#9d9d9d', size=11)
 
-    fig.update_layout(template='plotly_dark', height=1200 if mobile else 650, margin=dict(l=50,r=90,t=60,b=60),
-        showlegend=False, plot_bgcolor='#121212', paper_bgcolor='#121212',
+    _t = get_theme()
+    _pbg = _t.get('plot_bg', '#121212'); _grd = _t.get('grid', '#1f1f1f')
+    _axl = _t.get('axis_line', '#2a2a2a'); _tk = _t.get('tick', '#888888')
+    _tpl = 'plotly_white' if _t.get('mode') == 'light' else 'plotly_dark'
+
+    fig.update_layout(template=_tpl, height=1200 if mobile else 650, margin=dict(l=50,r=90,t=60,b=60),
+        showlegend=False, plot_bgcolor=_pbg, paper_bgcolor=_pbg,
         dragmode='pan', hovermode='closest', autosize=True)
-    fig.update_xaxes(gridcolor='#1f1f1f', linecolor='#2a2a2a', tickfont=dict(color='#888888', size=8),
+    fig.update_xaxes(gridcolor=_grd, linecolor=_axl, tickfont=dict(color=_tk, size=8),
         showgrid=True, showticklabels=True, tickangle=-45, rangeslider=dict(visible=False),
         fixedrange=False, showspikes=True, spikecolor='#6b7280', spikethickness=1, spikedash='dot', spikemode='across')
-    fig.update_yaxes(gridcolor='#1f1f1f', linecolor='#2a2a2a', showgrid=True, side='right',
+    fig.update_yaxes(gridcolor=_grd, linecolor=_axl, showgrid=True, side='right',
         fixedrange=False, showspikes=True, spikecolor='#6b7280', spikethickness=1, spikedash='dot', spikemode='across')
 
     return fig, computed_levels
@@ -977,32 +1000,39 @@ def render_key_levels(symbol, levels):
     for tf in ['session','week','month','year']:
         if tf in levels: price = levels[tf]['price']; dec = 2 if price > 10 else 4; break
 
-    html = f"""<div style='padding:6px 10px;background-color:#1a2744;border-left:2px solid {pos_c};display:flex;justify-content:space-between;align-items:center;font-family:{FONTS}'>
-        <span><span style='color:#e2e8f0;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{ds} LEVELS</span>
-        <span style='color:#6d6d6d;font-size:10px;margin-left:6px'>{fn}</span></span>
+    _t = get_theme()
+    _il = _t.get('mode') == 'light'
+    _hdr_bg = _t.get('bg3', '#1a2744'); _body_bg = _t.get('bg', '#1e1e1e')
+    _bdr_ln = _t.get('border', '#2a2a2a')
+    _txt1 = _t.get('text', '#e2e8f0'); _txt2 = _t.get('text2', '#b0b0b0')
+    _mut = _t.get('muted', '#6d6d6d')
+
+    html = f"""<div style='padding:6px 10px;background-color:{_hdr_bg};border-left:2px solid {pos_c};display:flex;justify-content:space-between;align-items:center;font-family:{FONTS}'>
+        <span><span style='color:{_txt1};font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{ds} LEVELS</span>
+        <span style='color:{_mut};font-size:10px;margin-left:6px'>{fn}</span></span>
         <span style='color:{sc};font-size:10px;font-weight:600;letter-spacing:0.05em'>{sig}</span></div>"""
 
-    html += f"""<div style='background-color:#1e1e1e'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%'>
+    html += f"""<div style='background-color:{_body_bg}'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%'>
         <thead><tr>
-            <th style='padding:4px 8px;color:#6d6d6d;text-align:left;font-size:9px;text-transform:uppercase;border-bottom:1px solid #3a3a3a'></th>
-            <th style='padding:4px 8px;color:#6d6d6d;text-align:right;font-size:9px;text-transform:uppercase;border-bottom:1px solid #3a3a3a'>HIGH</th>
-            <th style='padding:4px 8px;color:#6d6d6d;text-align:right;font-size:9px;text-transform:uppercase;border-bottom:1px solid #3a3a3a'>MID</th>
-            <th style='padding:4px 8px;color:#6d6d6d;text-align:right;font-size:9px;text-transform:uppercase;border-bottom:1px solid #3a3a3a'>LOW</th>
-            <th style='padding:4px 8px;color:#6d6d6d;text-align:center;font-size:9px;text-transform:uppercase;border-bottom:1px solid #3a3a3a'>STATUS</th>
+            <th style='padding:4px 8px;color:{_mut};text-align:left;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln}'></th>
+            <th style='padding:4px 8px;color:{_mut};text-align:right;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln}'>HIGH</th>
+            <th style='padding:4px 8px;color:{_mut};text-align:right;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln}'>MID</th>
+            <th style='padding:4px 8px;color:{_mut};text-align:right;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln}'>LOW</th>
+            <th style='padding:4px 8px;color:{_mut};text-align:center;font-size:9px;text-transform:uppercase;border-bottom:1px solid {_bdr_ln}'>STATUS</th>
         </tr></thead><tbody>"""
 
     if price is not None:
-        html += f"<tr><td style='padding:6px 8px;color:white;font-weight:700;border-bottom:1px solid #2a2a2a'>PRICE</td><td style='padding:6px 8px;color:white;font-weight:700;text-align:right;font-size:13px;border-bottom:1px solid #2a2a2a'>{price:,.{dec}f}</td><td colspan='3' style='border-bottom:1px solid #2a2a2a'></td></tr>"
+        html += f"<tr><td style='padding:6px 8px;color:{_txt1};font-weight:700;border-bottom:1px solid {_bdr_ln}'>PRICE</td><td style='padding:6px 8px;color:{_txt1};font-weight:700;text-align:right;font-size:13px;border-bottom:1px solid {_bdr_ln}'>{price:,.{dec}f}</td><td colspan='3' style='border-bottom:1px solid {_bdr_ln}'></td></tr>"
 
     tfl = {'year':'YEAR','month':'MONTH','week':'WEEK','session':'SESSION'}
     for tf in ['session','week','month','year']:
         if tf not in levels: continue
-        l = levels[tf]; sco = zc.get(l['status'],'#6d6d6d'); stx = STATUS_LABELS.get(l['status'],'')
-        html += f"""<tr><td style='padding:4px 8px;color:#b0b0b0;font-weight:600;border-bottom:1px solid #2a2a2a'>{tfl[tf]}</td>
-            <td style='padding:4px 8px;color:#e2e8f0;text-align:right;border-bottom:1px solid #2a2a2a'>{l['high']:,.{dec}f}</td>
-            <td style='padding:4px 8px;color:#8a8a8a;text-align:right;border-bottom:1px solid #2a2a2a'>{l['mid']:,.{dec}f}</td>
-            <td style='padding:4px 8px;color:#e2e8f0;text-align:right;border-bottom:1px solid #2a2a2a'>{l['low']:,.{dec}f}</td>
-            <td style='padding:4px 8px;text-align:center;border-bottom:1px solid #2a2a2a'><span style='color:{sco};font-size:10px;font-weight:600'>{stx}</span></td></tr>"""
+        l = levels[tf]; sco = zc.get(l['status'],_mut); stx = STATUS_LABELS.get(l['status'],'')
+        html += f"""<tr><td style='padding:4px 8px;color:{_txt2};font-weight:600;border-bottom:1px solid {_bdr_ln}'>{tfl[tf]}</td>
+            <td style='padding:4px 8px;color:{_txt1};text-align:right;border-bottom:1px solid {_bdr_ln}'>{l['high']:,.{dec}f}</td>
+            <td style='padding:4px 8px;color:{_mut};text-align:right;border-bottom:1px solid {_bdr_ln}'>{l['mid']:,.{dec}f}</td>
+            <td style='padding:4px 8px;color:{_txt1};text-align:right;border-bottom:1px solid {_bdr_ln}'>{l['low']:,.{dec}f}</td>
+            <td style='padding:4px 8px;text-align:center;border-bottom:1px solid {_bdr_ln}'><span style='color:{sco};font-size:10px;font-weight:600'>{stx}</span></td></tr>"""
     html += "</tbody></table></div>"
     st.markdown(html, unsafe_allow_html=True)
 
@@ -1014,23 +1044,28 @@ def render_key_levels(symbol, levels):
 def render_news_panel(symbol):
     ds = clean_symbol(symbol); fn = SYMBOL_NAMES.get(symbol, symbol)
     t = get_theme(); pos_c = t['pos']
+    _il = t.get('mode') == 'light'
+    _hdr_bg = t.get('bg3', '#1a2744'); _body_bg = t.get('bg', '#1e1e1e')
+    _bdr_ln = t.get('border', '#2a2a2a')
+    _txt1 = t.get('text', '#e2e8f0'); _mut = t.get('muted', '#6d6d6d')
+    _link_c = '#334155' if _il else '#c9d1d9'
     news = fetch_news(symbol)
 
-    html = f"""<div style='padding:6px 10px;background-color:#1a2744;border-left:2px solid {pos_c};font-family:{FONTS};margin-top:8px'>
-        <span style='color:#e2e8f0;font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{ds} NEWS</span>
-        <span style='color:#6d6d6d;font-size:10px;margin-left:6px'>{fn}</span></div>"""
+    html = f"""<div style='padding:6px 10px;background-color:{_hdr_bg};border-left:2px solid {pos_c};font-family:{FONTS};margin-top:8px'>
+        <span style='color:{_txt1};font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{ds} NEWS</span>
+        <span style='color:{_mut};font-size:10px;margin-left:6px'>{fn}</span></div>"""
 
     if not news:
-        html += f"<div style='padding:12px;background-color:#1e1e1e;color:#6d6d6d;font-size:11px'>No news available</div>"
+        html += f"<div style='padding:12px;background-color:{_body_bg};color:{_mut};font-size:11px'>No news available</div>"
     else:
-        html += "<div style='background-color:#1e1e1e;max-height:400px;overflow-y:auto'>"
+        html += f"<div style='background-color:{_body_bg};max-height:400px;overflow-y:auto'>"
         for item in news:
             t_text = item['title']; u = item['url']; p = item['provider']; d = item['date']
-            title_html = f"<a href='{u}' target='_blank' style='color:#c9d1d9;text-decoration:none;font-size:11px;line-height:1.4'>{t_text}</a>" if u else f"<span style='color:#c9d1d9;font-size:11px'>{t_text}</span>"
+            title_html = f"<a href='{u}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:11px;line-height:1.4'>{t_text}</a>" if u else f"<span style='color:{_link_c};font-size:11px'>{t_text}</span>"
             meta = []
-            if p: meta.append(f"<span style='color:#3b82f6'>{p}</span>")
-            if d: meta.append(f"<span style='color:#6d6d6d'>{d}</span>")
-            html += f"<div style='padding:8px 12px;border-bottom:1px solid #2a2a2a;font-family:{FONTS}'><div>{title_html}</div><div style='font-size:10px;margin-top:2px'>{' &middot; '.join(meta)}</div></div>"
+            if p: meta.append(f"<span style='color:{t.get('accent','#3b82f6')}'>{p}</span>")
+            if d: meta.append(f"<span style='color:{_mut}'>{d}</span>")
+            html += f"<div style='padding:8px 12px;border-bottom:1px solid {_bdr_ln};font-family:{FONTS}'><div>{title_html}</div><div style='font-size:10px;margin-top:2px'>{' &middot; '.join(meta)}</div></div>"
         html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
@@ -1071,10 +1106,17 @@ def main():
     ts_est = datetime.now(est).strftime('%a %d %b %Y  %H:%M %Z')
     ts_sgt = datetime.now(sgt).strftime('%H:%M SGT')
 
+    # Inject theme-aware CSS
+    _inject_theme_css()
+
     # SANPO logo header — radar icon + wordmark, dot color follows theme
     t = get_theme()
+    is_light = t.get('mode') == 'light'
     pos_c = t['pos']
     neg_c = t['neg']
+    ring_c = '#cbd5e1' if is_light else '#1e293b'
+    title_c = '#1e293b' if is_light else '#f8fafc'
+    time_c = t['muted']
     st.markdown(f"""
         <style>
             @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
@@ -1084,9 +1126,9 @@ def main():
         <div style='display:flex;align-items:center;justify-content:space-between;padding:10px 16px;margin-bottom:6px'>
             <div style='display:flex;align-items:center;gap:14px'>
                     <svg width="44" height="44" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
-                        <circle cx="20" cy="20" r="18" stroke="#1e293b" stroke-width="0.8"/>
-                        <circle cx="20" cy="20" r="12.5" stroke="#1e293b" stroke-width="0.6"/>
-                        <circle cx="20" cy="20" r="7" stroke="#1e293b" stroke-width="0.5"/>
+                        <circle cx="20" cy="20" r="18" stroke="{ring_c}" stroke-width="0.8"/>
+                        <circle cx="20" cy="20" r="12.5" stroke="{ring_c}" stroke-width="0.6"/>
+                        <circle cx="20" cy="20" r="7" stroke="{ring_c}" stroke-width="0.5"/>
                         <circle cx="20" cy="20" r="3" fill="{pos_c}"/>
                         <circle cx="20" cy="20" r="5" fill="{pos_c}" opacity="0.15"/>
                         <line x1="20" y1="20" x2="20" y2="3" stroke="url(#sanpoSweepG)" stroke-width="1.5" stroke-linecap="round" style="animation:sanpo-sweep 4s linear infinite;transform-origin:20px 20px"/>
@@ -1101,9 +1143,9 @@ def main():
                             <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
                         </linearGradient></defs>
                     </svg>
-                <span style='font-family:Orbitron,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:#f8fafc;line-height:1'>SANPO</span>
+                <span style='font-family:Orbitron,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:{title_c};line-height:1'>SANPO</span>
             </div>
-            <span style='font-family:{FONTS};color:#475569;font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
+            <span style='font-family:{FONTS};color:{time_c};font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
         </div>
     """, unsafe_allow_html=True)
 
@@ -1130,7 +1172,6 @@ def _render_charts_tab(is_mobile, est):
     """Chart tab content — sector scanner, asset charts, levels, news."""
     t = get_theme()
     pos_c = t['pos']
-    _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
     symbols = FUTURES_GROUPS[st.session_state.sector]
     sym_labels = [clean_symbol(s) for s in symbols]
@@ -1149,11 +1190,14 @@ def _render_charts_tab(is_mobile, est):
         if 'sel_asset' in st.session_state:
             del st.session_state.sel_asset
 
-    # Controls row: SECTOR + ASSET + SORT + CHART + THEME
+    # Controls row: SECTOR + ASSET + SORT + CHART (theme moved to PULSE tab)
+    lbl_c = t.get('text', '#e2e8f0')
+    _lbl = f"color:{lbl_c};font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
+
     if is_mobile:
-        col_sec, col_ast, col_sort, col_ct, col_th = st.columns([3, 2, 2, 1, 2])
+        col_sec, col_ast, col_sort, col_ct = st.columns([3, 2, 2, 1])
     else:
-        col_sec, col_ast, col_sort, col_ct, col_th = st.columns([3, 3, 2, 1, 2])
+        col_sec, col_ast, col_sort, col_ct = st.columns([3, 3, 2, 1])
 
     with col_sec:
         st.markdown(f"<div style='{_lbl}'>SECTOR</div>", unsafe_allow_html=True)
@@ -1184,14 +1228,6 @@ def _render_charts_tab(is_mobile, est):
         ct = st.selectbox("Chart", chart_options, index=ct_idx,
             key='chart_select', label_visibility='collapsed')
         st.session_state.chart_type = ct.lower()
-    with col_th:
-        st.markdown(f"<div style='{_lbl}'>THEME</div>", unsafe_allow_html=True)
-        theme_names = list(THEMES.keys())
-        # Use 'theme' directly as widget key — single source of truth
-        if st.session_state.get('theme') not in theme_names:
-            st.session_state.theme = theme_names[0]
-        theme = st.selectbox("Theme", theme_names,
-            key='theme', label_visibility='collapsed')
 
     # Fetch data
     with st.spinner('Loading market data...'):
@@ -1246,9 +1282,11 @@ def _render_charts_tab(is_mobile, est):
 
     # Footer
     ct_now = datetime.now(est).strftime('%H:%M %Z')
-    st.markdown(f"""<div style='margin-top:16px;padding:8px 12px;background-color:#1a2744;border-radius:4px;font-family:{FONTS}'>
-        <span style='font-size:11px;color:#9d9d9d'>EST: <span style='color:#cccccc'>{ct_now}</span>
-        &nbsp;·&nbsp; <span style='color:#6d6d6d'>Auto-refreshes every 5 minutes · Click symbol for analysis</span></span></div>""", unsafe_allow_html=True)
+    _ft = get_theme()
+    _ft_bg = _ft.get('bg3', '#1a2744'); _ft_t1 = _ft.get('text2', '#9d9d9d'); _ft_t2 = _ft.get('text', '#cccccc'); _ft_m = _ft.get('muted', '#6d6d6d')
+    st.markdown(f"""<div style='margin-top:16px;padding:8px 12px;background-color:{_ft_bg};border-radius:4px;font-family:{FONTS}'>
+        <span style='font-size:11px;color:{_ft_t1}'>EST: <span style='color:{_ft_t2}'>{ct_now}</span>
+        &nbsp;·&nbsp; <span style='color:{_ft_m}'>Auto-refreshes every 5 minutes · Click symbol for analysis</span></span></div>""", unsafe_allow_html=True)
 
     # Auto-refresh every 5 minutes
     from streamlit.components.v1 import html as st_html

@@ -57,7 +57,7 @@ SYMBOL_NAMES = {
 }
 
 # =============================================================================
-# THEMES
+# THEMES — each carries surface / text palette for full theming
 # =============================================================================
 
 THEMES = {
@@ -67,11 +67,17 @@ THEMES = {
         'str_up': '#4ade80', 'str_dn': '#f59e0b', 'pull': '#fbbf24', 'bnce': '#93c5fd',
         'long': '#4ade80', 'short': '#f59e0b',
     },
-    'Blue / Rose': {
-        'pos': '#60a5fa', 'neg': '#fb7185',
-        'zone_hi': '#60a5fa', 'zone_amid': '#93c5fd', 'zone_bmid': '#fda4af', 'zone_lo': '#fb7185',
-        'str_up': '#60a5fa', 'str_dn': '#fb7185', 'pull': '#fbbf24', 'bnce': '#4ade80',
-        'long': '#60a5fa', 'short': '#fb7185',
+    'Neon': {
+        'pos': '#00d4ff', 'neg': '#ff3366',
+        'zone_hi': '#00d4ff', 'zone_amid': '#67e8f9', 'zone_bmid': '#ff8fab', 'zone_lo': '#ff3366',
+        'str_up': '#00d4ff', 'str_dn': '#ff3366', 'pull': '#fbbf24', 'bnce': '#a78bfa',
+        'long': '#00d4ff', 'short': '#ff3366',
+    },
+    'Light': {
+        'pos': '#16a34a', 'neg': '#dc2626',
+        'zone_hi': '#16a34a', 'zone_amid': '#4ade80', 'zone_bmid': '#fca5a5', 'zone_lo': '#dc2626',
+        'str_up': '#16a34a', 'str_dn': '#dc2626', 'pull': '#d97706', 'bnce': '#2563eb',
+        'long': '#16a34a', 'short': '#dc2626',
     },
 }
 
