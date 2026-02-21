@@ -818,9 +818,9 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
         if boundary_type == 'year':
             ma_20 = hist['Close'].rolling(window=20).mean(); ma_40 = hist['Close'].rolling(window=40).mean()
             if ma_20.notna().any():
-                fig.add_trace(go.Scatter(x=x_vals, y=ma_20.values, mode='lines', line=dict(color='#ffffff50', width=0.7), showlegend=False, hovertemplate='MA20: %{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=x_vals, y=ma_20.values, mode='lines', line=dict(color='rgba(255,255,255,0.3)', width=0.7), showlegend=False, hovertemplate='MA20: %{y:.2f}<extra></extra>'), row=row, col=col)
             if ma_40.notna().any():
-                fig.add_trace(go.Scatter(x=x_vals, y=ma_40.values, mode='lines', line=dict(color='#a855f780', width=0.7), showlegend=False, hovertemplate='MA40: %{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=x_vals, y=ma_40.values, mode='lines', line=dict(color='rgba(168,85,247,0.5)', width=0.7), showlegend=False, hovertemplate='MA40: %{y:.2f}<extra></extra>'), row=row, col=col)
 
         # Boundary lines
         num_boundaries = min(2, len(boundaries))
