@@ -704,12 +704,12 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
 
     if mobile:
         fig = make_subplots(rows=4, cols=1,
-            subplot_titles=[f"{display_symbol} {tf[0]}  ·  {tf[2]}" for tf in CHART_CONFIGS],
+            subplot_titles=[tf[0].upper() for tf in CHART_CONFIGS],
             vertical_spacing=0.06)
         positions = [(1,1),(2,1),(3,1),(4,1)]
     else:
         fig = make_subplots(rows=4, cols=1,
-            subplot_titles=[f"{display_symbol} {tf[0]}  ·  {tf[2]}" for tf in CHART_CONFIGS],
+            subplot_titles=[tf[0].upper() for tf in CHART_CONFIGS],
             vertical_spacing=0.06)
         positions = [(1,1),(2,1),(3,1),(4,1)]
     chart_statuses = {}; chart_rsis = {}; computed_levels = {}
@@ -877,22 +877,24 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             xref=f'x{chart_idx+1} domain' if chart_idx > 0 else 'x domain',
             yref=f'y{chart_idx+1}' if chart_idx > 0 else 'y',
             text=f'<b>{current_price:.{pd_dec}f}</b>', showarrow=False,
-            font=dict(color='white', size=10), bgcolor=line_color,
-            bordercolor=line_color, borderwidth=1, borderpad=3, xanchor='left')
+            font=dict(color=line_color, size=9), bgcolor='rgba(0,0,0,0)',
+            bordercolor='rgba(0,0,0,0)', borderwidth=0, borderpad=2, xanchor='left')
 
     # Update subplot titles with status + RSI
     stc = {'▲ ABOVE HIGH': zc['above_high'], '● ABOVE MID': zc['above_mid'],
            '● BELOW MID': zc['below_mid'], '▼ BELOW LOW': zc['below_low']}
+    title_labels = [tf[0].upper() for tf in CHART_CONFIGS]
     for idx, ann in enumerate(fig['layout']['annotations']):
-        if hasattr(ann, 'text') and '·' in str(ann.text):
+        txt = str(ann.text) if hasattr(ann, 'text') else ''
+        if txt in title_labels:
             status = chart_statuses.get(idx, ''); rsi = chart_rsis.get(idx, np.nan)
-            parts = [ann.text]
+            parts = [txt]
             if not np.isnan(rsi):
                 rc = zc['above_mid'] if rsi > 50 else zc['below_low']
-                parts.append(f"<span style='color:{rc}'>RSI {rsi:.0f}</span>")
+                parts.append(f"<span style='color:{rc};font-size:9px'>RSI {rsi:.0f}</span>")
             if status:
-                c = stc.get(status, '#9d9d9d')
-                parts.append(f"<b><span style='color:{c}'>[{status}]</span></b>")
+                c = stc.get(status, '#64748b')
+                parts.append(f"<span style='color:{c};font-size:9px'>{status}</span>")
             ann['text'] = '  '.join(parts); ann['font'] = dict(color='#94a3b8', size=10)
 
     _t = get_theme()
@@ -1016,38 +1018,6 @@ def render_news_panel(symbol):
         html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
-def _render_chart_legend():
-    """Compact chart legend showing what each line/marker means."""
-    t = get_theme(); zc = zone_colors()
-    _bg = t.get('bg3', '#1a2744'); _bdr = t.get('border', '#2a2a2a'); _mut = t.get('muted', '#475569')
-    items = [
-        (zc['above_high'], 'solid', 'Prev High'),
-        (zc['below_low'], 'solid', 'Prev Low'),
-        ('#475569', 'dotted', 'Prev Close'),
-        ('#d97706', 'dotted', '50% Mid'),
-        ('#be185d', 'dotted', 'Retrace Buy'),
-        ('#0369a1', 'dotted', 'Retrace Sell'),
-        ('#ffffff', 'solid', 'MA 20'),
-        ('#a855f7', 'solid', 'MA 40'),
-    ]
-    rows = ""
-    for color, style, label in items:
-        rows += (
-            f"<div style='display:flex;align-items:center;gap:8px;padding:2px 0'>"
-            f"<div style='width:20px;height:0;border-top:2px {style} {color};flex-shrink:0'></div>"
-            f"<span style='color:{_mut};font-size:9px'>{label}</span></div>"
-        )
-    rows += (
-        f"<div style='display:flex;align-items:center;gap:8px;padding:2px 0'>"
-        f"<div style='width:6px;height:6px;border-radius:50%;background:#facc15;flex-shrink:0;margin:0 7px'></div>"
-        f"<span style='color:{_mut};font-size:9px'>Reversal</span></div>"
-    )
-    html = f"""<div style='padding:8px 12px;background:{_bg};border:1px solid {_bdr};border-radius:4px;margin-top:8px;font-family:{FONTS}'>
-        <div style='color:{_mut};font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:4px'>LEGEND</div>
-        {rows}</div>"""
-    st.markdown(html, unsafe_allow_html=True)
-
-
 def render_charts_tab(is_mobile, est):
     """Chart tab content — sector scanner, asset charts, levels, news."""
     t = get_theme()
@@ -1162,21 +1132,12 @@ def render_charts_tab(is_mobile, est):
                 try:
                     fig, levels = create_4_chart_grid(st.session_state.symbol, st.session_state.chart_type, mobile=False)
                     st.plotly_chart(fig, use_container_width=True, config={
-                        'scrollZoom': True, 'displayModeBar': True,
-                        'modeBarButtonsToAdd': ['pan2d','zoom2d','resetScale2d'],
+                        'scrollZoom': True, 'displayModeBar': False,
                         'responsive': True})
                 except Exception as e:
                     st.error(f"Chart error: {str(e)}"); levels = {}
         with col_right:
             render_key_levels(st.session_state.symbol, levels)
             render_news_panel(st.session_state.symbol)
-            _render_chart_legend()
-
-    # Footer
-    ct_now = datetime.now(est).strftime('%H:%M %Z')
-    _ft = get_theme()
-    _ft_bg = _ft.get('bg3', '#1a2744'); _ft_m = _ft.get('muted', '#475569')
-    st.markdown(f"<div style='margin-top:12px;padding:6px 12px;background-color:{_ft_bg};border-radius:4px;font-family:{FONTS}'>"
-        f"<span style='font-size:10px;color:{_ft_m}'>EST {ct_now}</span></div>", unsafe_allow_html=True)
 
     # Auto-refresh handled globally in app.py
