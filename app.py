@@ -78,21 +78,20 @@ def _inject_theme_css():
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stStatusWidget"] {{visibility: hidden;}}
-    /* Theme popover: tiny arrow button */
+    /* Theme popover: minimal, just chevron */
     [data-testid="stPopover"] > button {{
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        color: {muted} !important;
-        font-size: 14px !important;
-        padding: 2px 6px !important;
+        padding: 4px !important;
         min-height: 20px !important;
-        opacity: 0.4;
+        min-width: 20px !important;
+        opacity: 0.35;
         transition: opacity 0.15s;
+        float: right;
     }}
     [data-testid="stPopover"] > button:hover {{
         opacity: 1;
-        color: {accent} !important;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -1136,8 +1135,8 @@ def main():
     ring_c = '#cbd5e1' if is_light else '#1e293b'
     title_c = '#1e293b' if is_light else '#f8fafc'
 
-    # Header row: logo left, discreet theme picker right (aligned)
-    logo_col, spacer_col, theme_col = st.columns([4, 5, 1])
+    # Header row: logo left, theme picker far right
+    logo_col, theme_col = st.columns([9, 1])
     with logo_col:
         st.markdown(f"""
             <style>
@@ -1168,9 +1167,8 @@ def main():
             </div>
         """, unsafe_allow_html=True)
     with theme_col:
-        muted_c = t.get('muted', '#475569')
         st.markdown(f"<div style='padding-top:10px'></div>", unsafe_allow_html=True)
-        with st.popover("▾"):
+        with st.popover(""):
             theme_names = list(THEMES.keys())
             if st.session_state.get('theme') not in theme_names:
                 st.session_state.theme = theme_names[0]
