@@ -80,30 +80,29 @@ def _inject_theme_css():
     [data-testid="stStatusWidget"] {{visibility: hidden;}}
     /* Discreet theme picker — arrow only, no text visible */
     [data-testid="stSelectbox"][data-st-key="_theme_pick"] {{
-        max-width: 36px !important;
-        min-width: 36px !important;
+        max-width: 32px !important;
+        min-width: 32px !important;
+        overflow: hidden !important;
+    }}
+    [data-testid="stSelectbox"][data-st-key="_theme_pick"] * {{
+        font-size: 0 !important;
+        color: transparent !important;
     }}
     [data-testid="stSelectbox"][data-st-key="_theme_pick"] [data-baseweb="select"] > div {{
         background: transparent !important;
         border: none !important;
-        padding: 0 !important;
+        padding: 0 4px !important;
         min-height: 24px !important;
         cursor: pointer;
-    }}
-    [data-testid="stSelectbox"][data-st-key="_theme_pick"] [data-baseweb="select"] > div > div:first-child {{
-        visibility: hidden !important;
-        width: 0 !important;
-        padding: 0 !important;
-        position: absolute !important;
     }}
     [data-testid="stSelectbox"][data-st-key="_theme_pick"] svg {{
         color: {muted} !important;
         width: 16px !important;
         height: 16px !important;
-        opacity: 0.5;
+        opacity: 0.45;
         transition: opacity 0.2s;
     }}
-    [data-testid="stSelectbox"][data-st-key="_theme_pick"] [data-baseweb="select"] > div:hover svg {{
+    [data-testid="stSelectbox"][data-st-key="_theme_pick"]:hover svg {{
         color: {accent} !important;
         opacity: 1;
     }}
