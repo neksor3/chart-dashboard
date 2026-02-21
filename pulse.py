@@ -95,7 +95,7 @@ SPARKLINE_SYMBOLS = ['ES=F', 'BTC-USD', 'GC=F', 'CL=F', 'ZN=F']
 
 # ── FETCH ────────────────────────────────────────────────────────────────────
 
-@st.cache_data(ttl=180, show_spinner=False)
+@st.cache_data(ttl=900, show_spinner=False)
 def _fetch_pulse_batch():
     all_syms = list(HERO_SYMBOLS.keys())
     for syms in HEATMAP_SECTORS.values():
@@ -128,7 +128,7 @@ def _fetch_pulse_batch():
     return result
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=900, show_spinner=False)
 def _fetch_sparklines():
     result = {}
     for sym in SPARKLINE_SYMBOLS:

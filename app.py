@@ -91,7 +91,7 @@ def main():
     from news import render_news_tab
 
     # Init session state
-    if 'sector' not in st.session_state: st.session_state.sector = 'Indices'
+    if 'sector' not in st.session_state: st.session_state.sector = 'Futures'
     if 'symbol' not in st.session_state: st.session_state.symbol = 'ES=F'
     if 'chart_type' not in st.session_state: st.session_state.chart_type = 'line'
 
@@ -155,6 +155,18 @@ def main():
 
     with tab_news:
         render_news_tab(is_mobile)
+
+    # Global auto-refresh aligned to :00 :15 :30 :45
+    from streamlit.components.v1 import html as st_html
+    st_html("""<script>
+    (function(){
+        var now=new Date(), m=now.getMinutes(), s=now.getSeconds(), ms=now.getMilliseconds();
+        var next15=15-m%15;
+        var delay=(next15*60-s)*1000-ms;
+        if(delay<5000) delay+=900000;
+        setTimeout(function(){window.parent.location.reload()}, delay);
+    })();
+    </script>""", height=0)
 
 
 if __name__ == "__main__":

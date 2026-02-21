@@ -396,7 +396,7 @@ class FuturesDataFetcher:
 # CACHED DATA FETCHING
 # =============================================================================
 
-@st.cache_resource(ttl=300, show_spinner=False)
+@st.cache_resource(ttl=900, show_spinner=False)
 def fetch_sector_data(sector_name):
     """Fetch metrics for all symbols in a sector.
 
@@ -453,7 +453,7 @@ def fetch_sector_data(sector_name):
             logger.warning(f"[{symbol}] sector fetch error: {e}")
     return metrics
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=900, show_spinner=False)
 def fetch_chart_data(symbol, period, interval):
     ticker = yf.Ticker(symbol)
     hist = ticker.history(period=period, interval=interval)
@@ -462,7 +462,7 @@ def fetch_chart_data(symbol, period, interval):
         hist = hist[hist.index.dayofweek < 5]
     return hist
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=900, show_spinner=False)
 def fetch_news(symbol):
     NEWS_TERMS = {
         'ES=F': 'S&P 500', 'NQ=F': 'Nasdaq 100', 'YM=F': 'Dow Jones', 'RTY=F': 'Russell 2000',
@@ -560,25 +560,26 @@ def render_return_bars(metrics, sort_by='Default'):
         if v >= 0 or sort_by in ('HV',):
             left_content = ""
             right_content = (
-                f"<div style='height:18px;width:{bar_pct}%;background:linear-gradient(90deg,{c}15,{c}55);border-radius:0 3px 3px 0'></div>"
+                f"<div style='height:15px;width:{bar_pct}%;background:linear-gradient(90deg,{c}15,{c}55);border-radius:0 3px 3px 0'></div>"
                 f"<span style='color:{c};font-size:8px;font-weight:700;margin-left:3px;font-family:{FONTS};white-space:nowrap;font-variant-numeric:tabular-nums'>{fmt}</span>"
             )
         else:
             left_content = (
                 f"<span style='color:{c};font-size:8px;font-weight:700;margin-right:3px;font-family:{FONTS};white-space:nowrap;font-variant-numeric:tabular-nums'>{fmt}</span>"
-                f"<div style='height:18px;width:{bar_pct}%;background:linear-gradient(270deg,{c}15,{c}55);border-radius:3px 0 0 3px'></div>"
+                f"<div style='height:15px;width:{bar_pct}%;background:linear-gradient(270deg,{c}15,{c}55);border-radius:3px 0 0 3px'></div>"
             )
             right_content = ""
 
-        rows += f"""<div style='display:flex;align-items:center;padding:5px 0'>
+        rows += f"""<div style='display:flex;align-items:center;height:25px'>
             <div style='flex:1;display:flex;align-items:center;justify-content:flex-end'>{left_content}</div>
             <span style='width:36px;text-align:center;color:{t.get("text2","#9d9d9d")};font-size:9px;font-weight:600;font-family:{FONTS};flex-shrink:0'>{sym}</span>
             <div style='flex:1;display:flex;align-items:center'>{right_content}</div>
         </div>"""
 
     _bg0 = t.get('bg3', '#0f1522'); _bdr0 = t.get('border', '#1e293b')
+    # Header ~42px to match scanner's double-row thead
     html = f"""<div style='background:{_bg0};border:1px solid {_bdr0};border-radius:6px;padding:0 6px 4px 6px;overflow:hidden'>
-        <div style='display:flex;align-items:center;padding:6px 2px 4px'>
+        <div style='display:flex;align-items:center;padding:6px 2px 4px;height:42px'>
             <span style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
             <div style='flex:1;height:1px;background:{_bdr0};margin-left:8px'></div>
         </div>
@@ -1130,6 +1131,4 @@ def render_charts_tab(is_mobile, est):
     st.markdown(f"<div style='margin-top:12px;padding:6px 12px;background-color:{_ft_bg};border-radius:4px;font-family:{FONTS}'>"
         f"<span style='font-size:10px;color:{_ft_m}'>EST {ct_now}</span></div>", unsafe_allow_html=True)
 
-    # Auto-refresh every 5 minutes
-    from streamlit.components.v1 import html as st_html
-    st_html("<script>setTimeout(()=>window.parent.location.reload(), 300000)</script>", height=0)
+    # Auto-refresh handled globally in app.py
