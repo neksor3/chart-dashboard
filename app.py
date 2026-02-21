@@ -78,6 +78,25 @@ def _inject_theme_css():
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stStatusWidget"] {{visibility: hidden;}}
+    /* Theme popover button */
+    [data-testid="stPopover"] > button {{
+        background: transparent !important;
+        border: none !important;
+        color: {muted} !important;
+        font-size: 18px !important;
+        padding: 2px 6px !important;
+        min-height: 28px !important;
+        opacity: 0.5;
+        transition: opacity 0.2s;
+    }}
+    [data-testid="stPopover"] > button:hover {{
+        opacity: 1;
+        color: {accent} !important;
+    }}
+    [data-testid="stPopover"] [data-testid="stPopoverBody"] {{
+        background: {bg3};
+        border: 1px solid {bdr};
+    }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1101,14 +1120,6 @@ def main():
     elif st.session_state.theme not in THEMES:
         st.session_state.theme = list(THEMES.keys())[0]
 
-    # Theme picker in sidebar
-    with st.sidebar:
-        st.markdown(f"<div style='font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS};margin-bottom:4px'>THEME</div>", unsafe_allow_html=True)
-        theme_names = list(THEMES.keys())
-        if st.session_state.get('theme') not in theme_names:
-            st.session_state.theme = theme_names[0]
-        st.selectbox("Theme", theme_names, key='theme', label_visibility='collapsed')
-
     is_mobile = _detect_mobile()
     est = pytz.timezone('US/Eastern'); sgt = pytz.timezone('Asia/Singapore')
     ts_est = datetime.now(est).strftime('%a %d %b %Y  %H:%M %Z')
@@ -1117,7 +1128,7 @@ def main():
     # Inject theme-aware CSS
     _inject_theme_css()
 
-    # SANPO logo header — radar icon + wordmark, dot color follows theme
+    # SANPO logo header with theme popover
     t = get_theme()
     is_light = t.get('mode') == 'light'
     pos_c = t['pos']
@@ -1125,37 +1136,59 @@ def main():
     ring_c = '#cbd5e1' if is_light else '#1e293b'
     title_c = '#1e293b' if is_light else '#f8fafc'
     time_c = t.get('muted', '#475569')
-    st.markdown(f"""
-        <style>
-            @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
-            @keyframes sanpo-blink {{ 0%,100% {{ opacity: 0.9; }} 50% {{ opacity: 0.1; }} }}
-            @keyframes sanpo-glow {{ 0%,100% {{ filter: drop-shadow(0 0 3px {pos_c}40); }} 50% {{ filter: drop-shadow(0 0 8px {pos_c}90); }} }}
-        </style>
-        <div style='display:flex;align-items:center;justify-content:space-between;padding:10px 16px;margin-bottom:6px'>
-            <div style='display:flex;align-items:center;gap:14px'>
-                    <svg width="44" height="44" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
-                        <circle cx="20" cy="20" r="18" stroke="{ring_c}" stroke-width="0.8"/>
-                        <circle cx="20" cy="20" r="12.5" stroke="{ring_c}" stroke-width="0.6"/>
-                        <circle cx="20" cy="20" r="7" stroke="{ring_c}" stroke-width="0.5"/>
-                        <circle cx="20" cy="20" r="3" fill="{pos_c}"/>
-                        <circle cx="20" cy="20" r="5" fill="{pos_c}" opacity="0.15"/>
-                        <line x1="20" y1="20" x2="20" y2="3" stroke="url(#sanpoSweepG)" stroke-width="1.5" stroke-linecap="round" style="animation:sanpo-sweep 4s linear infinite;transform-origin:20px 20px"/>
-                        <circle cx="13" cy="9" r="2.2" fill="{pos_c}" style="animation:sanpo-blink 1.8s ease-in-out infinite"/>
-                        <circle cx="30" cy="13" r="2" fill="{neg_c}" style="animation:sanpo-blink 2.2s ease-in-out infinite 0.4s"/>
-                        <circle cx="28" cy="29" r="1.8" fill="{pos_c}" style="animation:sanpo-blink 2s ease-in-out infinite 0.9s"/>
-                        <circle cx="9" cy="25" r="1.7" fill="{neg_c}" style="animation:sanpo-blink 1.6s ease-in-out infinite 1.3s"/>
-                        <circle cx="25" cy="8" r="1.5" fill="{pos_c}" style="animation:sanpo-blink 2.4s ease-in-out infinite 0.6s"/>
-                        <circle cx="10" cy="15" r="1.3" fill="{pos_c}" style="animation:sanpo-blink 2.0s ease-in-out infinite 1.7s"/>
-                        <defs><linearGradient id="sanpoSweepG" x1="20" y1="20" x2="20" y2="3">
-                            <stop offset="0%" stop-color="{pos_c}" stop-opacity="0.7"/>
-                            <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
-                        </linearGradient></defs>
-                    </svg>
+
+    col_logo, col_time = st.columns([7, 3])
+    with col_logo:
+        st.markdown(f"""
+            <style>
+                @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
+                @keyframes sanpo-blink {{ 0%,100% {{ opacity: 0.9; }} 50% {{ opacity: 0.1; }} }}
+                @keyframes sanpo-glow {{ 0%,100% {{ filter: drop-shadow(0 0 3px {pos_c}40); }} 50% {{ filter: drop-shadow(0 0 8px {pos_c}90); }} }}
+            </style>
+            <div style='display:flex;align-items:center;gap:14px;padding:10px 0'>
+                <svg width="44" height="44" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
+                    <circle cx="20" cy="20" r="18" stroke="{ring_c}" stroke-width="0.8"/>
+                    <circle cx="20" cy="20" r="12.5" stroke="{ring_c}" stroke-width="0.6"/>
+                    <circle cx="20" cy="20" r="7" stroke="{ring_c}" stroke-width="0.5"/>
+                    <circle cx="20" cy="20" r="3" fill="{pos_c}"/>
+                    <circle cx="20" cy="20" r="5" fill="{pos_c}" opacity="0.15"/>
+                    <line x1="20" y1="20" x2="20" y2="3" stroke="url(#sanpoSweepG)" stroke-width="1.5" stroke-linecap="round" style="animation:sanpo-sweep 4s linear infinite;transform-origin:20px 20px"/>
+                    <circle cx="13" cy="9" r="2.2" fill="{pos_c}" style="animation:sanpo-blink 1.8s ease-in-out infinite"/>
+                    <circle cx="30" cy="13" r="2" fill="{neg_c}" style="animation:sanpo-blink 2.2s ease-in-out infinite 0.4s"/>
+                    <circle cx="28" cy="29" r="1.8" fill="{pos_c}" style="animation:sanpo-blink 2s ease-in-out infinite 0.9s"/>
+                    <circle cx="9" cy="25" r="1.7" fill="{neg_c}" style="animation:sanpo-blink 1.6s ease-in-out infinite 1.3s"/>
+                    <circle cx="25" cy="8" r="1.5" fill="{pos_c}" style="animation:sanpo-blink 2.4s ease-in-out infinite 0.6s"/>
+                    <circle cx="10" cy="15" r="1.3" fill="{pos_c}" style="animation:sanpo-blink 2.0s ease-in-out infinite 1.7s"/>
+                    <defs><linearGradient id="sanpoSweepG" x1="20" y1="20" x2="20" y2="3">
+                        <stop offset="0%" stop-color="{pos_c}" stop-opacity="0.7"/>
+                        <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
+                    </linearGradient></defs>
+                </svg>
                 <span style='font-family:Orbitron,sans-serif;font-size:24px;font-weight:700;letter-spacing:0.08em;color:{title_c};line-height:1'>SANPO</span>
             </div>
-            <span style='font-family:{FONTS};color:{time_c};font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</span>
-        </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+    with col_time:
+        # Timestamp + theme popover on one line
+        tcol, pcol = st.columns([6, 1])
+        with tcol:
+            st.markdown(f"<div style='text-align:right;padding-top:18px;font-family:{FONTS};color:{time_c};font-size:10px;letter-spacing:0.04em'>{ts_est} &nbsp;·&nbsp; {ts_sgt}</div>", unsafe_allow_html=True)
+        with pcol:
+            st.markdown("<div style='padding-top:12px'></div>", unsafe_allow_html=True)
+            with st.popover("◎"):
+                theme_names = list(THEMES.keys())
+                if st.session_state.get('theme') not in theme_names:
+                    st.session_state.theme = theme_names[0]
+                cur = st.session_state.theme
+                cur_t = THEMES[cur]
+                # Show current theme indicator
+                st.markdown(f"<div style='font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:#64748b;margin-bottom:8px'>THEME</div>", unsafe_allow_html=True)
+                for tn in theme_names:
+                    td = THEMES[tn]
+                    icon = '◉' if tn == cur else '○'
+                    mode_tag = '☀' if td.get('mode') == 'light' else '🌙'
+                    if st.button(f"{icon} {mode_tag} {tn}", key=f'theme_btn_{tn}', use_container_width=True):
+                        st.session_state.theme = tn
+                        st.rerun()
 
     # Tabs — clean uppercase, blue underline
     tab_pulse, tab_charts, tab_spreads, tab_portfolio, tab_news = st.tabs(["PULSE", "CHARTS", "SPREADS", "PORTFOLIO", "NEWS"])

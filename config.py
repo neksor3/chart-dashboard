@@ -83,16 +83,27 @@ THEMES = {
         'accent': '#38bdf8',
         'plot_bg': '#0c0c14', 'grid': '#151530', 'axis_line': '#1a1a3e', 'tick': '#8888bb',
     },
-    'Light': {
+    'Daylight': {
         'mode': 'light',
-        'pos': '#16a34a', 'neg': '#dc2626',
-        'zone_hi': '#16a34a', 'zone_amid': '#4ade80', 'zone_bmid': '#fca5a5', 'zone_lo': '#dc2626',
-        'str_up': '#16a34a', 'str_dn': '#dc2626', 'pull': '#d97706', 'bnce': '#2563eb',
-        'long': '#16a34a', 'short': '#dc2626',
+        'pos': '#16a34a', 'neg': '#b45309',
+        'zone_hi': '#16a34a', 'zone_amid': '#4ade80', 'zone_bmid': '#fbbf24', 'zone_lo': '#b45309',
+        'str_up': '#16a34a', 'str_dn': '#b45309', 'pull': '#d97706', 'bnce': '#2563eb',
+        'long': '#16a34a', 'short': '#b45309',
         'bg': '#ffffff', 'bg2': '#f8fafc', 'bg3': '#f1f5f9',
         'border': '#e2e8f0', 'text': '#1e293b', 'text2': '#64748b', 'muted': '#94a3b8',
-        'accent': '#2563eb',
+        'accent': '#16a34a',
         'plot_bg': '#ffffff', 'grid': '#f1f5f9', 'axis_line': '#e2e8f0', 'tick': '#64748b',
+    },
+    'Frost': {
+        'mode': 'light',
+        'pos': '#2563eb', 'neg': '#dc2626',
+        'zone_hi': '#2563eb', 'zone_amid': '#60a5fa', 'zone_bmid': '#fca5a5', 'zone_lo': '#dc2626',
+        'str_up': '#2563eb', 'str_dn': '#dc2626', 'pull': '#d97706', 'bnce': '#7c3aed',
+        'long': '#2563eb', 'short': '#dc2626',
+        'bg': '#ffffff', 'bg2': '#f0f4ff', 'bg3': '#e8eeff',
+        'border': '#dbe4f0', 'text': '#1e293b', 'text2': '#5b6b85', 'muted': '#8896ab',
+        'accent': '#2563eb',
+        'plot_bg': '#ffffff', 'grid': '#f0f4ff', 'axis_line': '#dbe4f0', 'tick': '#5b6b85',
     },
 }
 

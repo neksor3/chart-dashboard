@@ -227,7 +227,7 @@ def _render_hero_row(data):
     t = get_theme()
     s = _s()
     pos_c, neg_c = t['pos'], t['neg']
-    is_light = st.session_state.get('theme') == 'Light'
+    is_light = get_theme().get('mode') == 'light'
 
     cards = ''
     for sym, cfg in HERO_SYMBOLS.items():
@@ -301,7 +301,7 @@ def _render_heatmap_grid(data):
     t = get_theme()
     s = _s()
     pos_c, neg_c = t['pos'], t['neg']
-    is_light = st.session_state.get('theme') == 'Light'
+    is_light = get_theme().get('mode') == 'light'
 
     def _bg(change, pos, neg):
         abs_c = min(abs(change), 5)
