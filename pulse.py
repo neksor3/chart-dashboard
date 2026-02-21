@@ -301,6 +301,41 @@ def _render_sparkline_row(spark_data, pulse_data):
     _wrap(html, 78)
 
 
+def _render_sparkline_column(spark_data, pulse_data):
+    """Vertical stacked sparklines for left panel layout."""
+    t = get_theme(); s = _s()
+    pos_c, neg_c = t['pos'], t['neg']
+    cards = ''
+    for sym in SPARKLINE_SYMBOLS:
+        sdata = spark_data.get(sym)
+        pdata = pulse_data.get(sym)
+        if not sdata or not pdata:
+            continue
+        short = clean_symbol(sym)
+        change = pdata['change']
+        color = pos_c if change >= 0 else neg_c
+        sign = '+' if change >= 0 else ''
+        svg = _svg_sparkline(sdata, width=140, height=24, pos_color=pos_c, neg_color=neg_c)
+        cards += (
+            f"<div style='display:flex;align-items:center;gap:10px;padding:6px 10px;background:{s['card']};"
+            f"border:1px solid {s['border']};border-radius:4px;margin-bottom:4px'>"
+            f"<span style='color:{s['text2']};font-size:9px;font-weight:600;letter-spacing:0.06em;"
+            f"width:50px;flex-shrink:0'>{short}</span>"
+            f"<div style='flex:1'>{svg}</div>"
+            f"<span style='color:{color};font-size:9px;font-weight:700;width:55px;text-align:right;"
+            f"flex-shrink:0'>{sign}{change:.2f}%</span>"
+            f"</div>"
+        )
+    html = (
+        f"<div style='font-family:{FONTS}'>"
+        f"<div style='padding:0 0 4px 0'>"
+        f"<span style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.1em'>30 DAY TREND</span>"
+        f"</div>{cards}</div>"
+    )
+    n = sum(1 for sym in SPARKLINE_SYMBOLS if spark_data.get(sym) and pulse_data.get(sym))
+    _wrap(html, n * 40 + 24)
+
+
 def _render_heatmap_grid(data):
     t = get_theme()
     s = _s()
@@ -459,9 +494,9 @@ def _render_pulse_news():
         f"border-bottom:1px solid {s['border']}'>"
         f"<span style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.1em'>LATEST</span>"
         f"<span style='color:{s['muted']};font-size:9px;font-weight:500'>{len(all_items)} headlines</span></div>"
-        f"<div style='max-height:200px;overflow-y:auto'>{rows}</div></div>"
+        f"<div style='max-height:260px;overflow-y:auto'>{rows}</div></div>"
     )
-    _wrap(html, min(len(all_items) * 42 + 36, 240))
+    _wrap(html, min(len(all_items) * 42 + 36, 300))
 
 
 # ── MAIN ─────────────────────────────────────────────────────────────────────
@@ -477,14 +512,23 @@ def render_pulse_tab(is_mobile):
 
     _render_market_status_bar()
     _render_hero_row(data)
-    if spark_data:
-        _render_sparkline_row(spark_data, data)
-    _render_pulse_news()
 
     if is_mobile:
+        if spark_data:
+            _render_sparkline_row(spark_data, data)
+        _render_pulse_news()
         _render_heatmap_grid(data)
         _render_movers(data)
     else:
+        # Sparklines left, News right
+        col_spark, col_news = st.columns([40, 60])
+        with col_spark:
+            if spark_data:
+                _render_sparkline_column(spark_data, data)
+        with col_news:
+            _render_pulse_news()
+
+        # Heatmap left, Movers right
         col_left, col_right = st.columns([55, 45])
         with col_left:
             _render_heatmap_grid(data)
