@@ -32,8 +32,8 @@ st.set_page_config(page_title="SANPO", layout="wide", initial_sidebar_state="col
 def _inject_theme_css():
     t = get_theme()
     is_light = t.get('mode') == 'light'
-    bg = t['bg']; bg2 = t['bg2']; bg3 = t['bg3']; bdr = t['border']
-    txt = t['text']; txt2 = t['text2']; muted = t['muted']; accent = t['accent']
+    bg = t.get('bg', '#1e1e1e'); bg2 = t.get('bg2', '#0a0f1a'); bg3 = t.get('bg3', '#0f172a'); bdr = t.get('border', '#1e293b')
+    txt = t.get('text', '#e2e8f0'); txt2 = t.get('text2', '#94a3b8'); muted = t.get('muted', '#475569'); accent = t.get('accent', '#60a5fa')
     sb_bg = '#f1f5f9' if is_light else '#1a2744'
     sel_bg = '#f1f5f9' if is_light else '#1a2744'
     sel_c = '#334155' if is_light else '#b0b0b0'
