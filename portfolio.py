@@ -627,10 +627,29 @@ def render_portfolio_tab(is_mobile):
     theme_name = st.session_state.get('theme', 'Dark')
     theme = THEMES.get(theme_name, THEMES['Dark'])
     C_POS = theme['pos']; C_NEG = theme['neg']
-    _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
+    _lbl = f"color:#f8fafc;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
-    # Portfolio selector + symbols
-    preset_names = ['Custom'] + list(PRESETS.keys())
+    # Professional input styling
+    st.markdown(f"""<style>
+        /* Selectbox & text input font */
+        div[data-baseweb="select"] span,
+        div[data-baseweb="select"] li,
+        div[data-baseweb="select"] [data-testid="stMarkdownContainer"],
+        .stTextInput input,
+        .stSelectbox [data-testid="stMarkdownContainer"] {{
+            font-family: {FONTS} !important;
+            font-size: 12px !important;
+            letter-spacing: 0.02em !important;
+        }}
+        /* Dropdown menu items */
+        div[data-baseweb="menu"] li {{
+            font-family: {FONTS} !important;
+            font-size: 12px !important;
+        }}
+    </style>""", unsafe_allow_html=True)
+
+    # Portfolio selector — use FUTURES_GROUPS (same list as Charts tab)
+    group_names = ['Custom'] + list(FUTURES_GROUPS.keys())
     if 'port_preset_name' not in st.session_state:
         st.session_state.port_preset_name = 'Custom'
     if 'port_sym_input' not in st.session_state:
@@ -639,14 +658,15 @@ def render_portfolio_tab(is_mobile):
     def _on_portfolio_change():
         sel = st.session_state.port_selector
         if sel != 'Custom':
-            st.session_state.port_sym_input = ', '.join(PRESETS[sel])
+            syms = FUTURES_GROUPS.get(sel, PRESETS.get(sel, []))
+            st.session_state.port_sym_input = ', '.join(syms)
         st.session_state.port_preset_name = sel
 
     p1, p2 = st.columns([1, 4])
     with p1:
         st.markdown(f"<div style='{_lbl}'>PORTFOLIO</div>", unsafe_allow_html=True)
-        current_idx = preset_names.index(st.session_state.port_preset_name) if st.session_state.port_preset_name in preset_names else 0
-        st.selectbox("Portfolio", preset_names, index=current_idx,
+        current_idx = group_names.index(st.session_state.port_preset_name) if st.session_state.port_preset_name in group_names else 0
+        st.selectbox("Portfolio", group_names, index=current_idx,
                      key='port_selector', label_visibility='collapsed', on_change=_on_portfolio_change)
     with p2:
         st.markdown(f"<div style='{_lbl}'>SYMBOLS</div>", unsafe_allow_html=True)
