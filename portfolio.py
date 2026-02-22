@@ -617,8 +617,8 @@ def render_monthly_table(oos_returns):
 
 def _section(title, subtitle=''):
     sub = f"<span style='color:{C_MUTE};font-size:10px;margin-left:8px'>{subtitle}</span>" if subtitle else ""
-    st.markdown(f"""<div style='margin-top:12px;padding:8px 12px;background:linear-gradient(90deg,{C_POS}12,{C_HDR});
-        border-left:2px solid {C_POS};font-family:{FONTS};border-radius:4px'>
+    st.markdown(f"""<div style='margin-top:12px;padding:8px 12px;background:linear-gradient(90deg,{C_EW}12,{C_HDR});
+        border-left:2px solid {C_EW};font-family:{FONTS};border-radius:4px'>
         <span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{title}</span>{sub}
     </div>""", unsafe_allow_html=True)
 
