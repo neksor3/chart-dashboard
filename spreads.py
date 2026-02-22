@@ -303,7 +303,8 @@ def render_spread_charts(pairs, data, mobile=False):
             xanchor='left', yanchor='top')
 
     for ann in fig['layout']['annotations']:
-        if 'domain' not in str(ann.get('xref', '')):
+        xref_str = str(ann['xref']) if ann['xref'] else ''
+        if 'domain' not in xref_str:
             ann['font'] = dict(size=10, family=FONTS)
 
     fig.update_layout(
