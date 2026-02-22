@@ -146,9 +146,12 @@ def compute_sector_spreads(data, ann_factor=252):
         corr = float(r1.corr(r2))
         win_rate = float((spread_ret > 0).sum() / len(spread_ret) * 100) if len(spread_ret) > 0 else 50.0
 
-        cum1 = 100 * (1 + data[s1].pct_change().dropna()).cumprod()
-        cum2 = 100 * (1 + data[s2].pct_change().dropna()).cumprod()
-        cum_sp = 100 * (1 + spread_ret).cumprod()
+        # data is already normalized to 100 at start
+        cum1 = data[s1]
+        cum2 = data[s2]
+        cum_sp = pd.Series(100.0, index=data.index[:1])
+        cum_sp = pd.concat([cum_sp, 100 * (1 + spread_ret).cumprod()])
+        cum_sp = cum_sp[~cum_sp.index.duplicated(keep='last')]
 
         pairs.append({
             'long': s1, 'short': s2,
