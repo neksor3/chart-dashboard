@@ -119,10 +119,11 @@ def render_news_panel(region, feeds, max_items=20):
             bg = _body_bg if i % 2 == 0 else _row_alt
             title_el = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:12px;font-weight:500'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:12px'>{item['title']}</span>"
             html += (
-                f"<div style='padding:3px 10px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
-                f"display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden'>"
-                f"<span style='font-size:10px;flex-shrink:0;color:{_accent};font-weight:600'>{item['source']}</span>"
-                f"<span style='font-size:10px;flex-shrink:0;color:{_txt2}'>{item['date']}</span>"
+                f"<div style='padding:4px 10px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
+                f"display:flex;align-items:baseline;gap:8px;white-space:nowrap;overflow:hidden'>"
+                f"<span style='font-size:10px;flex-shrink:0;width:200px;display:flex;gap:6px;align-items:baseline'>"
+                f"<span style='color:{_accent};font-weight:600'>{item['source']}</span>"
+                f"<span style='color:{_txt2}'>{item['date']}</span></span>"
                 f"<span style='overflow:hidden;text-overflow:ellipsis'>{title_el}</span>"
                 f"</div>"
             )
