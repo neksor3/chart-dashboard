@@ -200,10 +200,10 @@ class FuturesMetrics:
     month_status: str = ''
     year_status: str = ''
     current_dd: float = np.nan
-    day_reversal: bool = False
-    week_reversal: bool = False
-    month_reversal: bool = False
-    year_reversal: bool = False
+    day_reversal: str = ''
+    week_reversal: str = ''
+    month_reversal: str = ''
+    year_reversal: str = ''
 
 class FuturesDataFetcher:
     def __init__(self, symbol):
@@ -366,21 +366,24 @@ class FuturesDataFetcher:
             return ''
 
     def _check_reversal(self, hist, period_type):
+        """Return 'buy' if bounced off low, 'sell' if rejected at high, '' otherwise."""
         try:
-            if len(hist) < 3: return False
+            if len(hist) < 3: return ''
             prev_period, current_bars = _slice_period(hist, period_type)
             if prev_period is None or current_bars is None or current_bars.empty:
-                return False
+                return ''
             ph, pl = prev_period['High'].max(), prev_period['Low'].min()
             current_close = current_bars['Close'].iloc[-1]
             period_high = current_bars['High'].max()
-            if period_high > ph and current_close <= ph: return True
             period_low = current_bars['Low'].min()
-            if period_low < pl and current_close >= pl: return True
-            return False
+            # Rejected at high → sell signal (amber)
+            if period_high > ph and current_close <= ph: return 'sell'
+            # Bounced off low → buy signal (green)
+            if period_low < pl and current_close >= pl: return 'buy'
+            return ''
         except Exception as e:
             logger.debug(f"[{self.symbol}] check_reversal ({period_type}) error: {e}")
-            return False
+            return ''
 
     def _calculate_period_returns(self, hist, current_price):
         try:
@@ -619,15 +622,16 @@ def render_scanner_table(metrics, selected_symbol):
         c = pos_c if val >= 0 else neg_c
         return f"<span style='color:{c};font-weight:600'>{'+' if val >= 0 else ''}{val:.2f}%</span>"
 
-    def _dot(status, reversal=False):
+    def _dot(status, reversal=''):
         ico = ""
         c = zc.get(status, _mut)
         if status == 'above_high': ico = f"<span style='color:{c};font-weight:700;font-size:8px'>▲</span>"
         elif status == 'below_low': ico = f"<span style='color:{c};font-weight:700;font-size:8px'>▼</span>"
-        if reversal: ico += "<span style='color:#facc15;font-size:7px'>●</span>"
+        if reversal == 'buy': ico += f"<span style='color:{pos_c};font-size:8px'>●</span>"
+        elif reversal == 'sell': ico += f"<span style='color:{neg_c};font-size:8px'>●</span>"
         return f"<span style='display:inline-block;width:20px;text-align:left;vertical-align:middle;margin-left:2px'>{ico}</span>"
 
-    def _chg(val, status, reversal=False):
+    def _chg(val, status, reversal=''):
         return f"<span style='display:inline-block;width:56px;text-align:right;font-variant-numeric:tabular-nums'>{_fv(val)}</span>{_dot(status, reversal)}"
 
     def _sharpe(val):
@@ -855,26 +859,30 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_close]*2, mode='lines', line=dict(color='#475569', width=0.6, dash='dot'), showlegend=False, hovertemplate=f'Close: {b.prev_close:.2f}<extra></extra>'), row=row, col=col)
             fig.add_trace(go.Scatter(x=[px,ex], y=[ml]*2, mode='lines', line=dict(color='#d97706', width=0.6, dash='dot'), showlegend=False, hovertemplate=f'50%: {ml:.2f}<extra></extra>'), row=row, col=col)
 
-        # Reversal dots — close-to-close failed breakout only:
-        # Bar N closes above high, Bar N+1 closes back below → dot at N+1
-        # Bar N closes below low, Bar N+1 closes back above → dot at N+1
+        # Reversal dots — close-to-close failed breakout:
+        # Closed above high then back below → sell (amber)
+        # Closed below low then back above → buy (green)
         if boundaries:
-            rev_x, rev_y = [], []
+            buy_x, buy_y, sell_x, sell_y = [], [], [], []
             bi = last_b.idx; ph, pl = last_b.prev_high, last_b.prev_low
             for j in range(bi, len(hist) - 1):
                 c0 = hist['Close'].iloc[j]; c1 = hist['Close'].iloc[j + 1]
-                if c0 > ph and c1 <= ph: rev_x.append(j + 1); rev_y.append(c1)
-                elif c0 < pl and c1 >= pl: rev_x.append(j + 1); rev_y.append(c1)
+                if c0 > ph and c1 <= ph: sell_x.append(j + 1); sell_y.append(c1)
+                elif c0 < pl and c1 >= pl: buy_x.append(j + 1); buy_y.append(c1)
             if len(boundaries) >= 2:
                 pb = boundaries[-2]; end_i = last_b.idx
                 for j in range(pb.idx, end_i - 1):
                     c0 = hist['Close'].iloc[j]; c1 = hist['Close'].iloc[j + 1]
-                    if c0 > pb.prev_high and c1 <= pb.prev_high: rev_x.append(j + 1); rev_y.append(c1)
-                    elif c0 < pb.prev_low and c1 >= pb.prev_low: rev_x.append(j + 1); rev_y.append(c1)
-            if rev_x:
-                fig.add_trace(go.Scatter(x=rev_x, y=rev_y, mode='markers',
-                    marker=dict(color='#facc15', size=5, symbol='circle', line=dict(color='#92400e', width=0.8)),
-                    showlegend=False, hovertemplate='Reversal: %{y:.2f}<extra></extra>'), row=row, col=col)
+                    if c0 > pb.prev_high and c1 <= pb.prev_high: sell_x.append(j + 1); sell_y.append(c1)
+                    elif c0 < pb.prev_low and c1 >= pb.prev_low: buy_x.append(j + 1); buy_y.append(c1)
+            if buy_x:
+                fig.add_trace(go.Scatter(x=buy_x, y=buy_y, mode='markers',
+                    marker=dict(color=t['pos'], size=7, symbol='circle', line=dict(color='rgba(0,0,0,0.3)', width=0.5)),
+                    showlegend=False, hovertemplate='Buy reversal: %{y:.2f}<extra></extra>'), row=row, col=col)
+            if sell_x:
+                fig.add_trace(go.Scatter(x=sell_x, y=sell_y, mode='markers',
+                    marker=dict(color=t['neg'], size=7, symbol='circle', line=dict(color='rgba(0,0,0,0.3)', width=0.5)),
+                    showlegend=False, hovertemplate='Sell reversal: %{y:.2f}<extra></extra>'), row=row, col=col)
 
         # Axis formatting
         if tick_indices:
