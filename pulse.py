@@ -75,7 +75,7 @@ HERO_SYMBOLS = OrderedDict([
     ('CL=F',     {'label': 'CRUDE',    'fmt': ',.2f'}),
     ('ZN=F',     {'label': '10Y NOTE', 'fmt': ',.2f'}),
     ('USDSGD=X', {'label': 'USD/SGD',  'fmt': ',.4f'}),
-    ('6E=F',     {'label': 'EUR/USD',  'fmt': ',.4f'}),
+    ('^STI',     {'label': 'STI',      'fmt': ',.0f'}),
 ])
 
 HEATMAP_SECTORS = OrderedDict([
