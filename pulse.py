@@ -422,13 +422,20 @@ def _render_pulse_news():
     from news import NEWS_FEEDS, fetch_rss_feed
     t = get_theme(); s = _s()
     pos_c = t['pos']
+
+    # 1/N per region, then per source within region
+    max_items = 15
+    per_region = max(1, max_items // len(NEWS_FEEDS))
     all_items = []
-    for region in ['Global', 'Singapore']:
-        feeds = NEWS_FEEDS.get(region, [])
+    for region, feeds in NEWS_FEEDS.items():
+        region_items = []
+        per_src = max(1, per_region // len(feeds))
         for name, url in feeds:
-            all_items.extend(fetch_rss_feed(name, url))
+            region_items.extend(fetch_rss_feed(name, url)[:per_src])
+        region_items.sort(key=lambda x: x['date'], reverse=True)
+        all_items.extend(region_items[:per_region])
     all_items.sort(key=lambda x: x['date'], reverse=True)
-    all_items = all_items[:15]
+    all_items = all_items[:max_items]
     if not all_items:
         return
 
@@ -436,10 +443,11 @@ def _render_pulse_news():
     for i, item in enumerate(all_items):
         bg = s['bg2'] if i % 2 == 0 else s['row_alt']
         rows += (
-            f"<div style='padding:5px 10px;background:{bg};border-bottom:1px solid {s['border']}10;"
-            f"display:flex;align-items:baseline;gap:6px;font-family:{FONTS};white-space:nowrap;overflow:hidden'>"
-            f"<span style='color:{pos_c};font-size:9px;font-weight:600;flex-shrink:0'>{item['source']}</span>"
-            f"<span style='color:{s['muted']};font-size:9px;flex-shrink:0'>{item['date']}</span>"
+            f"<div style='padding:4px 10px;background:{bg};border-bottom:1px solid {s['border']}10;"
+            f"display:flex;align-items:baseline;gap:8px;font-family:{FONTS};white-space:nowrap;overflow:hidden'>"
+            f"<span style='font-size:9px;flex-shrink:0;width:170px;display:flex;gap:6px;align-items:baseline'>"
+            f"<span style='color:{pos_c};font-weight:600'>{item['source']}</span>"
+            f"<span style='color:{s['muted']}'>{item['date']}</span></span>"
             f"<a href='{item['url']}' target='_blank' style='color:{s['link']};text-decoration:none;"
             f"font-size:10.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis'>{item['title']}</a>"
             f"</div>"
