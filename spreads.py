@@ -341,7 +341,7 @@ def render_spreads_tab(is_mobile):
         st.markdown(f"<div style='{_lbl}'>SECTOR</div>", unsafe_allow_html=True)
         sector_names = list(FUTURES_GROUPS.keys())
         spread_sector = st.selectbox("Sector", sector_names,
-            index=sector_names.index(st.session_state.get('spread_sector', 'Indices')),
+            index=sector_names.index(st.session_state.get('spread_sector', 'Futures')),
             key='spread_sector_sel', label_visibility='collapsed')
         st.session_state.spread_sector = spread_sector
     with col_lb:
