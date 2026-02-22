@@ -131,15 +131,15 @@ def main():
                 <!-- Sweep line -->
                 <line x1="20" y1="20" x2="20" y2="2" stroke="url(#sanpoSweepG)" stroke-width="1.2" stroke-linecap="round" style="animation:sanpo-sweep 4s linear infinite;transform-origin:20px 20px"/>
                 <!-- 6 dots: invisible → bloom → linger decay. Tiered by ring. -->
-                <!-- Inner ring r≈6 -->
+                <!-- Inner ring r≈6: both at 0.7s -->
                 <circle cx="23.0" cy="14.8" fill="{pos_c}" style="animation:sanpo-dot-sm 8s ease-out infinite 0.7s"/>
-                <circle cx="17.0" cy="25.2" fill="{neg_c}" style="animation:sanpo-dot-sm 8s ease-out infinite 0.9s"/>
-                <!-- Mid ring r≈12 -->
+                <circle cx="17.0" cy="25.2" fill="{neg_c}" style="animation:sanpo-dot-sm 8s ease-out infinite 0.7s"/>
+                <!-- Mid ring r≈12: both at 1.5s -->
                 <circle cx="31.3" cy="24.1" fill="{pos_c}" style="animation:sanpo-dot-md 8s ease-out infinite 1.5s"/>
-                <circle cx="8.7"  cy="15.9" fill="{neg_c}" style="animation:sanpo-dot-md 8s ease-out infinite 1.8s"/>
-                <!-- Outer ring r≈18 -->
+                <circle cx="8.7"  cy="15.9" fill="{neg_c}" style="animation:sanpo-dot-md 8s ease-out infinite 1.5s"/>
+                <!-- Outer ring r≈18: both at 2.5s -->
                 <circle cx="35.6" cy="11.0" fill="{pos_c}" style="animation:sanpo-dot-lg 8s ease-out infinite 2.5s"/>
-                <circle cx="4.4"  cy="29.0" fill="{neg_c}" style="animation:sanpo-dot-lg 8s ease-out infinite 2.8s"/>
+                <circle cx="4.4"  cy="29.0" fill="{neg_c}" style="animation:sanpo-dot-lg 8s ease-out infinite 2.5s"/>
                 <defs><linearGradient id="sanpoSweepG" x1="20" y1="20" x2="20" y2="3">
                     <stop offset="0%" stop-color="{pos_c}" stop-opacity="0.6"/>
                     <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
