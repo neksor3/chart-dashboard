@@ -95,7 +95,7 @@ def render_news_panel(region, feeds, max_items=20):
     _body_bg = t.get('bg2', '#0f1522')
     _bdr = t.get('border', '#1e293b'); _txt = t.get('text', '#e2e8f0')
     _mut = t.get('muted', '#4a5568'); _link_c = t.get('text', '#c9d1d9')
-    _row_alt = '#131b2e'
+    _row_alt = '#131d2e'
 
     # Fetch per source, then interleave 1/N
     per_source = {}

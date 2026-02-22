@@ -41,7 +41,7 @@ def _s():
             bg=bg, bg2=bg2, bg3=bg3, card=bg3,
             border=bdr, text=txt, text2=txt2, muted=muted,
             off_dot='#3a3a3a', off_name='#4a5568', link='#c9d1d9',
-            bar_bg=bg3, row_alt='#0d1321', hm_txt=txt,
+            bar_bg=bg3, row_alt='#131d2e', hm_txt=txt,
         )
 
 
