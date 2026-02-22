@@ -89,8 +89,8 @@ def fetch_rss_feed(name, url):
         logger.warning(f"RSS error [{name}]: {e}")
         return []
 
-def render_news_panel(region, feeds, max_items=40):
-    """Render a single news feed as a scrollable list with 2-line items."""
+def render_news_panel(region, feeds, max_items=50):
+    """Render a single news feed as a scrollable list with single-line items."""
     t = get_theme(); pos_c = t['pos']
     _body_bg = t.get('bg2', '#0f1522')
     _bdr = t.get('border', '#1e293b'); _txt = t.get('text', '#e2e8f0')
@@ -109,14 +109,13 @@ def render_news_panel(region, feeds, max_items=40):
         _accent = t.get('accent', pos_c)
         for i, item in enumerate(all_items[:max_items]):
             bg = _body_bg if i % 2 == 0 else _row_alt
-            title_el = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:11px;font-weight:400;line-height:1.5'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:11px'>{item['title']}</span>"
+            title_el = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:11px;font-weight:400'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:11px'>{item['title']}</span>"
             html += (
-                f"<div style='padding:6px 12px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg}'>"
-                f"<div style='font-size:9px;margin-bottom:2px'>"
-                f"<span style='color:{_accent};font-weight:600'>{item['source']}</span>"
-                f" <span style='color:{_bdr}'>·</span> "
-                f"<span style='color:{_txt2}'>{item['date']}</span></div>"
-                f"<div>{title_el}</div>"
+                f"<div style='padding:6px 12px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
+                f"display:flex;align-items:baseline;gap:8px;white-space:nowrap;overflow:hidden'>"
+                f"<span style='font-size:9px;flex-shrink:0;color:{_accent};font-weight:600;min-width:90px'>{item['source']}</span>"
+                f"<span style='font-size:9px;flex-shrink:0;color:{_txt2}'>{item['date']}</span>"
+                f"<span style='overflow:hidden;text-overflow:ellipsis'>{title_el}</span>"
                 f"</div>"
             )
     html += "</div>"
@@ -124,20 +123,7 @@ def render_news_panel(region, feeds, max_items=40):
 
 def render_news_tab(is_mobile):
     regions = list(NEWS_FEEDS.keys())
-    if is_mobile:
-        tabs = st.tabs(regions)
-        for tab, region in zip(tabs, regions):
-            with tab:
-                render_news_panel(region, NEWS_FEEDS[region])
-    else:
-        left, right = st.columns(2)
-        with left:
-            tabs_l = st.tabs(regions[:2])  # Singapore | Regional
-            for tab, region in zip(tabs_l, regions[:2]):
-                with tab:
-                    render_news_panel(region, NEWS_FEEDS[region])
-        with right:
-            tabs_r = st.tabs(regions[2:])  # Global | Tech
-            for tab, region in zip(tabs_r, regions[2:]):
-                with tab:
-                    render_news_panel(region, NEWS_FEEDS[region])
+    tabs = st.tabs(regions)
+    for tab, region in zip(tabs, regions):
+        with tab:
+            render_news_panel(region, NEWS_FEEDS[region])
