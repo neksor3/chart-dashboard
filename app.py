@@ -111,33 +111,35 @@ def main():
     st.markdown(f"""
         <style>
             @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
-            @keyframes sanpo-breathe {{ 0%,100% {{ opacity: 0.08; }} 40%,60% {{ opacity: 0.95; }} }}
-            @keyframes sanpo-ripple {{ 0%,100% {{ opacity: 0.18; }} 35%,50% {{ opacity: 0.65; }} }}
             @keyframes sanpo-glow {{ 0%,100% {{ filter: drop-shadow(0 0 3px {pos_c}40); }} 50% {{ filter: drop-shadow(0 0 8px {pos_c}90); }} }}
-            @keyframes sanpo-core {{ 0%,100% {{ r: 2.5; }} 35%,50% {{ r: 3.2; }} }}
-            @keyframes sanpo-halo {{ 0%,100% {{ opacity: 0.06; }} 35%,50% {{ opacity: 0.22; }} }}
+            @keyframes sanpo-core {{ 0%,100% {{ r: 2.5; }} 6% {{ r: 3.5; }} 18% {{ r: 2.6; }} }}
+            @keyframes sanpo-halo {{ 0%,80%,100% {{ opacity: 0.0; }} 6% {{ opacity: 0.30; }} 20% {{ opacity: 0.10; }} 40% {{ opacity: 0.03; }} }}
+            @keyframes sanpo-ring {{ 0%,80%,100% {{ opacity: 0.06; }} 8% {{ opacity: 0.50; }} 20% {{ opacity: 0.20; }} 40% {{ opacity: 0.10; }} 60% {{ opacity: 0.06; }} }}
+            @keyframes sanpo-dot-sm {{ 0%,80%,100% {{ r: 0.6; opacity: 0; }} 8% {{ r: 1.3; opacity: 0.75; }} 15% {{ r: 1.0; opacity: 0.40; }} 30% {{ r: 0.8; opacity: 0.10; }} 50% {{ r: 0.7; opacity: 0.08; }} 75% {{ r: 0.6; opacity: 0.04; }} }}
+            @keyframes sanpo-dot-md {{ 0%,80%,100% {{ r: 0.9; opacity: 0; }} 8% {{ r: 1.8; opacity: 0.80; }} 15% {{ r: 1.5; opacity: 0.45; }} 30% {{ r: 1.2; opacity: 0.12; }} 50% {{ r: 1.0; opacity: 0.08; }} 75% {{ r: 0.9; opacity: 0.04; }} }}
+            @keyframes sanpo-dot-lg {{ 0%,80%,100% {{ r: 1.2; opacity: 0; }} 8% {{ r: 2.5; opacity: 0.85; }} 15% {{ r: 2.1; opacity: 0.50; }} 30% {{ r: 1.7; opacity: 0.15; }} 50% {{ r: 1.4; opacity: 0.10; }} 75% {{ r: 1.2; opacity: 0.04; }} }}
         </style>
         <div style='display:flex;align-items:center;gap:14px;padding:6px 0'>
             <svg width="56" height="56" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
-                <!-- Breathing rings (ripple outward from center) -->
-                <circle cx="20" cy="20" r="6"  stroke="#334155" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 0.3s"/>
-                <circle cx="20" cy="20" r="12" stroke="#334155" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 1.0s"/>
-                <circle cx="20" cy="20" r="18" stroke="#334155" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 1.7s"/>
-                <!-- Heartbeat core (pulses first, rings follow) -->
-                <circle cx="20" cy="20" r="4.5" fill="{pos_c}" style="animation:sanpo-halo 4s ease-in-out infinite 0.0s"/>
-                <circle cx="20" cy="20" r="2.8" fill="{pos_c}" style="animation:sanpo-core 4s ease-in-out infinite 0.0s"/>
+                <!-- Rings: pulse outward from core -->
+                <circle cx="20" cy="20" r="6"  stroke="#334155" style="animation:sanpo-ring 8s ease-out infinite 0.5s"/>
+                <circle cx="20" cy="20" r="12" stroke="#334155" style="animation:sanpo-ring 8s ease-out infinite 1.2s"/>
+                <circle cx="20" cy="20" r="18" stroke="#334155" style="animation:sanpo-ring 8s ease-out infinite 2.0s"/>
+                <!-- Core: heartbeat pump -->
+                <circle cx="20" cy="20" r="4.5" fill="{pos_c}" style="animation:sanpo-halo 8s ease-out infinite 0.0s"/>
+                <circle cx="20" cy="20" fill="{pos_c}" style="animation:sanpo-core 8s ease-out infinite 0.0s"/>
                 <!-- Sweep line -->
                 <line x1="20" y1="20" x2="20" y2="2" stroke="url(#sanpoSweepG)" stroke-width="1.2" stroke-linecap="round" style="animation:sanpo-sweep 4s linear infinite;transform-origin:20px 20px"/>
-                <!-- 6 dots: 2 per ring, organic timing -->
-                <!-- Inner ring r=6 -->
-                <circle cx="23.0" cy="14.8" r="0.8" fill="{pos_c}" style="animation:sanpo-breathe 3.7s ease-in-out infinite 0.4s"/>
-                <circle cx="17.0" cy="25.2" r="0.7" fill="{neg_c}" style="animation:sanpo-breathe 4.3s ease-in-out infinite 0.2s"/>
-                <!-- Mid ring r=12 -->
-                <circle cx="31.3" cy="24.1" r="1.2" fill="{pos_c}" style="animation:sanpo-breathe 4.1s ease-in-out infinite 1.1s"/>
-                <circle cx="8.7"  cy="15.9" r="1.1" fill="{neg_c}" style="animation:sanpo-breathe 3.5s ease-in-out infinite 0.8s"/>
-                <!-- Outer ring r=18 -->
-                <circle cx="35.6" cy="11.0" r="1.8" fill="{pos_c}" style="animation:sanpo-breathe 4.5s ease-in-out infinite 1.6s"/>
-                <circle cx="4.4"  cy="29.0" r="1.6" fill="{neg_c}" style="animation:sanpo-breathe 3.9s ease-in-out infinite 1.9s"/>
+                <!-- 6 dots: invisible → bloom → linger decay. Tiered by ring. -->
+                <!-- Inner ring r≈6 -->
+                <circle cx="23.0" cy="14.8" fill="{pos_c}" style="animation:sanpo-dot-sm 8s ease-out infinite 0.7s"/>
+                <circle cx="17.0" cy="25.2" fill="{neg_c}" style="animation:sanpo-dot-sm 8s ease-out infinite 0.9s"/>
+                <!-- Mid ring r≈12 -->
+                <circle cx="31.3" cy="24.1" fill="{pos_c}" style="animation:sanpo-dot-md 8s ease-out infinite 1.5s"/>
+                <circle cx="8.7"  cy="15.9" fill="{neg_c}" style="animation:sanpo-dot-md 8s ease-out infinite 1.8s"/>
+                <!-- Outer ring r≈18 -->
+                <circle cx="35.6" cy="11.0" fill="{pos_c}" style="animation:sanpo-dot-lg 8s ease-out infinite 2.5s"/>
+                <circle cx="4.4"  cy="29.0" fill="{neg_c}" style="animation:sanpo-dot-lg 8s ease-out infinite 2.8s"/>
                 <defs><linearGradient id="sanpoSweepG" x1="20" y1="20" x2="20" y2="3">
                     <stop offset="0%" stop-color="{pos_c}" stop-opacity="0.6"/>
                     <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
