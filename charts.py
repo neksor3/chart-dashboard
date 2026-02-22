@@ -825,7 +825,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
         num_boundaries = min(2, len(boundaries))
         for j in range(num_boundaries):
             b = boundaries[-(j+1)]; px = b.idx; ex = len(hist)-1 if j == 0 else boundaries[-1].idx
-            fig.add_vline(x=px, line=dict(color='#334155', width=0.8, dash='dot'), row=row, col=col)
+            fig.add_vline(x=px, line=dict(color='rgba(255,255,255,0.08)', width=0.5, dash='dot'), row=row, col=col)
             ml = (b.prev_high + b.prev_low) / 2
             fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_high]*2, mode='lines', line=dict(color=zc['above_high'], width=0.9), showlegend=False, hovertemplate=f'High: {b.prev_high:.2f}<extra></extra>'), row=row, col=col)
             fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_low]*2, mode='lines', line=dict(color=zc['below_low'], width=0.9), showlegend=False, hovertemplate=f'Low: {b.prev_low:.2f}<extra></extra>'), row=row, col=col)
@@ -887,11 +887,12 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
     stc = {'▲ ABOVE HIGH': zc['above_high'], '● ABOVE MID': zc['above_mid'],
            '● BELOW MID': zc['below_mid'], '▼ BELOW LOW': zc['below_low']}
     title_labels = [tf[0].upper() for tf in CHART_CONFIGS]
+    _clean_sym = clean_symbol(symbol)
     for idx, ann in enumerate(fig['layout']['annotations']):
         txt = str(ann.text) if hasattr(ann, 'text') else ''
         if txt in title_labels:
             status = chart_statuses.get(idx, ''); rsi = chart_rsis.get(idx, np.nan)
-            parts = [txt]
+            parts = [f"<span style='color:#f8fafc;font-weight:700'>{_clean_sym}</span>  {txt}"]
             if not np.isnan(rsi):
                 rc = zc['above_mid'] if rsi > 50 else zc['below_low']
                 parts.append(f"<span style='color:{rc};font-size:9px'>RSI {rsi:.0f}</span>")
@@ -908,10 +909,10 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
     fig.update_layout(template=_tpl, height=1100 if mobile else 850, margin=dict(l=40,r=80,t=50,b=20),
         showlegend=False, plot_bgcolor=_pbg, paper_bgcolor=_pbg,
         dragmode='pan', hovermode='closest', autosize=True)
-    fig.update_xaxes(gridcolor=_grd, linecolor=_axl, tickfont=dict(color='#e2e8f0', size=9),
+    fig.update_xaxes(gridcolor='rgba(255,255,255,0.03)', linecolor='rgba(0,0,0,0)', tickfont=dict(color='#e2e8f0', size=9),
         showgrid=True, showticklabels=True, tickangle=0, rangeslider=dict(visible=False),
         fixedrange=False, showspikes=True, spikecolor='#475569', spikethickness=0.5, spikedash='dot', spikemode='across')
-    fig.update_yaxes(gridcolor=_grd, linecolor=_axl, showgrid=True, side='right', tickfont=dict(color='#94a3b8', size=9),
+    fig.update_yaxes(gridcolor='rgba(255,255,255,0.03)', linecolor='rgba(0,0,0,0)', showgrid=True, side='right', tickfont=dict(color='#94a3b8', size=9),
         fixedrange=False, showspikes=True, spikecolor='#475569', spikethickness=0.5, spikedash='dot', spikemode='across')
 
     return fig, computed_levels
