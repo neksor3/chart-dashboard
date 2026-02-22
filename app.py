@@ -150,22 +150,22 @@ def main():
     """, unsafe_allow_html=True)
 
     # Tabs
-    tab_pulse, tab_charts, tab_spreads, tab_portfolio, tab_news = st.tabs(["PULSE", "CHARTS", "SPREADS", "PORTFOLIO", "NEWS"])
+    tab_pulse, tab_news, tab_portfolio, tab_spreads, tab_charts = st.tabs(["PULSE", "NEWS", "PORTFOLIO", "SPREADS", "CHARTS"])
 
     with tab_pulse:
         render_pulse_tab(is_mobile)
 
-    with tab_charts:
-        render_charts_tab(is_mobile, est)
-
-    with tab_spreads:
-        render_spreads_tab(is_mobile)
+    with tab_news:
+        render_news_tab(is_mobile)
 
     with tab_portfolio:
         render_portfolio_tab(is_mobile)
 
-    with tab_news:
-        render_news_tab(is_mobile)
+    with tab_spreads:
+        render_spreads_tab(is_mobile)
+
+    with tab_charts:
+        render_charts_tab(is_mobile, est)
 
     # Global auto-refresh aligned to :00 :15 :30 :45
     from streamlit.components.v1 import html as st_html
