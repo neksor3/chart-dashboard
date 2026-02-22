@@ -789,7 +789,11 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
         ax = f'xaxis{chart_idx+1}' if chart_idx > 0 else 'xaxis'
         if tick_indices:
             fig.update_layout(**{ax: dict(tickmode='array', tickvals=tick_indices, ticktext=tick_labels, tickfont=dict(color='#e2e8f0', size=9))})
-        x_left = -2; last_bar = len(hist) - 1
+        if boundary_type == 'session' and boundaries:
+            x_left = (boundaries[-2].idx if len(boundaries) >= 2 else boundaries[-1].idx) - 3
+        else:
+            x_left = -2
+        last_bar = len(hist) - 1
         fig.update_layout(**{ax: dict(range=[x_left, x_left + int((last_bar - x_left) / 0.6)])})
 
         y_low, y_high = hist['Low'].dropna(), hist['High'].dropna()
