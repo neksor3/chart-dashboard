@@ -658,13 +658,27 @@ def _add_simple_line(fig, row, col, x_data, closes, datetimes, boundary_type, co
         line=dict(color=color, width=width, shape='spline', smoothing=0.3),
         showlegend=False, customdata=all_dt, hovertemplate=hover), row=row, col=col)
 
-def _add_candlesticks(fig, row, col, x_vals, hist, t):
-    fig.add_trace(go.Candlestick(
-        x=x_vals, open=hist['Open'].values, high=hist['High'].values,
-        low=hist['Low'].values, close=hist['Close'].values,
-        increasing_line_color=t['pos'], decreasing_line_color=t['neg'],
-        increasing_fillcolor=t['pos'], decreasing_fillcolor=t['neg'],
-        showlegend=False, line=dict(width=1)), row=row, col=col)
+def _add_candlesticks(fig, row, col, x_vals, hist, t, mid=None):
+    if mid is not None:
+        closes = hist['Close'].values
+        above = closes >= mid
+        for mask, color in [(above, t['pos']), (~above, t['neg'])]:
+            idx = [i for i, m in enumerate(mask) if m]
+            if not idx: continue
+            fig.add_trace(go.Candlestick(
+                x=[x_vals[i] for i in idx],
+                open=hist['Open'].values[mask], high=hist['High'].values[mask],
+                low=hist['Low'].values[mask], close=hist['Close'].values[mask],
+                increasing_line_color=color, decreasing_line_color=color,
+                increasing_fillcolor=color, decreasing_fillcolor=color,
+                showlegend=False, line=dict(width=1)), row=row, col=col)
+    else:
+        fig.add_trace(go.Candlestick(
+            x=x_vals, open=hist['Open'].values, high=hist['High'].values,
+            low=hist['Low'].values, close=hist['Close'].values,
+            increasing_line_color=t['pos'], decreasing_line_color=t['neg'],
+            increasing_fillcolor=t['pos'], decreasing_fillcolor=t['neg'],
+            showlegend=False, line=dict(width=1)), row=row, col=col)
 
 def _add_boundary_levels(fig, row, col, boundaries, hist, zc):
     for j in range(min(2, len(boundaries))):
@@ -750,7 +764,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             bi = last_b.idx
 
             if chart_type == 'bars':
-                _add_candlesticks(fig, row, col, x_vals, hist, t)
+                _add_candlesticks(fig, row, col, x_vals, hist, t, mid=mid)
             if len(boundaries) >= 2 and chart_type == 'line':
                 prev_b = boundaries[-2]
                 _add_zone_line(fig, row, col, x_vals[prev_b.idx:bi], hist['Close'].values[prev_b.idx:bi],
