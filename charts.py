@@ -779,15 +779,15 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                 seg_dt = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in datetimes[start_i:seg_end]] if datetimes is not None else None
                 hover = '%{customdata}<br>%{y:.2f}<extra></extra>' if seg_dt else '%{y:.2f}<extra></extra>'
                 seg_color = zc[zone]
-                # Area fill: polygon from data down to floor
+                # Area fill polygon
                 poly_x = list(seg_x) + list(reversed(seg_x))
                 poly_y = seg_y + [chart_y_floor] * len(seg_x)
                 fig.add_trace(go.Scatter(x=poly_x, y=poly_y, fill='toself',
-                    fillcolor=_hex_to_rgba(seg_color, 0.12), line=dict(width=0),
+                    fillcolor=_hex_to_rgba(seg_color, 0.15), line=dict(width=0),
                     showlegend=False, hoverinfo='skip'), row=row, col=col)
-                # Line on top
+                # Line on top — bright white-ish, thick
                 fig.add_trace(go.Scatter(x=seg_x, y=seg_y, mode='lines',
-                    line=dict(color=seg_color, width=1.3),
+                    line=dict(color='rgba(255,255,255,0.85)', width=1.8),
                     showlegend=False, customdata=seg_dt, hovertemplate=hover), row=row, col=col)
 
         if boundaries:
@@ -822,8 +822,8 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                 pre_x = x_vals[:first_tracked]; pre_y = list(hist['Close'].values[:first_tracked])
                 poly_x = pre_x + list(reversed(pre_x))
                 poly_y = pre_y + [chart_y_floor] * len(pre_x)
-                fig.add_trace(go.Scatter(x=poly_x, y=poly_y, fill='toself', fillcolor='rgba(75,85,99,0.06)', line=dict(width=0), showlegend=False, hoverinfo='skip'), row=row, col=col)
-                fig.add_trace(go.Scatter(x=pre_x, y=pre_y, mode='lines', line=dict(color='#4b5563', width=1.2), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=poly_x, y=poly_y, fill='toself', fillcolor='rgba(148,163,184,0.06)', line=dict(width=0), showlegend=False, hoverinfo='skip'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=pre_x, y=pre_y, mode='lines', line=dict(color='rgba(148,163,184,0.5)', width=1.5), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
 
             if boundary_idx < len(hist) and chart_type == 'line':
                 plot_colored_segments(x_vals[boundary_idx:], hist['Close'].values[boundary_idx:], last_b.prev_high, last_b.prev_low, mid, boundary_idx, hist.index[boundary_idx:])
@@ -840,8 +840,8 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                 fb_y = list(hist['Close'].values)
                 poly_x = x_vals + list(reversed(x_vals))
                 poly_y = fb_y + [chart_y_floor] * len(x_vals)
-                fig.add_trace(go.Scatter(x=poly_x, y=poly_y, fill='toself', fillcolor='rgba(75,85,99,0.06)', line=dict(width=0), showlegend=False, hoverinfo='skip'), row=row, col=col)
-                fig.add_trace(go.Scatter(x=x_vals, y=fb_y, mode='lines', line=dict(color='#4b5563', width=1.2), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=poly_x, y=poly_y, fill='toself', fillcolor='rgba(148,163,184,0.06)', line=dict(width=0), showlegend=False, hoverinfo='skip'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=x_vals, y=fb_y, mode='lines', line=dict(color='rgba(148,163,184,0.5)', width=1.5), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
 
         if boundaries:
             zone_status = get_zone(current_price, last_b.prev_high, last_b.prev_low, mid)
@@ -937,7 +937,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             if status:
                 c = stc.get(status, '#64748b')
                 parts.append(f"<span style='color:{c};font-size:9px'>{status}</span>")
-            ann['text'] = '  '.join(parts); ann['font'] = dict(color='#94a3b8', size=10)
+            ann['text'] = '  '.join(parts); ann['font'] = dict(color='#f8fafc', size=10)
 
     _t = get_theme()
     _pbg = _t.get('plot_bg', '#121212'); _grd = _t.get('grid', '#1f1f1f')

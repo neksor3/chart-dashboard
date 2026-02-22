@@ -89,10 +89,10 @@ THEMES = {
 }
 
 CHART_CONFIGS = [
-    ('Session', '15m', 'Session High/Low', 'session'),
-    ('4H', '1h', 'Week High/Low', 'week'),
-    ('Daily', '1d', 'Month High/Low', 'month'),
-    ('Weekly', '1wk', 'Year High/Low', 'year'),
+    ('Day (15m)', '15m', 'Session High/Low', 'session'),
+    ('Weekly (4H)', '1h', 'Week High/Low', 'week'),
+    ('Monthly (Daily)', '1d', 'Month High/Low', 'month'),
+    ('Year (Weekly)', '1wk', 'Year High/Low', 'year'),
 ]
 
 STATUS_LABELS = {
