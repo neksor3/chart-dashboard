@@ -113,8 +113,8 @@ def render_news_panel(region, feeds, max_items=50):
             html += (
                 f"<div style='padding:5px 10px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
                 f"display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden'>"
-                f"<span style='font-size:9px;flex-shrink:0;color:{_accent};font-weight:600'>{item['source']}</span>"
-                f"<span style='font-size:9px;flex-shrink:0;color:{_txt2}'>{item['date']}</span>"
+                f"<span style='font-size:10px;flex-shrink:0;color:{_accent};font-weight:600'>{item['source']}</span>"
+                f"<span style='font-size:10px;flex-shrink:0;color:{_txt2}'>{item['date']}</span>"
                 f"<span style='overflow:hidden;text-overflow:ellipsis'>{title_el}</span>"
                 f"</div>"
             )
