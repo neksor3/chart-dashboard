@@ -171,21 +171,52 @@ def _svg_sparkline(data, width=100, height=28, pos_color='#4ade80', neg_color='#
 
 # ── MARKET STATUS ────────────────────────────────────────────────────────────
 
+# SGX market holidays 2026 (excludes weekends)
+_SG_HOLIDAYS = [
+    (2026,1,1,'New Year'),  (2026,2,17,'CNY'), (2026,2,18,'CNY'),
+    (2026,4,3,'Good Friday'), (2026,5,1,'Labour Day'), (2026,5,27,'Hari Raya Haji'),
+    (2026,6,1,'Vesak Day'), (2026,8,10,'National Day'), (2026,11,9,'Deepavali'),
+    (2026,12,25,'Christmas'),
+]
+# NYSE market holidays 2026
+_US_HOLIDAYS = [
+    (2026,1,1,'New Year'), (2026,1,19,'MLK Day'), (2026,2,16,"Presidents'"),
+    (2026,4,3,'Good Friday'), (2026,5,25,'Memorial Day'), (2026,6,19,'Juneteenth'),
+    (2026,7,3,'Independence'), (2026,9,7,'Labor Day'), (2026,11,26,'Thanksgiving'),
+    (2026,12,25,'Christmas'),
+]
+
+def _next_holiday(holidays, today):
+    from datetime import date
+    for y, m, d, name in holidays:
+        h = date(y, m, d)
+        if h >= today:
+            delta = (h - today).days
+            return name, h.strftime('%d %b'), delta
+    return None, None, None
+
 def _market_status():
+    from datetime import date
     now_utc = datetime.now(pytz.utc)
+    today = now_utc.astimezone(pytz.timezone('Asia/Singapore')).date()
     results = []
     markets = [
-        ('SG',  'Asia/Singapore', 9, 0,  17, 0),
-        ('US',  'US/Eastern',     9, 30, 16, 0),
+        ('SG',  'Asia/Singapore', 9, 0,  17, 0,  _SG_HOLIDAYS, '#ef4444'),  # red
+        ('US',  'US/Eastern',     9, 30, 16, 0,  _US_HOLIDAYS, '#3b82f6'),  # blue
     ]
-    for name, tz_str, oh, om, ch, cm in markets:
+    for name, tz_str, oh, om, ch, cm, holidays, dot_color in markets:
         tz = pytz.timezone(tz_str)
         local = now_utc.astimezone(tz)
         is_weekend = local.weekday() >= 5
         open_time = local.replace(hour=oh, minute=om, second=0)
         close_time = local.replace(hour=ch, minute=cm, second=0)
         is_open = not is_weekend and open_time <= local <= close_time
-        results.append({'name': name, 'time': local.strftime('%H:%M'), 'open': is_open})
+        hol_name, hol_date, hol_days = _next_holiday(holidays, today)
+        results.append({
+            'name': name, 'time': local.strftime('%H:%M'), 'open': is_open,
+            'dot_color': dot_color,
+            'hol_name': hol_name, 'hol_date': hol_date, 'hol_days': hol_days,
+        })
     return results
 
 
@@ -198,27 +229,45 @@ def _render_market_status_bar():
     is_light = t.get('mode') == 'light'
     dots = ''
     for m in markets:
-        color = t['pos'] if m['open'] else s['off_dot']
-        glow = f'box-shadow:0 0 6px {t["pos"]}80;' if m['open'] else ''
-        pulse = 'animation:pulse-dot 2s ease-in-out infinite;' if m['open'] else ''
+        # Dot color: red for SG, blue for US (always their color, brighter when open)
+        dot_c = m['dot_color']
+        glow = f'box-shadow:0 0 6px {dot_c}80;' if m['open'] else ''
+        pulse = 'animation:pulse-dot 2s ease-in-out infinite;' if m['open'] else f'opacity:0.5;'
         # Country name: strong text
         nc = ('#0f172a' if is_light else '#f8fafc') if m['open'] else ('#64748b' if is_light else '#f8fafc')
         # Time: always visible
         tc = ('#334155' if is_light else '#f8fafc') if m['open'] else ('#94a3b8' if is_light else '#f8fafc')
         dots += (
             f"<div style='display:flex;align-items:center;gap:4px'>"
-            f"<div style='width:6px;height:6px;border-radius:50%;background:{color};{glow}{pulse}'></div>"
+            f"<div style='width:6px;height:6px;border-radius:50%;background:{dot_c};{glow}{pulse}'></div>"
             f"<span style='color:{nc};font-size:9px;font-weight:600;letter-spacing:0.06em'>{m['name']}</span>"
             f"<span style='color:{tc};font-size:9px;font-weight:600'>{m['time']}</span>"
             f"</div>"
         )
+
+    # Next holidays
+    hols = ''
+    for m in markets:
+        if m['hol_name']:
+            dot_c = m['dot_color']
+            day_txt = 'today' if m['hol_days'] == 0 else f"in {m['hol_days']}d"
+            hols += (
+                f"<div style='display:flex;align-items:center;gap:4px'>"
+                f"<div style='width:6px;height:6px;border-radius:2px;background:{dot_c};opacity:0.7'></div>"
+                f"<span style='color:#64748b;font-size:8px;font-weight:500'>"
+                f"{m['name']} {m['hol_name']} {m['hol_date']} ({day_txt})</span>"
+                f"</div>"
+            )
+
     html = (
         "<style>@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.4}}</style>"
         f"<div style='display:flex;gap:16px;flex-wrap:wrap;padding:6px 12px;background:{s['bg2']};"
-        f"border:1px solid {s['border']};border-radius:4px'>"
+        f"border:1px solid {s['border']};border-radius:4px;align-items:center'>"
         f"<span style='color:#f8fafc;font-size:8px;font-weight:600;letter-spacing:0.1em;"
         f"align-self:center'>MARKETS</span>"
-        f"{dots}</div>"
+        f"{dots}"
+        f"<span style='color:{s['border']};font-size:10px;align-self:center'>│</span>"
+        f"{hols}</div>"
     )
     _wrap(html, 36)
 
