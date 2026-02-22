@@ -126,12 +126,16 @@ def main():
                 <circle cx="20" cy="20" r="4.5" fill="{pos_c}" opacity="0.10"/>
                 <!-- Sweep line -->
                 <line x1="20" y1="20" x2="20" y2="2" stroke="url(#sanpoSweepG)" stroke-width="1.2" stroke-linecap="round" style="animation:sanpo-sweep 4s linear infinite;transform-origin:20px 20px"/>
-                <!-- Star dots -->
-                <circle cx="13" cy="7"  r="2.0" fill="{pos_c}" style="animation:sanpo-breathe 2.5s ease-in-out infinite 0.0s"/>
-                <circle cx="33" cy="14" r="1.6" fill="{neg_c}" style="animation:sanpo-breathe 3.0s ease-in-out infinite 0.6s"/>
-                <circle cx="30" cy="31" r="1.5" fill="{pos_c}" style="animation:sanpo-breathe 2.8s ease-in-out infinite 1.2s"/>
-                <circle cx="8"  cy="28" r="1.7" fill="{neg_c}" style="animation:sanpo-breathe 2.3s ease-in-out infinite 0.3s"/>
-                <circle cx="24" cy="22" r="1.0" fill="{pos_c}" style="animation:sanpo-breathe 2.1s ease-in-out infinite 1.8s"/>
+                <!-- 6 dots: 2 per ring, each pair on different diagonal -->
+                <!-- Inner ring r=6: 30° / 210° -->
+                <circle cx="23.0" cy="14.8" r="0.8" fill="{pos_c}" style="animation:sanpo-breathe 2.5s ease-in-out infinite 0.0s"/>
+                <circle cx="17.0" cy="25.2" r="0.7" fill="{neg_c}" style="animation:sanpo-breathe 2.8s ease-in-out infinite 1.2s"/>
+                <!-- Mid ring r=12: 110° / 290° -->
+                <circle cx="31.3" cy="24.1" r="1.2" fill="{pos_c}" style="animation:sanpo-breathe 3.0s ease-in-out infinite 0.5s"/>
+                <circle cx="8.7"  cy="15.9" r="1.1" fill="{neg_c}" style="animation:sanpo-breathe 2.3s ease-in-out infinite 1.7s"/>
+                <!-- Outer ring r=18: 60° / 240° -->
+                <circle cx="35.6" cy="11.0" r="1.8" fill="{pos_c}" style="animation:sanpo-breathe 2.6s ease-in-out infinite 0.3s"/>
+                <circle cx="4.4"  cy="29.0" r="1.6" fill="{neg_c}" style="animation:sanpo-breathe 3.2s ease-in-out infinite 1.0s"/>
                 <defs><linearGradient id="sanpoSweepG" x1="20" y1="20" x2="20" y2="3">
                     <stop offset="0%" stop-color="{pos_c}" stop-opacity="0.6"/>
                     <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
