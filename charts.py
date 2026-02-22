@@ -641,45 +641,49 @@ def render_scanner_table(metrics, selected_symbol):
         return f"{conf} <span style='color:{sc};font-size:9px;font-weight:600'>{sig}</span>"
 
     _bdr = t.get('border', '#1e293b'); _bg3 = t.get('bg3', '#0f172a'); _mut = t.get('muted', '#475569')
-    th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
-    td = f"padding:5px 8px;border-bottom:1px solid {_bdr}22;"
+    _row_alt = '#131d2e'
+    th = f"padding:5px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;text-align:center;"
+    td = f"padding:4px 8px;border-bottom:1px solid {_bdr}22;"
 
     html = f"""<div style='overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid {_bdr};border-radius:6px'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
         <thead style='background:{_bg3}'><tr>
-            <th style='{th}text-align:left' rowspan='2'></th><th style='{th}text-align:right' rowspan='2'>PRICE</th>
-            <th style='{th}text-align:center;border-bottom:none' colspan='4'>CHANGE</th>
-            <th style='{th}text-align:right' rowspan='2'>HV</th><th style='{th}text-align:right' rowspan='2'>DD</th>
-            <th style='{th}text-align:center' rowspan='2'>TREND</th>
-            <th style='{th}text-align:center;border-bottom:none' colspan='4'>SHARPE</th>
+            <th style='{th}text-align:left' rowspan='2'></th><th style='{th}' rowspan='2'>PRICE</th>
+            <th style='{th}border-bottom:none' colspan='4'>CHANGE</th>
+            <th style='{th}' rowspan='2'>HV</th><th style='{th}' rowspan='2'>DD</th>
+            <th style='{th}' rowspan='2'>TREND</th>
+            <th style='{th}border-bottom:none' colspan='4'>SHARPE</th>
         </tr><tr>
-            <th style='{th}text-align:left'>DAY</th><th style='{th}text-align:left'>WTD</th>
-            <th style='{th}text-align:left'>MTD</th><th style='{th}text-align:left'>YTD</th>
-            <th style='{th}text-align:right'>DAY</th><th style='{th}text-align:right'>WTD</th>
-            <th style='{th}text-align:right'>MTD</th><th style='{th}text-align:right'>YTD</th>
+            <th style='{th}'>DAY</th><th style='{th}'>WTD</th>
+            <th style='{th}'>MTD</th><th style='{th}'>YTD</th>
+            <th style='{th}'>DAY</th><th style='{th}'>WTD</th>
+            <th style='{th}'>MTD</th><th style='{th}'>YTD</th>
         </tr></thead><tbody>"""
 
     _txt1 = t.get('text', '#e2e8f0'); _txt2 = t.get('text2', '#94a3b8')
 
-    for m in metrics:
+    for idx, m in enumerate(metrics):
         pf = f"{m.price:,.{m.decimals}f}"
         ss = clean_symbol(m.symbol)
-        bg = (f'linear-gradient(90deg,{pos_c}08,{t.get("bg3","#1a2744")},{pos_c}08)' if m.symbol == selected_symbol else 'transparent')
+        if m.symbol == selected_symbol:
+            bg = f'linear-gradient(90deg,{pos_c}08,{t.get("bg3","#1a2744")},{pos_c}08)'
+        else:
+            bg = _row_alt if idx % 2 == 1 else 'transparent'
         hv = f"<span style='color:{_txt2}'>{m.hist_vol:.1f}%</span>" if not pd.isna(m.hist_vol) else f"<span style='color:{_mut}'>—</span>"
         dd = f"<span style='color:{neg_c};font-weight:600'>{m.current_dd:.1f}%</span>" if not pd.isna(m.current_dd) else f"<span style='color:{_mut}'>—</span>"
         html += f"""<tr style='background:{bg}'>
             <td style='{td}color:{_txt1};font-weight:600;text-align:left;white-space:nowrap'>{ss}</td>
-            <td style='{td}color:#f8fafc;font-weight:700;text-align:right'>{pf}</td>
-            <td style='{td}text-align:left;white-space:nowrap'>{_chg(m.change_day, m.day_status, m.day_reversal)}</td>
-            <td style='{td}text-align:left;white-space:nowrap'>{_chg(m.change_wtd, m.week_status, m.week_reversal)}</td>
-            <td style='{td}text-align:left;white-space:nowrap'>{_chg(m.change_mtd, m.month_status, m.month_reversal)}</td>
-            <td style='{td}text-align:left;white-space:nowrap'>{_chg(m.change_ytd, m.year_status, m.year_reversal)}</td>
-            <td style='{td}text-align:right'>{hv}</td>
-            <td style='{td}text-align:right'>{dd}</td>
+            <td style='{td}color:#f8fafc;font-weight:700;text-align:center'>{pf}</td>
+            <td style='{td}text-align:center;white-space:nowrap'>{_chg(m.change_day, m.day_status, m.day_reversal)}</td>
+            <td style='{td}text-align:center;white-space:nowrap'>{_chg(m.change_wtd, m.week_status, m.week_reversal)}</td>
+            <td style='{td}text-align:center;white-space:nowrap'>{_chg(m.change_mtd, m.month_status, m.month_reversal)}</td>
+            <td style='{td}text-align:center;white-space:nowrap'>{_chg(m.change_ytd, m.year_status, m.year_reversal)}</td>
+            <td style='{td}text-align:center'>{hv}</td>
+            <td style='{td}text-align:center'>{dd}</td>
             <td style='{td}text-align:center;white-space:nowrap'>{_trend(m)}</td>
-            <td style='{td}text-align:right'>{_sharpe(m.day_sharpe)}</td>
-            <td style='{td}text-align:right'>{_sharpe(m.wtd_sharpe)}</td>
-            <td style='{td}text-align:right'>{_sharpe(m.mtd_sharpe)}</td>
-            <td style='{td}text-align:right'>{_sharpe(m.ytd_sharpe)}</td>
+            <td style='{td}text-align:center'>{_sharpe(m.day_sharpe)}</td>
+            <td style='{td}text-align:center'>{_sharpe(m.wtd_sharpe)}</td>
+            <td style='{td}text-align:center'>{_sharpe(m.mtd_sharpe)}</td>
+            <td style='{td}text-align:center'>{_sharpe(m.ytd_sharpe)}</td>
         </tr>"""
     html += "</tbody></table></div>"
     st.markdown(html, unsafe_allow_html=True)
