@@ -787,13 +787,11 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                 prev_b = boundaries[-2]; prev_mid = (prev_b.prev_high + prev_b.prev_low) / 2
                 ps, pe = prev_b.idx, boundary_idx
                 if pe > ps and chart_type == 'line':
-                    prev_zone = get_zone(hist['Close'].iloc[pe-1], prev_b.prev_high, prev_b.prev_low, prev_mid)
-                    prev_color = t['pos'] if prev_zone in ('above_high', 'above_mid') else t['neg']
-                    plot_line(x_vals[ps:pe], hist['Close'].values[ps:pe], ps, hist.index[ps:pe], color=prev_color, width=1.5)
+                    plot_line(x_vals[ps:pe], hist['Close'].values[ps:pe], ps, hist.index[ps:pe], color='rgba(255,255,255,0.5)', width=1.5)
 
             first_tracked = boundaries[-2].idx if len(boundaries) >= 2 else boundary_idx
             if first_tracked > 0 and chart_type == 'line':
-                plot_line(x_vals[:first_tracked], hist['Close'].values[:first_tracked], 0, hist.index[:first_tracked], color='rgba(148,163,184,0.4)', width=1.2)
+                plot_line(x_vals[:first_tracked], hist['Close'].values[:first_tracked], 0, hist.index[:first_tracked], color='rgba(255,255,255,0.3)', width=1.2)
 
             if boundary_idx < len(hist) and chart_type == 'line':
                 plot_line(x_vals[boundary_idx:], hist['Close'].values[boundary_idx:], boundary_idx, hist.index[boundary_idx:], color=line_color, width=2.0)
@@ -806,7 +804,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                     increasing_fillcolor=t['pos'], decreasing_fillcolor=t['neg'],
                     showlegend=False, line=dict(width=1)), row=row, col=col)
             else:
-                plot_line(x_vals, hist['Close'].values, 0, hist.index, color='rgba(148,163,184,0.5)', width=1.5)
+                plot_line(x_vals, hist['Close'].values, 0, hist.index, color='rgba(255,255,255,0.5)', width=1.5)
 
         if boundaries:
             zone_status = get_zone(current_price, last_b.prev_high, last_b.prev_low, mid)
