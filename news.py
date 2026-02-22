@@ -89,9 +89,10 @@ def fetch_rss_feed(name, url):
         logger.warning(f"RSS error [{name}]: {e}")
         return []
 
-def render_news_column(region, feeds):
+def render_news_panel(region, feeds, max_items=40):
+    """Render a single news feed as a scrollable list with 2-line items."""
     t = get_theme(); pos_c = t['pos']
-    _hdr_bg = t.get('bg3', '#1a2744'); _body_bg = t.get('bg2', '#0f1522')
+    _body_bg = t.get('bg2', '#0f1522')
     _bdr = t.get('border', '#1e293b'); _txt = t.get('text', '#e2e8f0')
     _mut = t.get('muted', '#4a5568'); _link_c = t.get('text', '#c9d1d9')
     _row_alt = '#131b2e'
@@ -100,39 +101,43 @@ def render_news_column(region, feeds):
         all_items.extend(fetch_rss_feed(name, url))
     all_items.sort(key=lambda x: x['date'], reverse=True)
 
-    html = ""
-    html += f"""<div style='padding:8px 12px;background-color:{_hdr_bg};border-radius:4px 4px 0 0;font-family:{FONTS};display:flex;justify-content:space-between;align-items:center'>
-        <span style='color:{_txt};font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase'>{region}</span>
-        <span style='color:{_mut};font-size:9px'>{len(all_items)}</span>
-    </div>"""
-    html += f"<div style='background:{_body_bg};border:1px solid {_bdr};border-top:none;border-radius:0 0 4px 4px;max-height:600px;overflow-y:auto'>"
+    html = f"<div style='background:{_body_bg};border:1px solid {_bdr};border-radius:4px;max-height:75vh;overflow-y:auto'>"
     if not all_items:
         html += f"<div style='padding:16px;color:{_mut};font-size:11px;font-family:{FONTS};text-align:center'>Feeds loading…</div>"
     else:
         _txt2 = t.get('text2', '#94a3b8')
         _accent = t.get('accent', pos_c)
-        for i, item in enumerate(all_items[:30]):
+        for i, item in enumerate(all_items[:max_items]):
             bg = _body_bg if i % 2 == 0 else _row_alt
-            title_el = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:10.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:10.5px'>{item['title']}</span>"
-            meta_parts = []
-            if item['source']: meta_parts.append(f"<span style='color:{_accent};font-weight:600'>{item['source']}</span>")
-            if item['date']: meta_parts.append(f"<span style='color:{_txt2}'>{item['date']}</span>")
-            meta_html = f" <span style='color:{_bdr}'>·</span> ".join(meta_parts)
+            title_el = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:11px;font-weight:400;line-height:1.5'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:11px'>{item['title']}</span>"
             html += (
-                f"<div style='padding:5px 12px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
-                f"display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden'>"
-                f"<span style='font-size:9px;flex-shrink:0;display:flex;gap:4px;align-items:baseline'>{meta_html}</span>"
-                f"{title_el}</div>"
+                f"<div style='padding:6px 12px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg}'>"
+                f"<div style='font-size:9px;margin-bottom:2px'>"
+                f"<span style='color:{_accent};font-weight:600'>{item['source']}</span>"
+                f" <span style='color:{_bdr}'>·</span> "
+                f"<span style='color:{_txt2}'>{item['date']}</span></div>"
+                f"<div>{title_el}</div>"
+                f"</div>"
             )
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
 def render_news_tab(is_mobile):
+    regions = list(NEWS_FEEDS.keys())
     if is_mobile:
-        for region, feeds in NEWS_FEEDS.items():
-            render_news_column(region, feeds)
+        tabs = st.tabs(regions)
+        for tab, region in zip(tabs, regions):
+            with tab:
+                render_news_panel(region, NEWS_FEEDS[region])
     else:
-        cols = st.columns(4)
-        for col, (region, feeds) in zip(cols, NEWS_FEEDS.items()):
-            with col:
-                render_news_column(region, feeds)
+        left, right = st.columns(2)
+        with left:
+            tabs_l = st.tabs(regions[:2])  # Singapore | Regional
+            for tab, region in zip(tabs_l, regions[:2]):
+                with tab:
+                    render_news_panel(region, NEWS_FEEDS[region])
+        with right:
+            tabs_r = st.tabs(regions[2:])  # Global | Tech
+            for tab, region in zip(tabs_r, regions[2:]):
+                with tab:
+                    render_news_panel(region, NEWS_FEEDS[region])
