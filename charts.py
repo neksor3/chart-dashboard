@@ -72,19 +72,19 @@ def _slice_period(hist, period_type, now=None):
         median_gap = gaps.median()
         # Intraday data: prefer gap detection, fall back to date change
         if median_gap < pd.Timedelta(hours=4):
-            has_gaps = (gaps > pd.Timedelta(minutes=30)).any()
+            has_gaps = (gaps > pd.Timedelta(minutes=45)).any()
             if has_gaps:
                 # Find last session break via gap
                 break_idx = None
                 for i in range(len(hist) - 1, 0, -1):
-                    if gaps.iloc[i] > pd.Timedelta(minutes=30):
+                    if gaps.iloc[i] > pd.Timedelta(minutes=45):
                         break_idx = i; break
                 if break_idx is None:
                     return None, None
                 current_bars = hist.iloc[break_idx:]
                 prev_break = None
                 for i in range(break_idx - 1, 0, -1):
-                    if gaps.iloc[i] > pd.Timedelta(minutes=30):
+                    if gaps.iloc[i] > pd.Timedelta(minutes=45):
                         prev_break = i; break
                 prev_data = hist.iloc[(prev_break or 0):break_idx]
             else:
@@ -165,9 +165,9 @@ class PeriodBoundaryCalculator:
         # Fall back to date change for 24/7 markets (crypto)
         if boundary_type == 'session' and len(df) >= 2:
             gaps = df.index.to_series().diff()
-            has_gaps = (gaps > pd.Timedelta(minutes=30)).any()
+            has_gaps = (gaps > pd.Timedelta(minutes=45)).any()
             if has_gaps:
-                is_break = lambda i: gaps.iloc[i] > pd.Timedelta(minutes=30)
+                is_break = lambda i: gaps.iloc[i] > pd.Timedelta(minutes=45)
             else:
                 is_break = lambda i: df.index[i].date() != df.index[i-1].date()
         else:

@@ -1,7 +1,7 @@
+import streamlit as st
 from collections import OrderedDict
 
 FONTS = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
-MONO = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
 
 # =============================================================================
 # SYMBOL GROUPS
@@ -56,8 +56,22 @@ SYMBOL_NAMES = {
     'SHV': 'Short Treasury', 'IBIT': 'iShares Bitcoin',
 }
 
+# Google News search terms per symbol (charts tab news panel)
+NEWS_TERMS = {
+    'ES=F': 'S&P 500', 'NQ=F': 'Nasdaq 100', 'YM=F': 'Dow Jones', 'RTY=F': 'Russell 2000',
+    'NKD=F': 'Nikkei 225', 'ZB=F': 'US treasury bonds', 'ZN=F': '10 year treasury yield',
+    'ZF=F': '5 year treasury', 'ZT=F': '2 year treasury', '6E=F': 'EUR USD euro',
+    '6J=F': 'USD JPY yen', '6B=F': 'GBP USD pound', '6A=F': 'AUD USD australian',
+    'USDSGD=X': 'USD SGD Singapore dollar', 'CL=F': 'crude oil', 'NG=F': 'natural gas',
+    'GC=F': 'gold price', 'SI=F': 'silver price', 'PL=F': 'platinum', 'HG=F': 'copper price',
+    'ZS=F': 'soybean', 'ZC=F': 'corn grain', 'ZW=F': 'wheat', 'ZM=F': 'soybean meal',
+    'SB=F': 'sugar commodity', 'KC=F': 'coffee arabica', 'CC=F': 'cocoa', 'CT=F': 'cotton commodity',
+    'BTC-USD': 'bitcoin', 'ETH-USD': 'ethereum', 'SOL-USD': 'solana crypto', 'XRP-USD': 'XRP ripple',
+    'BTC=F': 'bitcoin futures CME', 'ETH=F': 'ethereum futures CME',
+}
+
 # =============================================================================
-# THEMES — each carries surface / text palette for full theming
+# THEMES
 # =============================================================================
 
 THEMES = {
@@ -75,7 +89,7 @@ THEMES = {
 }
 
 CHART_CONFIGS = [
-    ('Session', '5m', 'Session High/Low', 'session'),
+    ('Session', '15m', 'Session High/Low', 'session'),
     ('4H', '1h', 'Week High/Low', 'week'),
     ('Daily', '1d', 'Month High/Low', 'month'),
     ('Weekly', '1wk', 'Year High/Low', 'year'),
@@ -86,5 +100,41 @@ STATUS_LABELS = {
     'below_mid': '● BELOW MID', 'below_low': '▼ BELOW LOW',
 }
 
+# =============================================================================
+# SHARED HELPERS
+# =============================================================================
+
 def clean_symbol(sym):
     return sym.replace('=F', '').replace('=X', '').replace('.SI', '')
+
+def sym_name(sym):
+    """Friendly name: SYMBOL_NAMES lookup with clean_symbol fallback."""
+    return SYMBOL_NAMES.get(sym, clean_symbol(sym))
+
+def get_theme():
+    """Single source of truth for current theme — used by all tabs."""
+    name = st.session_state.get('theme', 'Dark')
+    return THEMES.get(name, THEMES['Dark'])
+
+def surface():
+    """Derived surface palette for HTML rendering — used by all tabs."""
+    t = get_theme()
+    is_light = t.get('mode') == 'light'
+    bg  = t.get('bg', '#1e1e1e');  bg2 = t.get('bg2', '#0a0f1a')
+    bg3 = t.get('bg3', '#0f172a'); bdr = t.get('border', '#1e293b')
+    txt = t.get('text', '#e2e8f0'); txt2 = t.get('text2', '#94a3b8')
+    muted = t.get('muted', '#475569')
+    if is_light:
+        return dict(bg=bg, bg2=bg2, bg3=bg3, card=bg2,
+            border=bdr, text=txt, text2=txt2, muted=muted,
+            off_dot='#d1d5db', off_name='#9ca3af', link='#334155',
+            bar_bg=bdr, row_alt=bg3, hm_txt=txt)
+    return dict(bg=bg, bg2=bg2, bg3=bg3, card=bg3,
+        border=bdr, text=txt, text2=txt2, muted=muted,
+        off_dot='#3a3a3a', off_name='#4a5568', link='#c9d1d9',
+        bar_bg=bg3, row_alt='#0d1321', hm_txt=txt)
+
+def zone_colors():
+    t = get_theme()
+    return {'above_high': t['zone_hi'], 'above_mid': t['zone_amid'],
+            'below_mid': t['zone_bmid'], 'below_low': t['zone_lo']}
