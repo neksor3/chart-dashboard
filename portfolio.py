@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 C_POS = '#60a5fa'; C_NEG = '#fb7185'; C_TXT = '#e2e8f0'; C_TXT2 = '#94a3b8'
 C_MUTE = '#475569'; C_BG = '#0f172a'; C_HDR = '#0f172a'; C_BORDER = '#1e293b'
-C_GOLD = '#fbbf24'
+C_GOLD = '#fbbf24'; C_EW = '#64748b'
 TH = f"padding:4px 8px;border-bottom:1px solid #1e293b;color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
 TD = f"padding:5px 8px;border-bottom:1px solid #1e293b22;"
 
@@ -374,8 +374,9 @@ def run_walkforward_grid(symbols, score_type='Win Rate', rebal_months=3, n_portf
     earliest_oos = min(r['wf']['oos_returns'].index[0] for r in results.values())
     eq_trimmed = eq_ret.loc[eq_ret.index >= earliest_oos]
     eq_metrics = _calc_oos_metrics(eq_trimmed)
+    eq_n_rebals = sum(1 for d in eq_rebal_set if d >= earliest_oos)
     return {'results': results, 'symbols': valid, 'returns': returns,
-            'eq_returns': eq_trimmed, 'eq_metrics': eq_metrics,
+            'eq_returns': eq_trimmed, 'eq_metrics': eq_metrics, 'eq_n_rebals': eq_n_rebals,
             'score_type': score_type, 'rebal_months': rebal_months, 'txn_cost': txn_cost}
 
 # =============================================================================
@@ -433,9 +434,11 @@ def render_ranking_table(grid, rank_by='win_rate'):
 
     # Equal weight row
     if eq:
-        html += f"<tr style='background:rgba(255,255,255,0.04);border-top:2px solid {C_GOLD};border-bottom:2px solid {C_GOLD}'>"
+        eq_rebals = grid.get('eq_n_rebals', '—')
+        html += f"<tr><td colspan='14' style='border-bottom:1px solid {C_TXT2};padding:0;height:0'></td></tr>"
+        html += f"<tr style='background:rgba(100,116,139,0.06)'>"
         html += f"<td style='{TD}color:{C_MUTE}'>—</td>"
-        html += f"<td style='{TD}color:#e2e8f0;font-weight:700'><span style='color:{C_GOLD};font-size:9px'>◆</span> Equal Weight (1/N)</td>"
+        html += f"<td style='{TD}color:{C_EW};font-weight:700'>◆ Equal Weight (1/N)</td>"
         html += f"<td style='{TD}text-align:right;font-weight:700'>{_fc(eq['win_rate'],'pct')}</td>"
         html += f"<td style='{TD}text-align:right'>{_fc(eq['sharpe'])}</td>"
         html += f"<td style='{TD}text-align:right'>{_fc(eq['sortino'])}</td>"
@@ -446,16 +449,16 @@ def render_ranking_table(grid, rank_by='win_rate'):
         html += f"<td style='{TD}text-align:right'>{_fc(eq['ann_vol'],'pct',False)}</td>"
         html += f"<td style='{TD}text-align:right'>{_fc(eq['max_dd'],'pct',False)}</td>"
         html += f"<td style='{TD}text-align:right'>{_fc(eq['ytd'],'pct')}</td>"
-        html += f"<td style='{TD}text-align:right;color:#e2e8f0'>{eq['oos_years']}y</td>"
-        html += f"<td style='{TD}text-align:right;color:{C_TXT2}'>—</td></tr>"
+        html += f"<td style='{TD}text-align:right;color:{C_TXT2}'>{eq['oos_years']}y</td>"
+        html += f"<td style='{TD}text-align:right;color:{C_TXT2}'>{eq_rebals}</td></tr>"
 
         # Delta row
         if best_name and items:
             best_m = items[0][1]
             higher_better = {'win_rate','sharpe','sortino','mar','r2','total_ret','ann_ret','ytd'}
-            html += f"<tr style='background:rgba(251,191,36,0.06)'>"
-            html += f"<td style='{TD}color:{C_GOLD};font-size:9px'>Δ</td>"
-            html += f"<td style='{TD}color:{C_GOLD};font-size:10px;font-weight:600'>★ vs Equal Weight</td>"
+            html += f"<tr style='border-top:1px solid {C_GOLD};background:rgba(251,191,36,0.06)'>"
+            html += f"<td style='{TD}color:{C_GOLD}'>Δ</td>"
+            html += f"<td style='{TD}color:{C_GOLD};font-weight:600'>★ vs Equal Weight</td>"
             for key, fmt in [('win_rate','pct'),('sharpe','f2'),('sortino','f2'),('mar','f2'),
                              ('r2','f3'),('total_ret','pct'),('ann_ret','pct'),('ann_vol','pct'),
                              ('max_dd','pct'),('ytd','pct')]:
@@ -468,7 +471,7 @@ def render_ranking_table(grid, rank_by='win_rate'):
                 elif fmt == 'f3': ds = f"{sign}{d:.3f}"
                 else: ds = f"{sign}{d:.2f}"
                 if abs(d) < 1e-6: ds = "—"; c = C_MUTE
-                html += f"<td style='{TD}text-align:right;color:{c};font-weight:600;font-size:10px'>{ds}</td>"
+                html += f"<td style='{TD}text-align:right;color:{c};font-weight:600'>{ds}</td>"
             html += f"<td style='{TD}text-align:right;color:{C_MUTE}'>—</td>"
             html += f"<td style='{TD}text-align:right;color:{C_MUTE}'>—</td></tr>"
 
@@ -542,7 +545,7 @@ def render_oos_chart(grid, approach_name):
     fig.add_trace(go.Scatter(x=oos.index, y=opt_cum, mode='lines', line=dict(color=pos_c, width=2),
         name=opt_lbl, hovertemplate='WF: $%{y:.3f}<extra></extra>'), row=1, col=1)
     fig.add_trace(go.Scatter(x=eq_aligned.index, y=eq_cum, mode='lines',
-        line=dict(color='#ffffff', width=1.2, dash='dot'), name=eq_lbl,
+        line=dict(color=C_EW, width=1.5), name=eq_lbl,
         hovertemplate='EW: $%{y:.3f}<extra></extra>'), row=1, col=1)
     for wh in wf['weight_history']:
         if wh['date'] >= oos.index[0]:
@@ -555,7 +558,7 @@ def render_oos_chart(grid, approach_name):
         font=dict(size=11, color=pos_c, family=FONTS), row=1, col=1)
     fig.add_annotation(x=eq_aligned.index[-1], y=eq_cum[-1], text=f'${eq_cum[-1]:.2f}',
         showarrow=False, xanchor='left', xshift=5,
-        font=dict(size=11, color='#ffffff', family=FONTS), row=1, col=1)
+        font=dict(size=11, color=C_EW, family=FONTS), row=1, col=1)
 
     nr = neg_c.lstrip('#'); rv, gv, bv = int(nr[:2], 16), int(nr[2:4], 16), int(nr[4:6], 16)
     fig.add_trace(go.Scatter(x=oos.index, y=opt_dd * 100, mode='lines', fill='tozeroy',
