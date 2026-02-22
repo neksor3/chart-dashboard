@@ -769,6 +769,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
 
         def plot_colored_segments(x_data, closes, high, low, mid, start_offset=0, datetimes=None):
             zones = [get_zone(c, high, low, mid) for c in closes]
+            # Zone-colored fill polygons (underneath)
             i = 0
             while i < len(zones):
                 zone = zones[i]; start_i = i
@@ -776,19 +777,20 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                 seg_end = min(i + 1, len(closes))
                 seg_x = x_data[start_i:seg_end] if isinstance(x_data, list) else list(range(start_offset+start_i, start_offset+seg_end))
                 seg_y = list(closes[start_i:seg_end])
-                seg_dt = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in datetimes[start_i:seg_end]] if datetimes is not None else None
-                hover = '%{customdata}<br>%{y:.2f}<extra></extra>' if seg_dt else '%{y:.2f}<extra></extra>'
                 seg_color = zc[zone]
-                # Area fill polygon
                 poly_x = list(seg_x) + list(reversed(seg_x))
                 poly_y = seg_y + [chart_y_floor] * len(seg_x)
                 fig.add_trace(go.Scatter(x=poly_x, y=poly_y, fill='toself',
                     fillcolor=_hex_to_rgba(seg_color, 0.15), line=dict(width=0),
                     showlegend=False, hoverinfo='skip'), row=row, col=col)
-                # Line on top — bright white-ish, thick
-                fig.add_trace(go.Scatter(x=seg_x, y=seg_y, mode='lines',
-                    line=dict(color='rgba(255,255,255,0.85)', width=1.8),
-                    showlegend=False, customdata=seg_dt, hovertemplate=hover), row=row, col=col)
+            # One continuous white line on top (no segment breaks)
+            all_x = x_data if isinstance(x_data, list) else list(range(start_offset, start_offset+len(closes)))
+            all_y = list(closes)
+            all_dt = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in datetimes] if datetimes is not None else None
+            hover = '%{customdata}<br>%{y:.2f}<extra></extra>' if all_dt else '%{y:.2f}<extra></extra>'
+            fig.add_trace(go.Scatter(x=all_x, y=all_y, mode='lines',
+                line=dict(color='rgba(255,255,255,0.85)', width=1.8),
+                showlegend=False, customdata=all_dt, hovertemplate=hover), row=row, col=col)
 
         if boundaries:
             last_b = boundaries[-1]
