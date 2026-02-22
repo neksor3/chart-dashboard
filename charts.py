@@ -68,12 +68,34 @@ def _slice_period(hist, period_type, now=None):
     dates = hist.index.map(_to_date)
 
     if period_type == 'session':
-        today = now.date()
-        prev_data = hist[dates < today]
-        if prev_data.empty:
-            return None, None
-        prev_period = prev_data.iloc[-1:]
-        current_bars = hist[dates >= today]
+        gaps = hist.index.to_series().diff()
+        median_gap = gaps.median()
+        # Intraday data: detect actual session breaks via gaps
+        if median_gap < pd.Timedelta(hours=4):
+            threshold = median_gap * 5
+            break_idx = None
+            for i in range(len(hist) - 1, 0, -1):
+                if gaps.iloc[i] > threshold:
+                    break_idx = i; break
+            if break_idx is None:
+                return None, None
+            current_bars = hist.iloc[break_idx:]
+            prev_break = None
+            for i in range(break_idx - 1, 0, -1):
+                if gaps.iloc[i] > threshold:
+                    prev_break = i; break
+            prev_data = hist.iloc[(prev_break or 0):break_idx]
+            if prev_data.empty:
+                return None, None
+            prev_period = prev_data
+        else:
+            # Daily data: use calendar date
+            today = now.date()
+            prev_data = hist[dates < today]
+            if prev_data.empty:
+                return None, None
+            prev_period = prev_data.iloc[-1:]
+            current_bars = hist[dates >= today]
 
     elif period_type == 'week':
         wsd = (now - pd.Timedelta(days=now.weekday())).date()
@@ -128,28 +150,30 @@ class PeriodBoundaryCalculator:
     def get_boundaries(df, boundary_type, symbol=''):
         if df is None or len(df) == 0: return []
         boundaries = []
-        boundary_rules = {
-            'year': lambda i: df.index[i].year != df.index[i-1].year,
-            'month': lambda i: (df.index[i].month != df.index[i-1].month or df.index[i].year != df.index[i-1].year),
-            'week': lambda i: (df.index[i].isocalendar()[1] != df.index[i-1].isocalendar()[1] or df.index[i].year != df.index[i-1].year),
-            'session': lambda i: df.index[i].date() != df.index[i-1].date()
-        }
-        mask_funcs = {
-            'year': lambda i: df.index.year == df.index[i-1].year,
-            'month': lambda i: ((df.index.month == df.index[i-1].month) & (df.index.year == df.index[i-1].year)),
-            'week': lambda i: ((df.index.map(lambda x: x.isocalendar()[1]) == df.index[i-1].isocalendar()[1]) & (df.index.year == df.index[i-1].year)),
-            'session': lambda i: df.index.date == df.index[i-1].date()
-        }
-        if boundary_type not in boundary_rules: return boundaries
+        
+        # Session: detect actual trading gaps (works for CME 6pm ET, SGX 9am, etc.)
+        if boundary_type == 'session' and len(df) >= 2:
+            gaps = df.index.to_series().diff()
+            threshold = gaps.median() * 5  # 5× normal interval = session break
+            is_break = lambda i: gaps.iloc[i] > threshold
+        else:
+            is_break = {
+                'year': lambda i: df.index[i].year != df.index[i-1].year,
+                'month': lambda i: (df.index[i].month != df.index[i-1].month or df.index[i].year != df.index[i-1].year),
+                'week': lambda i: (df.index[i].isocalendar()[1] != df.index[i-1].isocalendar()[1] or df.index[i].year != df.index[i-1].year),
+            }.get(boundary_type, lambda i: False)
+
+        prev_start = 0
         for i in range(1, len(df)):
-            if boundary_rules[boundary_type](i):
-                prev_data = df.loc[mask_funcs[boundary_type](i)]
+            if is_break(i):
+                prev_data = df.iloc[prev_start:i]
                 if len(prev_data) > 0:
                     boundaries.append(PeriodBoundary(
                         idx=i, date=df.index[i],
                         prev_high=prev_data['High'].max(),
                         prev_low=prev_data['Low'].min(),
                         prev_close=prev_data['Close'].iloc[-1]))
+                prev_start = i
         return boundaries
 
 def calculate_rsi(closes, period=14):
