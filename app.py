@@ -112,30 +112,28 @@ def main():
         <style>
             @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
             @keyframes sanpo-glow {{ 0%,100% {{ filter: drop-shadow(0 0 3px {pos_c}40); }} 50% {{ filter: drop-shadow(0 0 8px {pos_c}90); }} }}
-            @keyframes sanpo-core {{ 0%,100% {{ r: 2.5; }} 50% {{ r: 3.0; }} }}
-            @keyframes sanpo-ring {{ 0%,100% {{ opacity: 0.08; }} 50% {{ opacity: 0.15; }} }}
-            @keyframes sanpo-d1 {{ 0%,70%,100% {{ r: 0.5; opacity: 0; }} 20% {{ r: 1.4; opacity: 0.8; }} 40% {{ r: 0.9; opacity: 0.15; }} }}
-            @keyframes sanpo-d2 {{ 0%,65%,100% {{ r: 0.6; opacity: 0; }} 25% {{ r: 1.2; opacity: 0.7; }} 45% {{ r: 0.8; opacity: 0.1; }} }}
-            @keyframes sanpo-d3 {{ 0%,75%,100% {{ r: 0.8; opacity: 0; }} 15% {{ r: 1.8; opacity: 0.85; }} 35% {{ r: 1.1; opacity: 0.15; }} }}
-            @keyframes sanpo-d4 {{ 0%,60%,100% {{ r: 0.7; opacity: 0; }} 30% {{ r: 1.6; opacity: 0.75; }} 50% {{ r: 1.0; opacity: 0.1; }} }}
-            @keyframes sanpo-d5 {{ 0%,80%,100% {{ r: 1.0; opacity: 0; }} 10% {{ r: 2.2; opacity: 0.9; }} 30% {{ r: 1.4; opacity: 0.2; }} 60% {{ r: 1.1; opacity: 0.04; }} }}
-            @keyframes sanpo-d6 {{ 0%,70%,100% {{ r: 1.1; opacity: 0; }} 18% {{ r: 2.4; opacity: 0.85; }} 40% {{ r: 1.5; opacity: 0.15; }} }}
+            @keyframes sanpo-core {{ 0%,100% {{ r: 2.5; }} 35%,50% {{ r: 3.2; }} }}
+            @keyframes sanpo-halo {{ 0%,100% {{ opacity: 0.06; }} 35%,50% {{ opacity: 0.22; }} }}
+            @keyframes sanpo-ripple {{ 0%,100% {{ opacity: 0.18; }} 35%,50% {{ opacity: 0.65; }} }}
+            @keyframes sanpo-breathe {{ 0%,100% {{ opacity: 0.08; }} 40%,60% {{ opacity: 0.95; }} }}
         </style>
         <div style='display:flex;align-items:center;gap:14px;padding:6px 0'>
             <svg width="56" height="56" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
-                <circle cx="20" cy="20" r="6"  stroke="#334155" style="animation:sanpo-ring 6s ease-in-out infinite"/>
-                <circle cx="20" cy="20" r="12" stroke="#334155" style="animation:sanpo-ring 6s ease-in-out infinite 1s"/>
-                <circle cx="20" cy="20" r="18" stroke="#334155" style="animation:sanpo-ring 6s ease-in-out infinite 2s"/>
-                <circle cx="20" cy="20" fill="{pos_c}" style="animation:sanpo-core 5s ease-in-out infinite"/>
+                <!-- Breathing rings (ripple outward from center) -->
+                <circle cx="20" cy="20" r="6"  stroke="#334155" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 0.3s"/>
+                <circle cx="20" cy="20" r="12" stroke="#334155" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 1.0s"/>
+                <circle cx="20" cy="20" r="18" stroke="#334155" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 1.7s"/>
+                <!-- Heartbeat core -->
+                <circle cx="20" cy="20" r="4.5" fill="{pos_c}" style="animation:sanpo-halo 4s ease-in-out infinite 0.0s"/>
+                <circle cx="20" cy="20" fill="{pos_c}" style="animation:sanpo-core 4s ease-in-out infinite 0.0s"/>
                 <!-- Sweep line -->
                 <line x1="20" y1="20" x2="20" y2="2" stroke="url(#sanpoSweepG)" stroke-width="1.2" stroke-linecap="round" style="animation:sanpo-sweep 4s linear infinite;transform-origin:20px 20px"/>
-                <!-- 6 dots: each independent cycle + delay -->
-                <circle cx="23.0" cy="14.8" fill="{pos_c}" style="animation:sanpo-d1 3.7s ease-out infinite 0.3s"/>
-                <circle cx="17.0" cy="25.2" fill="{neg_c}" style="animation:sanpo-d2 5.1s ease-out infinite 1.8s"/>
-                <circle cx="31.3" cy="24.1" fill="{pos_c}" style="animation:sanpo-d3 4.3s ease-out infinite 0.9s"/>
-                <circle cx="8.7"  cy="15.9" fill="{neg_c}" style="animation:sanpo-d4 6.2s ease-out infinite 2.5s"/>
-                <circle cx="35.6" cy="11.0" fill="{pos_c}" style="animation:sanpo-d5 5.8s ease-out infinite 0.1s"/>
-                <circle cx="4.4"  cy="29.0" fill="{neg_c}" style="animation:sanpo-d6 4.9s ease-out infinite 3.2s"/>
+                <!-- 5 dots: 2 mid, 3 outer — each with own cycle -->
+                <circle cx="29.2" cy="27.7" r="1.0" fill="{pos_c}" style="animation:sanpo-breathe 4.1s ease-in-out infinite 1.1s"/>
+                <circle cx="10.8" cy="12.3" r="1.1" fill="{neg_c}" style="animation:sanpo-breathe 3.6s ease-in-out infinite 0.8s"/>
+                <circle cx="30.3" cy="5.3"  r="1.7" fill="{pos_c}" style="animation:sanpo-breathe 4.4s ease-in-out infinite 1.6s"/>
+                <circle cx="23.1" cy="37.7" r="1.5" fill="{neg_c}" style="animation:sanpo-breathe 3.8s ease-in-out infinite 2.0s"/>
+                <circle cx="2.1"  cy="18.4" r="1.4" fill="{pos_c}" style="animation:sanpo-breathe 4.2s ease-in-out infinite 1.3s"/>
                 <defs><linearGradient id="sanpoSweepG" x1="20" y1="20" x2="20" y2="3">
                     <stop offset="0%" stop-color="{pos_c}" stop-opacity="0.6"/>
                     <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
