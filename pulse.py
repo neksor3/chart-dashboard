@@ -90,7 +90,7 @@ HEATMAP_SECTORS = OrderedDict([
     ('Singapore', ['ES3.SI', 'S68.SI']),
 ])
 
-SPARKLINE_SYMBOLS = ['ES=F', 'BTC-USD', 'GC=F', 'CL=F', 'ZN=F']
+SPARKLINE_SYMBOLS = ['ES=F', 'BTC-USD', 'GC=F', 'CL=F', 'USDSGD=X', '^STI']
 
 
 # ── FETCH ────────────────────────────────────────────────────────────────────
