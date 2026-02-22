@@ -16,15 +16,15 @@ logger = logging.getLogger(__name__)
 # SPREAD STATISTICS
 # =============================================================================
 
-def _spread_sharpe(returns):
+def _spread_sharpe(returns, ann_factor=252):
     if returns.std() == 0 or len(returns) < 5: return 0.0
-    return float((returns.mean() / returns.std()) * np.sqrt(252))
+    return float((returns.mean() / returns.std()) * np.sqrt(ann_factor))
 
-def _spread_sortino(returns):
+def _spread_sortino(returns, ann_factor=252):
     if returns.std() == 0 or len(returns) < 5: return 0.0
-    ann_ret = returns.mean() * 252
+    ann_ret = returns.mean() * ann_factor
     down = returns[returns < 0]
-    down_std = np.sqrt(np.mean(down**2)) * np.sqrt(252) if len(down) > 0 else 0
+    down_std = np.sqrt(np.mean(down**2)) * np.sqrt(ann_factor) if len(down) > 0 else 0
     return float(ann_ret / down_std) if down_std else 0.0
 
 def _spread_drawdowns(returns):
@@ -88,15 +88,18 @@ def fetch_sector_spread_data(sector, lookback_days=0):
             if not hist.empty:
                 closes = hist['Close'].copy()
                 closes.index = closes.index.tz_localize(None) if closes.index.tz else closes.index
-                if use_intraday:
-                    closes = closes.resample('4h').last().dropna()
-                else:
+                if not use_intraday:
                     closes.index = closes.index.normalize()
                     closes = closes.groupby(closes.index).last()
                 data[sym] = closes
         except Exception as e:
             logger.debug(f"[{sym}] spread data fetch error: {e}")
     if data.empty or len(data.columns) < 2: return None
+    if use_intraday:
+        # Filter out overnight bars (00:00-05:59) where data is sparse/stale
+        data = data[data.index.hour >= 6]
+        # Resample all symbols together so they share the same 4h bins
+        data = data.resample('4h', offset='6h').last()
     data = data.ffill().dropna()
     # Trim to exact lookback days if not YTD and not intraday
     if lookback_days > 5 and len(data) > lookback_days:
@@ -109,13 +112,13 @@ def fetch_sector_spread_data(sector, lookback_days=0):
 # SPREAD COMPUTATION
 # =============================================================================
 
-def compute_sector_spreads(data):
+def compute_sector_spreads(data, ann_factor=252):
     if data is None or len(data.columns) < 2: return []
 
     asset_sharpes = {}
     for sym in data.columns:
         ret = data[sym].pct_change().dropna()
-        asset_sharpes[sym] = _spread_sharpe(ret)
+        asset_sharpes[sym] = _spread_sharpe(ret, ann_factor)
     best_long_sym = max(asset_sharpes, key=asset_sharpes.get)
     best_long_sharpe = asset_sharpes[best_long_sym]
 
@@ -125,8 +128,8 @@ def compute_sector_spreads(data):
         r2 = data[s2].pct_change().dropna()
         spread_ret = (r1 - r2).dropna()
 
-        sh = _spread_sharpe(spread_ret)
-        so = _spread_sortino(spread_ret)
+        sh = _spread_sharpe(spread_ret, ann_factor)
+        so = _spread_sortino(spread_ret, ann_factor)
 
         if sh < 0:
             spread_ret = -spread_ret
@@ -136,8 +139,8 @@ def compute_sector_spreads(data):
         mdd, add = _spread_drawdowns(spread_ret)
         cum_spread = (1 + spread_ret).cumprod()
         total = float((cum_spread.iloc[-1] - 1) * 100)
-        ann = float(spread_ret.mean() * 252 * 100)
-        vol = float(spread_ret.std() * np.sqrt(252) * 100)
+        ann = float(spread_ret.mean() * ann_factor * 100)
+        vol = float(spread_ret.std() * np.sqrt(ann_factor) * 100)
         mar = float(ann / abs(add)) if add != 0 else 0.0
         r2_val = _spread_r2(spread_ret)
         corr = float(r1.corr(r2))
@@ -372,7 +375,9 @@ def render_spreads_tab(is_mobile):
         st.markdown(f"<div style='padding:12px;color:{theme.get('muted','#475569')};font-size:11px;font-family:{FONTS}'>Need at least 2 assets with data for spread analysis</div>", unsafe_allow_html=True)
         return
 
-    pairs = compute_sector_spreads(data)
+    # Annualization: 4h bars = 6 per day × 252 = 1512; daily = 252
+    ann_factor = 1512 if lookback_days in (-1, 5) else 252
+    pairs = compute_sector_spreads(data, ann_factor)
     if not pairs:
         st.markdown(f"<div style='padding:12px;color:{theme.get('muted','#475569')};font-size:11px;font-family:{FONTS}'>No spreads computed</div>", unsafe_allow_html=True)
         return
