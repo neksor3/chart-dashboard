@@ -1060,15 +1060,15 @@ def render_news_panel(symbol):
             t_text = item['title']; u = item['url']; p = item['provider']; d = item['date']
             row_bg = _body_bg if i % 2 == 0 else _row_alt
             title_el = f"<a href='{u}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:10.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis'>{t_text}</a>" if u else f"<span style='color:{_link_c};font-size:10.5px'>{t_text}</span>"
-            meta_parts = []
-            if p: meta_parts.append(f"<span style='color:{pos_c};font-weight:600'>{p}</span>")
-            if d: meta_parts.append(f"<span style='color:{_mut}'>{d}</span>")
-            meta_html = f" <span style='color:{_bdr_ln}'>|</span> ".join(meta_parts)
+            src_html = f"<span style='color:{pos_c};font-weight:600;font-size:9px'>{p}</span>" if p else ""
+            date_html = f"<span style='color:{_mut};font-size:9px'>{d}</span>" if d else ""
             html += (
                 f"<div style='padding:5px 12px;border-bottom:1px solid {_bdr_ln}10;font-family:{FONTS};background:{row_bg};"
-                f"display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden'>"
-                f"<span style='font-size:9px;flex-shrink:0;display:flex;gap:6px;align-items:baseline'>{meta_html}</span>"
-                f"{title_el}</div>"
+                f"display:flex;align-items:baseline;gap:0;white-space:nowrap;overflow:hidden'>"
+                f"<span style='flex-shrink:0;width:100px;text-align:left'>{src_html}</span>"
+                f"<span style='flex-shrink:0;width:60px;text-align:left'>{date_html}</span>"
+                f"<span style='overflow:hidden;text-overflow:ellipsis'>{title_el}</span>"
+                f"</div>"
             )
         html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
