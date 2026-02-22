@@ -14,10 +14,21 @@ from urllib.parse import quote
 from html import escape as html_escape
 import re
 
-from config import (FUTURES_GROUPS, THEMES, SYMBOL_NAMES, CHART_CONFIGS,
-                     STATUS_LABELS, FONTS, clean_symbol)
+from config import (FUTURES_GROUPS, THEMES, SYMBOL_NAMES, FONTS, clean_symbol)
 
 logger = logging.getLogger(__name__)
+
+CHART_CONFIGS = [
+    ('Day (15m)', '15m', 'Session High/Low', 'session'),
+    ('Weekly (4H)', '1h', 'Week High/Low', 'week'),
+    ('Monthly (Daily)', '1d', 'Month High/Low', 'month'),
+    ('Year (Weekly)', '1wk', 'Year High/Low', 'year'),
+]
+
+STATUS_LABELS = {
+    'above_high': '▲ ABOVE HIGH', 'above_mid': '– ABOVE MID',
+    'below_mid': '– BELOW MID', 'below_low': '▼ BELOW LOW',
+}
 
 def get_theme():
     name = st.session_state.get('theme', 'Dark')
