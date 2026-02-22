@@ -202,8 +202,8 @@ def _market_status():
     today = now_utc.astimezone(pytz.timezone('Asia/Singapore')).date()
     results = []
     markets = [
-        ('SG',  'Asia/Singapore', 9, 0,  17, 0,  _SG_HOLIDAYS, '#ff6b6b'),  # bright red
-        ('US',  'US/Eastern',     9, 30, 16, 0,  _US_HOLIDAYS, '#60a5fa'),  # bright blue
+        ('SG',  'Asia/Singapore', 9, 0,  17, 0,  _SG_HOLIDAYS, '#fb7185'),  # rose
+        ('US',  'US/Eastern',     9, 30, 16, 0,  _US_HOLIDAYS, '#60a5fa'),  # blue
     ]
     for name, tz_str, oh, om, ch, cm, holidays, dot_color in markets:
         tz = pytz.timezone(tz_str)
@@ -251,12 +251,11 @@ def _render_market_status_bar():
     for m in markets:
         if m['hol_name']:
             dot_c = m['dot_color']
-            day_txt = 'today' if m['hol_days'] == 0 else f"in {m['hol_days']}d"
             hols += (
                 f"<div style='display:flex;align-items:center;gap:4px'>"
-                f"<div style='width:6px;height:6px;border-radius:2px;background:{dot_c};opacity:0.9'></div>"
-                f"<span style='color:#e2e8f0;font-size:8px;font-weight:500'>"
-                f"{m['name']} {m['hol_name']} {m['hol_date']} ({day_txt})</span>"
+                f"<div style='width:6px;height:6px;border-radius:2px;background:{dot_c}'></div>"
+                f"<span style='color:#e2e8f0;font-size:8px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase'>"
+                f"{m['name']} {m['hol_name']} {m['hol_date']}</span>"
                 f"</div>"
             )
 
