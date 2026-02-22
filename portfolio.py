@@ -629,22 +629,31 @@ def render_portfolio_tab(is_mobile):
     C_POS = theme['pos']; C_NEG = theme['neg']
     _lbl = f"color:#f8fafc;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
-    # Professional input styling
+    # Consistent input styling across all controls
     st.markdown(f"""<style>
-        /* Selectbox & text input font */
+        /* All selectbox displayed values */
         div[data-baseweb="select"] span,
-        div[data-baseweb="select"] li,
-        div[data-baseweb="select"] [data-testid="stMarkdownContainer"],
-        .stTextInput input,
-        .stSelectbox [data-testid="stMarkdownContainer"] {{
+        div[data-baseweb="select"] div[aria-selected] {{
             font-family: {FONTS} !important;
-            font-size: 12px !important;
-            letter-spacing: 0.02em !important;
+            font-size: 13px !important;
+            letter-spacing: 0.01em !important;
         }}
         /* Dropdown menu items */
-        div[data-baseweb="menu"] li {{
+        div[data-baseweb="menu"] li,
+        ul[role="listbox"] li {{
             font-family: {FONTS} !important;
-            font-size: 12px !important;
+            font-size: 13px !important;
+        }}
+        /* All text inputs */
+        .stTextInput input {{
+            font-family: {FONTS} !important;
+            font-size: 13px !important;
+            letter-spacing: 0.01em !important;
+        }}
+        /* Placeholder text */
+        .stTextInput input::placeholder {{
+            font-family: {FONTS} !important;
+            font-size: 13px !important;
         }}
     </style>""", unsafe_allow_html=True)
 
