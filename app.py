@@ -128,13 +128,10 @@ def main():
                 <line x1="20" y1="20" x2="20" y2="2" stroke="url(#sanpoSweepG)" stroke-width="1.2" stroke-linecap="round" style="animation:sanpo-sweep 4s linear infinite;transform-origin:20px 20px"/>
                 <!-- Star dots -->
                 <circle cx="13" cy="7"  r="2.0" fill="{pos_c}" style="animation:sanpo-breathe 2.5s ease-in-out infinite 0.0s"/>
-                <circle cx="32" cy="12" r="1.8" fill="{neg_c}" style="animation:sanpo-breathe 3.0s ease-in-out infinite 0.6s"/>
-                <circle cx="34" cy="28" r="1.7" fill="{pos_c}" style="animation:sanpo-breathe 2.8s ease-in-out infinite 1.2s"/>
-                <circle cx="18" cy="36" r="1.6" fill="{neg_c}" style="animation:sanpo-breathe 2.3s ease-in-out infinite 0.3s"/>
-                <circle cx="5"  cy="26" r="1.5" fill="{pos_c}" style="animation:sanpo-breathe 3.2s ease-in-out infinite 0.9s"/>
-                <circle cx="7"  cy="12" r="1.4" fill="{neg_c}" style="animation:sanpo-breathe 2.6s ease-in-out infinite 1.5s"/>
-                <circle cx="25" cy="25" r="1.1" fill="{pos_c}" style="animation:sanpo-breathe 2.1s ease-in-out infinite 1.8s"/>
-                <circle cx="15" cy="17" r="0.9" fill="{neg_c}" style="animation:sanpo-breathe 2.9s ease-in-out infinite 0.4s"/>
+                <circle cx="33" cy="14" r="1.6" fill="{neg_c}" style="animation:sanpo-breathe 3.0s ease-in-out infinite 0.6s"/>
+                <circle cx="30" cy="31" r="1.5" fill="{pos_c}" style="animation:sanpo-breathe 2.8s ease-in-out infinite 1.2s"/>
+                <circle cx="8"  cy="28" r="1.7" fill="{neg_c}" style="animation:sanpo-breathe 2.3s ease-in-out infinite 0.3s"/>
+                <circle cx="24" cy="22" r="1.0" fill="{pos_c}" style="animation:sanpo-breathe 2.1s ease-in-out infinite 1.8s"/>
                 <defs><linearGradient id="sanpoSweepG" x1="20" y1="20" x2="20" y2="3">
                     <stop offset="0%" stop-color="{pos_c}" stop-opacity="0.6"/>
                     <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
