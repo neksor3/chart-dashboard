@@ -109,11 +109,11 @@ def render_news_panel(region, feeds, max_items=50):
         _accent = t.get('accent', pos_c)
         for i, item in enumerate(all_items[:max_items]):
             bg = _body_bg if i % 2 == 0 else _row_alt
-            title_el = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:11px;font-weight:400'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:11px'>{item['title']}</span>"
+            title_el = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:12px;font-weight:500'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:12px'>{item['title']}</span>"
             html += (
-                f"<div style='padding:6px 12px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
-                f"display:flex;align-items:baseline;gap:8px;white-space:nowrap;overflow:hidden'>"
-                f"<span style='font-size:9px;flex-shrink:0;color:{_accent};font-weight:600;min-width:90px'>{item['source']}</span>"
+                f"<div style='padding:5px 10px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
+                f"display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden'>"
+                f"<span style='font-size:9px;flex-shrink:0;color:{_accent};font-weight:600'>{item['source']}</span>"
                 f"<span style='font-size:9px;flex-shrink:0;color:{_txt2}'>{item['date']}</span>"
                 f"<span style='overflow:hidden;text-overflow:ellipsis'>{title_el}</span>"
                 f"</div>"
