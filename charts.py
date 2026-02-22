@@ -912,9 +912,10 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
         # X-range: last data point at ~60% of visible chart width
         xref = f'xaxis{chart_idx+1}' if chart_idx > 0 else 'xaxis'
         last_bar = len(hist) - 1
-        if boundary_type == 'session' and boundaries and len(boundaries) >= 2:
-            # Zoom to prev session + current session only
-            x_left = boundaries[-2].idx - 2
+        if boundary_type == 'session':
+            # Show ~last 24h: for 15m bars that's ~96 bars
+            bars_24h = min(96, last_bar)
+            x_left = max(0, last_bar - bars_24h) - 2
         else:
             x_left = -2
         x_right = x_left + int((last_bar - x_left) / 0.6)
