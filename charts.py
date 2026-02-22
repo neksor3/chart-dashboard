@@ -557,8 +557,8 @@ def render_return_bars(metrics, sort_by='Default'):
     max_abs = max(abs(v) for _, v in vals) or 1
 
     n = len(vals)
-    # Match scanner height: ~40px thead + n*28px rows + 2px border
-    scanner_h = 40 + n * 28 + 2
+    # Match scanner: 2-row thead ~52px + n rows ~26px each + 2px border
+    scanner_h = 52 + n * 26 + 2
     row_h = max((scanner_h - 46) // n, 18) if n > 0 else 22
 
     rows = ""
@@ -593,7 +593,7 @@ def render_return_bars(metrics, sort_by='Default'):
         </div>"""
 
     _bg0 = t.get('bg3', '#0f1522'); _bdr0 = t.get('border', '#1e293b')
-    html = f"""<div style='background:{_bg0};border:1px solid {_bdr0};border-radius:6px;padding:0 6px 0 6px;overflow:hidden;min-height:{scanner_h}px'>
+    html = f"""<div style='background:{_bg0};border:1px solid {_bdr0};border-radius:6px;padding:0 6px 0 6px;overflow:hidden;height:{scanner_h}px'>
         <div style='display:flex;align-items:flex-end;height:46px;padding:0 2px'>
             <span style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;font-family:{FONTS}'>{label}</span>
             <div style='flex:1;height:1px;background:{_bdr0};margin-left:8px'></div>
@@ -657,7 +657,11 @@ def render_scanner_table(metrics, selected_symbol):
     th = f"padding:5px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;text-align:center;"
     td = f"padding:4px 8px;border:none;"
 
-    html = f"""<div style='overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid {_bdr};border-radius:6px'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
+    # Compute shared height for scanner/bar chart alignment
+    _n_rows = len(metrics)
+    _scanner_h = 52 + _n_rows * 26 + 2
+
+    html = f"""<div style='overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid {_bdr};border-radius:6px;height:{_scanner_h}px;overflow-y:hidden'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
         <thead style='background:{_bg3}'><tr>
             <th style='{th}text-align:left' rowspan='2'></th><th style='{th}' rowspan='2'>PRICE</th>
             <th style='{th}border-bottom:none' colspan='4'>CHANGE</th>
