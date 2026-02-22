@@ -809,12 +809,6 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                 if pe > ps:
                     if chart_type == 'line':
                         plot_colored_segments(x_vals[ps:pe], hist['Close'].values[ps:pe], prev_b.prev_high, prev_b.prev_low, prev_mid, ps, hist.index[ps:pe])
-                    prev_seg = hist.iloc[ps:pe]
-                    if len(prev_seg) > 0:
-                        rh = prev_seg['High'].expanding().max(); rl = prev_seg['Low'].expanding().min()
-                        rx = list(range(ps, pe))
-                        fig.add_trace(go.Scatter(x=rx, y=((rh + prev_b.prev_low)/2).values, mode='lines', line=dict(color='#be185d', width=0.6, dash='dot'), showlegend=False, hovertemplate='Retrace Buy: %{y:.2f}<extra></extra>'), row=row, col=col)
-                        fig.add_trace(go.Scatter(x=rx, y=((rl + prev_b.prev_high)/2).values, mode='lines', line=dict(color='#0369a1', width=0.6, dash='dot'), showlegend=False, hovertemplate='Retrace Sell: %{y:.2f}<extra></extra>'), row=row, col=col)
 
             first_tracked = boundaries[-2].idx if len(boundaries) >= 2 else boundary_idx
             if first_tracked > 0 and chart_type == 'line':
@@ -868,15 +862,6 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_low]*2, mode='lines', line=dict(color=zc['below_low'], width=0.9), showlegend=False, hovertemplate=f'Low: {b.prev_low:.2f}<extra></extra>'), row=row, col=col)
             fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_close]*2, mode='lines', line=dict(color='#475569', width=0.6, dash='dot'), showlegend=False, hovertemplate=f'Close: {b.prev_close:.2f}<extra></extra>'), row=row, col=col)
             fig.add_trace(go.Scatter(x=[px,ex], y=[ml]*2, mode='lines', line=dict(color='#d97706', width=0.6, dash='dot'), showlegend=False, hovertemplate=f'50%: {ml:.2f}<extra></extra>'), row=row, col=col)
-
-        # Retrace lines (current period)
-        if boundaries:
-            cp = hist.iloc[last_b.idx:]
-            if len(cp) > 0:
-                rh = cp['High'].expanding().max(); rl = cp['Low'].expanding().min()
-                rx = list(range(last_b.idx, last_b.idx+len(cp)))
-                fig.add_trace(go.Scatter(x=rx, y=((rh+last_b.prev_low)/2).values, mode='lines', line=dict(color='#be185d', width=0.6, dash='dot'), showlegend=False, hovertemplate='Retrace Buy: %{y:.2f}<extra></extra>'), row=row, col=col)
-                fig.add_trace(go.Scatter(x=rx, y=((rl+last_b.prev_high)/2).values, mode='lines', line=dict(color='#0369a1', width=0.6, dash='dot'), showlegend=False, hovertemplate='Retrace Sell: %{y:.2f}<extra></extra>'), row=row, col=col)
 
         # Reversal dots — close-to-close failed breakout only:
         # Bar N closes above high, Bar N+1 closes back below → dot at N+1
