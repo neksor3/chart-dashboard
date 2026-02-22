@@ -54,6 +54,8 @@ def _spread_r2(returns):
 
 LOOKBACK_OPTIONS = {
     'YTD': 0,      # special case
+    'WTD': -1,     # special case: week-to-date (Monday)
+    '5 Days': 5,
     '30 Days': 30,
     '60 Days': 60,
     '120 Days': 120,
@@ -67,6 +69,10 @@ def fetch_sector_spread_data(sector, lookback_days=0):
     if not symbols: return None
     if lookback_days == 0:  # YTD
         start = datetime.now().replace(month=1, day=1).strftime('%Y-%m-%d')
+    elif lookback_days == -1:  # WTD: from Monday
+        today = datetime.now()
+        monday = today - pd.Timedelta(days=today.weekday())
+        start = monday.strftime('%Y-%m-%d')
     else:
         start = (datetime.now() - pd.Timedelta(days=int(lookback_days * 1.5))).strftime('%Y-%m-%d')
     data = pd.DataFrame()
@@ -87,7 +93,7 @@ def fetch_sector_spread_data(sector, lookback_days=0):
     # Trim to exact lookback days if not YTD
     if lookback_days > 0 and len(data) > lookback_days:
         data = data.iloc[-lookback_days:]
-    if len(data) < 5: return None
+    if len(data) < 2: return None
     data = 100 * (data / data.iloc[0])
     return data
 
