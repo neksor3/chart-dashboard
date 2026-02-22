@@ -112,15 +112,15 @@ def main():
         <style>
             @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
             @keyframes sanpo-breathe {{ 0%,100% {{ opacity: 0.08; }} 40%,60% {{ opacity: 0.95; }} }}
-            @keyframes sanpo-ripple {{ 0%,100% {{ opacity: 0.05; }} 32%,47% {{ opacity: 0.36; }} }}
+            @keyframes sanpo-ripple {{ 0%,100% {{ opacity: 0.18; }} 35%,50% {{ opacity: 0.65; }} }}
             @keyframes sanpo-glow {{ 0%,100% {{ filter: drop-shadow(0 0 3px {pos_c}40); }} 50% {{ filter: drop-shadow(0 0 8px {pos_c}90); }} }}
         </style>
         <div style='display:flex;align-items:center;gap:14px;padding:6px 0'>
             <svg width="56" height="56" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
                 <!-- Breathing rings (inner→mid→outer ripple, 4s cycle) -->
-                <circle cx="20" cy="20" r="6"  stroke="{pos_c}" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 0.0s"/>
-                <circle cx="20" cy="20" r="12" stroke="{pos_c}" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 0.7s"/>
-                <circle cx="20" cy="20" r="18" stroke="{pos_c}" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 1.4s"/>
+                <circle cx="20" cy="20" r="6"  stroke="#334155" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 0.0s"/>
+                <circle cx="20" cy="20" r="12" stroke="#334155" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 0.7s"/>
+                <circle cx="20" cy="20" r="18" stroke="#334155" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 1.4s"/>
                 <!-- Center -->
                 <circle cx="20" cy="20" r="3" fill="{pos_c}"/>
                 <circle cx="20" cy="20" r="4.5" fill="{pos_c}" opacity="0.10"/>
