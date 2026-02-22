@@ -758,15 +758,38 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             elif price > mid: return 'above_mid'
             else: return 'below_mid'
 
-        def plot_line(x_data, closes, start_offset=0, datetimes=None, color='rgba(255,255,255,0.85)', width=1.8):
-            """Single clean line — no fill, no segments."""
+        def plot_line(x_data, closes, start_offset=0, datetimes=None, color='rgba(255,255,255,0.85)', width=1.8, zone_color=False, high=None, low=None, mid=None):
+            """Draw a line. If zone_color=True, color segments by zone (green above mid, amber below)."""
             all_x = x_data if isinstance(x_data, list) else list(range(start_offset, start_offset+len(closes)))
             all_y = list(closes)
             all_dt = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in datetimes] if datetimes is not None else None
             hover = '%{customdata}<br>%{y:.2f}<extra></extra>' if all_dt else '%{y:.2f}<extra></extra>'
-            fig.add_trace(go.Scatter(x=all_x, y=all_y, mode='lines',
-                line=dict(color=color, width=width, shape='spline', smoothing=0.3),
-                showlegend=False, customdata=all_dt, hovertemplate=hover), row=row, col=col)
+
+            if not zone_color or mid is None:
+                fig.add_trace(go.Scatter(x=all_x, y=all_y, mode='lines',
+                    line=dict(color=color, width=width, shape='spline', smoothing=0.3),
+                    showlegend=False, customdata=all_dt, hovertemplate=hover), row=row, col=col)
+                return
+
+            # Zone-colored: split into segments at zone transitions
+            zones = []
+            for c in closes:
+                if c >= mid: zones.append('up')
+                else: zones.append('dn')
+
+            i = 0
+            while i < len(zones):
+                zone = zones[i]; start_i = i
+                while i < len(zones) and zones[i] == zone: i += 1
+                # Include 1 extra point for overlap (no gaps)
+                end_i = min(i + 1, len(all_x))
+                seg_x = all_x[start_i:end_i]
+                seg_y = all_y[start_i:end_i]
+                seg_dt = all_dt[start_i:end_i] if all_dt else None
+                seg_color = t['pos'] if zone == 'up' else t['neg']
+                fig.add_trace(go.Scatter(x=seg_x, y=seg_y, mode='lines',
+                    line=dict(color=seg_color, width=width, shape='spline', smoothing=0.3),
+                    showlegend=False, customdata=seg_dt, hovertemplate=hover), row=row, col=col)
 
         if boundaries:
             last_b = boundaries[-1]
@@ -787,16 +810,14 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                 prev_b = boundaries[-2]; prev_mid = (prev_b.prev_high + prev_b.prev_low) / 2
                 ps, pe = prev_b.idx, boundary_idx
                 if pe > ps and chart_type == 'line':
-                    prev_zone = get_zone(hist['Close'].iloc[pe-1], prev_b.prev_high, prev_b.prev_low, prev_mid)
-                    prev_color = t['pos'] if prev_zone in ('above_high', 'above_mid') else t['neg']
-                    plot_line(x_vals[ps:pe], hist['Close'].values[ps:pe], ps, hist.index[ps:pe], color=prev_color, width=1.5)
+                    plot_line(x_vals[ps:pe], hist['Close'].values[ps:pe], ps, hist.index[ps:pe], width=1.5, zone_color=True, mid=prev_mid)
 
             first_tracked = boundaries[-2].idx if len(boundaries) >= 2 else boundary_idx
             if first_tracked > 0 and chart_type == 'line':
                 plot_line(x_vals[:first_tracked], hist['Close'].values[:first_tracked], 0, hist.index[:first_tracked], color='rgba(255,255,255,0.25)', width=1.0)
 
             if boundary_idx < len(hist) and chart_type == 'line':
-                plot_line(x_vals[boundary_idx:], hist['Close'].values[boundary_idx:], boundary_idx, hist.index[boundary_idx:], color=line_color, width=2.0)
+                plot_line(x_vals[boundary_idx:], hist['Close'].values[boundary_idx:], boundary_idx, hist.index[boundary_idx:], width=2.0, zone_color=True, mid=mid)
 
         elif not boundaries:
             if chart_type == 'bars':
@@ -827,7 +848,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
         num_boundaries = min(2, len(boundaries))
         for j in range(num_boundaries):
             b = boundaries[-(j+1)]; px = b.idx; ex = len(hist)-1 if j == 0 else boundaries[-1].idx
-            fig.add_vline(x=px, line=dict(color='rgba(255,255,255,0.15)', width=0.8, dash='dot'), row=row, col=col)
+            fig.add_vline(x=px, line=dict(color='rgba(255,255,255,0.25)', width=0.8, dash='dot'), row=row, col=col)
             ml = (b.prev_high + b.prev_low) / 2
             fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_high]*2, mode='lines', line=dict(color=zc['above_high'], width=0.9), showlegend=False, hovertemplate=f'High: {b.prev_high:.2f}<extra></extra>'), row=row, col=col)
             fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_low]*2, mode='lines', line=dict(color=zc['below_low'], width=0.9), showlegend=False, hovertemplate=f'Low: {b.prev_low:.2f}<extra></extra>'), row=row, col=col)
