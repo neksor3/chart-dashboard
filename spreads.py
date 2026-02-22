@@ -53,8 +53,8 @@ def _spread_r2(returns):
 # =============================================================================
 
 LOOKBACK_OPTIONS = {
-    'YTD': 0,      # special case
-    'WTD': -1,     # special case: week-to-date (Monday)
+    'WTD': -1,     # default: week-to-date (Monday)
+    'YTD': 0,
     '5 Days': 5,
     '30 Days': 30,
     '60 Days': 60,
