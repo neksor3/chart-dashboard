@@ -15,14 +15,14 @@ def get_theme():
     return THEMES.get(tn, THEMES['Dark'])
 
 NEWS_FEEDS = {
-    'Macro Port': [
+    'Macro': [
         ('S&P 500', 'https://news.google.com/rss/search?q=S%26P+500+index&hl=en&gl=US&ceid=US:en'),
         ('Global Equities', 'https://news.google.com/rss/search?q=global+equities+MSCI+world&hl=en&gl=US&ceid=US:en'),
         ('Gold', 'https://news.google.com/rss/search?q=gold+price+XAU&hl=en&gl=US&ceid=US:en'),
         ('US T-Bills', 'https://news.google.com/rss/search?q=US+treasury+bills+fed+funds+rate&hl=en&gl=US&ceid=US:en'),
         ('Bitcoin', 'https://news.google.com/rss/search?q=bitcoin+BTC+price&hl=en&gl=US&ceid=US:en'),
     ],
-    'SG Portfolio': [
+    'Singapore': [
         ('SGX', 'https://news.google.com/rss/search?q=SGX+Singapore+Exchange&hl=en&gl=SG&ceid=SG:en'),
         ('STI Index', 'https://news.google.com/rss/search?q=Straits+Times+Index+STI&hl=en&gl=SG&ceid=SG:en'),
         ('Amova MBH', 'https://news.google.com/rss/search?q=Singapore+corporate+bonds+investment+grade+HDB+Temasek+UOB+LTA&hl=en&gl=SG&ceid=SG:en'),
@@ -110,16 +110,11 @@ def render_news_panel(region, feeds, max_items=20):
     _mut = t.get('muted', '#4a5568'); _link_c = t.get('text', '#c9d1d9')
     _row_alt = '#131d2e'
 
-    # Fetch per source, then interleave 1/N
-    per_source = {}
-    for name, url in feeds:
-        per_source[name] = fetch_rss_feed(name, url)
-    n_sources = len(per_source)
-    per_n = max(1, max_items // n_sources) if n_sources else max_items
+    # Fetch all items, sort by date then source
     all_items = []
-    for name, items in per_source.items():
-        all_items.extend(items[:per_n])
-    all_items.sort(key=lambda x: x['date'], reverse=True)
+    for name, url in feeds:
+        all_items.extend(fetch_rss_feed(name, url))
+    all_items.sort(key=lambda x: (x['date'], x['source']), reverse=True)
     all_items = all_items[:max_items]
 
     html = f"<div style='background:{_body_bg};border:1px solid {_bdr};border-radius:4px;max-height:75vh;overflow-y:auto'>"
