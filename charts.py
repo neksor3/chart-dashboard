@@ -75,7 +75,7 @@ def get_zone(price, high, low, mid):
 
 def get_dynamic_period(boundary_type):
     now = pd.Timestamp.now()
-    if boundary_type == 'session': return '3d'
+    if boundary_type == 'session': return '5d'
     elif boundary_type == 'week': return f'{int(now.weekday() + 1 + 14 + 3)}d'
     elif boundary_type == 'month': return f'{int(now.day + 65 + 5)}d'
     elif boundary_type == 'year': return '3y'
