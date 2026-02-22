@@ -89,17 +89,25 @@ def fetch_rss_feed(name, url):
         logger.warning(f"RSS error [{name}]: {e}")
         return []
 
-def render_news_panel(region, feeds, max_items=50):
-    """Render a single news feed as a scrollable list with single-line items."""
+def render_news_panel(region, feeds, max_items=20):
+    """Render a single news feed with equal source representation."""
     t = get_theme(); pos_c = t['pos']
     _body_bg = t.get('bg2', '#0f1522')
     _bdr = t.get('border', '#1e293b'); _txt = t.get('text', '#e2e8f0')
     _mut = t.get('muted', '#4a5568'); _link_c = t.get('text', '#c9d1d9')
     _row_alt = '#131b2e'
-    all_items = []
+
+    # Fetch per source, then interleave 1/N
+    per_source = {}
     for name, url in feeds:
-        all_items.extend(fetch_rss_feed(name, url))
+        per_source[name] = fetch_rss_feed(name, url)
+    n_sources = len(per_source)
+    per_n = max(1, max_items // n_sources) if n_sources else max_items
+    all_items = []
+    for name, items in per_source.items():
+        all_items.extend(items[:per_n])
     all_items.sort(key=lambda x: x['date'], reverse=True)
+    all_items = all_items[:max_items]
 
     html = f"<div style='background:{_body_bg};border:1px solid {_bdr};border-radius:4px;max-height:75vh;overflow-y:auto'>"
     if not all_items:
@@ -107,11 +115,11 @@ def render_news_panel(region, feeds, max_items=50):
     else:
         _txt2 = t.get('text2', '#94a3b8')
         _accent = t.get('accent', pos_c)
-        for i, item in enumerate(all_items[:max_items]):
+        for i, item in enumerate(all_items):
             bg = _body_bg if i % 2 == 0 else _row_alt
             title_el = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:12px;font-weight:500'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:12px'>{item['title']}</span>"
             html += (
-                f"<div style='padding:5px 10px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
+                f"<div style='padding:3px 10px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
                 f"display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden'>"
                 f"<span style='font-size:10px;flex-shrink:0;color:{_accent};font-weight:600'>{item['source']}</span>"
                 f"<span style='font-size:10px;flex-shrink:0;color:{_txt2}'>{item['date']}</span>"
