@@ -411,7 +411,7 @@ class FuturesDataFetcher:
 # CACHED DATA FETCHING
 # =============================================================================
 
-@st.cache_resource(ttl=1800, show_spinner=False)
+@st.cache_resource(ttl=900, show_spinner=False)
 def fetch_sector_data(sector_name):
     """Fetch metrics for all symbols in a sector.
 
@@ -468,7 +468,7 @@ def fetch_sector_data(sector_name):
             logger.warning(f"[{symbol}] sector fetch error: {e}")
     return metrics
 
-@st.cache_data(ttl=1800, show_spinner=False)
+@st.cache_data(ttl=900, show_spinner=False)
 def fetch_chart_data(symbol, period, interval):
     ticker = yf.Ticker(symbol)
     hist = ticker.history(period=period, interval=interval)
@@ -477,7 +477,7 @@ def fetch_chart_data(symbol, period, interval):
         hist = hist[hist.index.dayofweek < 5]
     return hist
 
-@st.cache_data(ttl=1800, show_spinner=False)
+@st.cache_data(ttl=900, show_spinner=False)
 def fetch_news(symbol):
     NEWS_TERMS = {
         'ES=F': 'S&P 500', 'NQ=F': 'Nasdaq 100', 'YM=F': 'Dow Jones', 'RTY=F': 'Russell 2000',
