@@ -101,15 +101,19 @@ def _fetch_pulse_batch():
     for syms in HEATMAP_SECTORS.values():
         all_syms.extend(syms)
     all_syms = list(OrderedDict.fromkeys(all_syms))
+    batch_syms = [s for s in all_syms if not s.startswith('^')]
     result = {}
     try:
-        batch = yf.download(all_syms, period='5d', group_by='ticker', threads=True, progress=False)
+        batch = yf.download(batch_syms, period='5d', group_by='ticker', threads=True, progress=False)
     except Exception as e:
         logger.warning(f"Pulse batch failed: {e}")
         batch = pd.DataFrame()
     for sym in all_syms:
         try:
-            if batch.empty:
+            if sym.startswith('^'):
+                # Index symbols with ^ often fail in batch download
+                hist = yf.Ticker(sym).history(period='5d')
+            elif batch.empty:
                 hist = yf.Ticker(sym).history(period='5d')
             elif len(all_syms) == 1:
                 hist = batch.copy()
