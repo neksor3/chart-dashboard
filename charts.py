@@ -70,37 +70,18 @@ def _slice_period(hist, period_type, now=None):
     if period_type == 'session':
         gaps = hist.index.to_series().diff()
         median_gap = gaps.median()
-        # Intraday data: prefer gap detection, fall back to date change
+        today = now.date()
         if median_gap < pd.Timedelta(hours=4):
-            has_gaps = (gaps > pd.Timedelta(minutes=45)).any()
-            if has_gaps:
-                # Find last session break via gap
-                break_idx = None
-                for i in range(len(hist) - 1, 0, -1):
-                    if gaps.iloc[i] > pd.Timedelta(minutes=45):
-                        break_idx = i; break
-                if break_idx is None:
-                    return None, None
-                current_bars = hist.iloc[break_idx:]
-                prev_break = None
-                for i in range(break_idx - 1, 0, -1):
-                    if gaps.iloc[i] > pd.Timedelta(minutes=45):
-                        prev_break = i; break
-                prev_data = hist.iloc[(prev_break or 0):break_idx]
-            else:
-                # 24/7 market: fall back to date change
-                today = now.date()
-                prev_data = hist[dates < today]
-                if prev_data.empty:
-                    return None, None
-                current_bars = hist[dates >= today]
-                prev_period = prev_data
+            # Intraday data: use midnight date change
+            prev_data = hist[dates < today]
             if prev_data.empty:
                 return None, None
-            prev_period = prev_data
+            # Previous session = last full trading day
+            prev_date = prev_data.index[-1].date()
+            prev_period = prev_data[prev_data.index.map(_to_date) == prev_date]
+            current_bars = hist[dates >= today]
         else:
             # Daily data: use calendar date
-            today = now.date()
             prev_data = hist[dates < today]
             if prev_data.empty:
                 return None, None
@@ -161,15 +142,9 @@ class PeriodBoundaryCalculator:
         if df is None or len(df) == 0: return []
         boundaries = []
         
-        # Session: prefer gap detection (CME 5-6pm break, SGX overnight)
-        # Fall back to date change for 24/7 markets (crypto)
+        # Session: use midnight date change for all markets
         if boundary_type == 'session' and len(df) >= 2:
-            gaps = df.index.to_series().diff()
-            has_gaps = (gaps > pd.Timedelta(minutes=45)).any()
-            if has_gaps:
-                is_break = lambda i: gaps.iloc[i] > pd.Timedelta(minutes=45)
-            else:
-                is_break = lambda i: df.index[i].date() != df.index[i-1].date()
+            is_break = lambda i: df.index[i].date() != df.index[i-1].date()
         else:
             is_break = {
                 'year': lambda i: df.index[i].year != df.index[i-1].year,
@@ -789,6 +764,13 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             elif price > mid: return 'above_mid'
             else: return 'below_mid'
 
+        def _hex_to_rgba(hex_color, alpha=0.08):
+            """Convert hex color to rgba string."""
+            h = hex_color.lstrip('#')
+            if len(h) == 3: h = ''.join(c*2 for c in h)
+            r, g, b = int(h[:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+            return f'rgba({r},{g},{b},{alpha})'
+
         def plot_colored_segments(x_data, closes, high, low, mid, start_offset=0, datetimes=None):
             zones = [get_zone(c, high, low, mid) for c in closes]
             i = 0
@@ -800,8 +782,10 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                 seg_y = closes[start_i:seg_end]
                 seg_dt = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in datetimes[start_i:seg_end]] if datetimes is not None else None
                 hover = '%{customdata}<br>%{y:.2f}<extra></extra>' if seg_dt else '%{y:.2f}<extra></extra>'
+                seg_color = zc[zone]
                 fig.add_trace(go.Scatter(x=seg_x, y=seg_y, mode='lines',
-                    line=dict(color=zc[zone], width=1.3),
+                    line=dict(color=seg_color, width=1.3),
+                    fill='tozeroy', fillcolor=_hex_to_rgba(seg_color, 0.08),
                     showlegend=False, customdata=seg_dt, hovertemplate=hover), row=row, col=col)
 
         if boundaries:
@@ -833,7 +817,9 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             first_tracked = boundaries[-2].idx if len(boundaries) >= 2 else boundary_idx
             if first_tracked > 0 and chart_type == 'line':
                 dt_labels = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in hist.index[:first_tracked]]
-                fig.add_trace(go.Scatter(x=x_vals[:first_tracked], y=hist['Close'].values[:first_tracked], mode='lines', line=dict(color='#4b5563', width=1.2), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=x_vals[:first_tracked], y=hist['Close'].values[:first_tracked], mode='lines', line=dict(color='#4b5563', width=1.2),
+                    fill='tozeroy', fillcolor='rgba(75,85,99,0.06)',
+                    showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
 
             if boundary_idx < len(hist) and chart_type == 'line':
                 plot_colored_segments(x_vals[boundary_idx:], hist['Close'].values[boundary_idx:], last_b.prev_high, last_b.prev_low, mid, boundary_idx, hist.index[boundary_idx:])
@@ -847,7 +833,9 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                     showlegend=False, line=dict(width=1)), row=row, col=col)
             else:
                 dt_labels = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in hist.index]
-                fig.add_trace(go.Scatter(x=x_vals, y=hist['Close'].values, mode='lines', line=dict(color='#4b5563', width=1.2), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=x_vals, y=hist['Close'].values, mode='lines', line=dict(color='#4b5563', width=1.2),
+                    fill='tozeroy', fillcolor='rgba(75,85,99,0.06)',
+                    showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
 
         if boundaries:
             zone_status = get_zone(current_price, last_b.prev_high, last_b.prev_low, mid)
@@ -1114,11 +1102,11 @@ def render_charts_tab(is_mobile, est):
             key='scanner_sort', label_visibility='collapsed')
     with col_ct:
         st.markdown(f"<div style='{_lbl}'>CHART</div>", unsafe_allow_html=True)
-        chart_options = ['Line', 'Bars']
+        chart_options = ['Area', 'Bars']
         ct_idx = 0 if st.session_state.chart_type == 'line' else 1
         ct = st.selectbox("Chart", chart_options, index=ct_idx,
             key='chart_select', label_visibility='collapsed')
-        st.session_state.chart_type = ct.lower()
+        st.session_state.chart_type = 'line' if ct == 'Area' else 'bars'
 
     # Fetch data
     with st.spinner('Loading market data...'):
