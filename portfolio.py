@@ -30,11 +30,12 @@ def _short(sym):
 # =============================================================================
 
 PRESETS = OrderedDict([
-    ('Core 5',     ['IAU', 'VOO', 'VTI', 'SHV', 'BTC-USD']),
     ('Singapore',  ['ES3.SI', 'S68.SI', 'MBH.SI', 'MMS.SI']),
-    ('Macro',      ['DBC', 'USO', 'GLD', 'SLV', 'CPER', 'BIL', 'HYG', 'LQD', 'TLT', 'BND', 'EMB', 'EEM', 'SPY', 'BTC-USD', 'ETH-USD']),
-    ('Countries',  ['EWA', 'EWZ', 'EWC', 'GXC', 'EWQ', 'EWG', 'EWH', 'PIN', 'EWI', 'EWJ', 'EWM', 'EWW', 'EWS', 'EWY', 'EWP', 'EWT', 'EWU', 'VNM', 'KSA', 'ARGT']),
     ('US Sectors', ['XLB', 'XLC', 'XLY', 'XLP', 'XLE', 'XLF', 'XLV', 'XLI', 'XLK', 'XLU', 'XLRE', 'SPY']),
+    ('Countries',  ['EWA', 'EWZ', 'EWC', 'GXC', 'EWQ', 'EWG', 'EWH', 'PIN', 'EWI', 'EWJ', 'EWM', 'EWW', 'EWS', 'EWY', 'EWP', 'EWT', 'EWU', 'VNM', 'KSA', 'ARGT']),
+    ('Macro',      ['DBC', 'USO', 'GLD', 'SLV', 'CPER', 'BIL', 'HYG', 'LQD', 'TLT', 'BND', 'EMB', 'EEM', 'SPY', 'BTC-USD', 'ETH-USD']),
+    ('Core 5',     ['IAU', 'VOO', 'VTI', 'SHV', 'IBIT']),
+    ('Exchanges',  ['ICE', 'NDAQ', 'CME', 'CBOE', 'X.TO', 'LSEG.L', 'DB1.DE', 'ENX.PA', '8697.T', '0388.HK', 'ASX.AX', 'S68.SI']),
 ])
 
 PORTFOLIO_APPROACHES = OrderedDict([
@@ -629,11 +630,11 @@ def render_portfolio_tab(is_mobile):
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
     # Portfolio selector + symbols
-    preset_names = list(PRESETS.keys()) + ['Custom']
+    preset_names = ['Custom'] + list(PRESETS.keys())
     if 'port_preset_name' not in st.session_state:
-        st.session_state.port_preset_name = 'Core 5'
+        st.session_state.port_preset_name = 'Custom'
     if 'port_sym_input' not in st.session_state:
-        st.session_state.port_sym_input = ', '.join(PRESETS['Core 5'])
+        st.session_state.port_sym_input = ''
 
     def _on_portfolio_change():
         sel = st.session_state.port_selector
@@ -644,7 +645,7 @@ def render_portfolio_tab(is_mobile):
     p1, p2 = st.columns([1, 4])
     with p1:
         st.markdown(f"<div style='{_lbl}'>PORTFOLIO</div>", unsafe_allow_html=True)
-        current_idx = preset_names.index(st.session_state.port_preset_name) if st.session_state.port_preset_name in preset_names else len(preset_names) - 1
+        current_idx = preset_names.index(st.session_state.port_preset_name) if st.session_state.port_preset_name in preset_names else 0
         st.selectbox("Portfolio", preset_names, index=current_idx,
                      key='port_selector', label_visibility='collapsed', on_change=_on_portfolio_change)
     with p2:
@@ -705,17 +706,25 @@ def render_portfolio_tab(is_mobile):
         st.markdown(f"<div style='{_lbl}'>COST %</div>", unsafe_allow_html=True)
         cost_str = st.text_input("Cost", key='port_cost', label_visibility='collapsed')
 
-    # Optimize button — styled via markdown + native button
+    # Optimize button
     st.markdown("""<style>
         div[data-testid="stButton"] > button[kind="primary"] {
-            background: linear-gradient(135deg, #2563eb, #3b82f6);
-            border: none; border-radius: 6px; padding: 8px 32px;
-            font-weight: 700; font-size: 13px; letter-spacing: 0.06em;
-            transition: all 0.2s;
+            background: linear-gradient(135deg, #1e40af, #3b82f6, #60a5fa) !important;
+            border: 1px solid rgba(96,165,250,0.3) !important;
+            border-radius: 6px; padding: 10px 40px;
+            font-weight: 700; font-size: 12px; letter-spacing: 0.1em;
+            text-transform: uppercase;
+            box-shadow: 0 2px 8px rgba(30,64,175,0.3);
+            transition: all 0.2s ease;
         }
         div[data-testid="stButton"] > button[kind="primary"]:hover {
-            background: linear-gradient(135deg, #1d4ed8, #2563eb);
-            box-shadow: 0 4px 12px rgba(37,99,235,0.4);
+            background: linear-gradient(135deg, #1d4ed8, #2563eb, #3b82f6) !important;
+            box-shadow: 0 4px 16px rgba(37,99,235,0.5);
+            transform: translateY(-1px);
+        }
+        div[data-testid="stButton"] > button[kind="primary"]:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 4px rgba(37,99,235,0.3);
         }
     </style>""", unsafe_allow_html=True)
     run_clicked = st.button('▶  OPTIMIZE', key='port_run', type='primary')
