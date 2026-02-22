@@ -208,14 +208,20 @@ def _optimize_window_vectorized(returns_array, n_portfolios, n_assets, max_weigh
 # =============================================================================
 
 def _optimize_at_rebalance(returns_df, approach, score_type, n_portfolios, mw, mnw=0.0, allow_short=False,
-                           max_vol=None, min_ann_ret=None):
+                           max_vol=None, min_ann_ret=None, window_cache=None):
     n_assets = returns_df.shape[1]; data_len = len(returns_df)
     window_weights_list = []; blend_wts = []
     for wname, wdays in approach['windows'].items():
         if data_len >= wdays:
-            w_ret = returns_df.iloc[-wdays:]
-            best_w = _optimize_window_vectorized(w_ret.values, n_portfolios, n_assets, mw, score_type, mnw, allow_short,
-                                                  max_vol=max_vol, min_ann_ret=min_ann_ret)
+            cache_key = (wname, data_len) if window_cache is not None else None
+            if cache_key and cache_key in window_cache:
+                best_w = window_cache[cache_key]
+            else:
+                w_ret = returns_df.iloc[-wdays:]
+                best_w = _optimize_window_vectorized(w_ret.values, n_portfolios, n_assets, mw, score_type, mnw, allow_short,
+                                                      max_vol=max_vol, min_ann_ret=min_ann_ret)
+                if cache_key and window_cache is not None:
+                    window_cache[cache_key] = best_w
             window_weights_list.append(best_w); blend_wts.append(approach['blend'][wname])
     if not window_weights_list: return None
     blend_wts = np.array(blend_wts); blend_wts /= blend_wts.sum()
@@ -228,7 +234,7 @@ def _optimize_at_rebalance(returns_df, approach, score_type, n_portfolios, mw, m
 def _walk_forward_single(returns_df, approach, score_type, rebal_months,
                          n_portfolios=10000, max_weight=0.50, min_weight=0.0,
                          txn_cost=0.001, allow_short=False,
-                         max_vol=None, min_ann_ret=None):
+                         max_vol=None, min_ann_ret=None, window_cache=None):
     n_assets = returns_df.shape[1]; mw = max_weight; mnw = min_weight
     min_is_days = max(approach['windows'].values()); dates = returns_df.index
 
@@ -255,7 +261,7 @@ def _walk_forward_single(returns_df, approach, score_type, rebal_months,
     for i, (ri, rd) in enumerate(rebal_dates):
         is_data = returns_df.iloc[:ri + 1]
         opt_w = _optimize_at_rebalance(is_data, approach, score_type, n_portfolios, mw, mnw, allow_short,
-                                        max_vol=max_vol, min_ann_ret=min_ann_ret)
+                                        max_vol=max_vol, min_ann_ret=min_ann_ret, window_cache=window_cache)
         if opt_w is None: continue
         oos_start = ri + 1
         oos_end = rebal_dates[i + 1][0] if i + 1 < len(rebal_dates) else len(dates)
@@ -271,7 +277,8 @@ def _walk_forward_single(returns_df, approach, score_type, rebal_months,
             'oos_days': len(oos_data)})
 
     if not oos_segments or len(weight_history) < 2: return None
-    current_w = _optimize_at_rebalance(returns_df, approach, score_type, n_portfolios, mw, mnw, allow_short)
+    current_w = _optimize_at_rebalance(returns_df, approach, score_type, n_portfolios, mw, mnw, allow_short,
+                                        window_cache=window_cache)
     if current_w is None: current_w = weight_history[-1]['weights']
     full_oos = pd.concat(oos_segments)
     return {'oos_returns': full_oos, 'weight_history': weight_history,
@@ -344,13 +351,15 @@ def run_walkforward_grid(symbols, score_type='Win Rate', rebal_months=3, n_portf
     eq_ret = pd.Series(eq_daily, index=returns.index)
 
     results = OrderedDict()
+    window_cache = {}  # shared cache: (window_name, data_len) -> best_weights
     approach_list = list(PORTFOLIO_APPROACHES.items())
     for i, (name, approach) in enumerate(approach_list):
         if progress_bar: progress_bar.progress((i + 1) / len(approach_list), text=f'Walk-forward: {name}')
         try:
             wf = _walk_forward_single(returns, approach, score_type, rebal_months,
                                       n_portfolios, max_weight, min_weight, txn_cost, allow_short,
-                                      max_vol=max_vol, min_ann_ret=min_ann_ret)
+                                      max_vol=max_vol, min_ann_ret=min_ann_ret,
+                                      window_cache=window_cache)
             if wf is not None:
                 metrics = _calc_oos_metrics(wf['oos_returns'])
                 if metrics is not None:
@@ -360,6 +369,7 @@ def run_walkforward_grid(symbols, score_type='Win Rate', rebal_months=3, n_portf
             logger.warning(f"Walk-forward failed for {name}: {e}")
 
     if not results: return None
+    logger.info(f"Window cache: {len(window_cache)} unique optimizations (vs ~{sum(len(a['windows']) * 30 for _, a in approach_list)} without cache)")
     earliest_oos = min(r['wf']['oos_returns'].index[0] for r in results.values())
     eq_trimmed = eq_ret.loc[eq_ret.index >= earliest_oos]
     eq_metrics = _calc_oos_metrics(eq_trimmed)
@@ -618,33 +628,32 @@ def render_portfolio_tab(is_mobile):
     C_POS = theme['pos']; C_NEG = theme['neg']
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
-    # Symbols input
+    # Portfolio selector + symbols
+    preset_names = list(PRESETS.keys()) + ['Custom']
+    if 'port_preset_name' not in st.session_state:
+        st.session_state.port_preset_name = 'Core 5'
     if 'port_sym_input' not in st.session_state:
-        st.session_state.port_sym_input = 'IAU, VOO, VTI, SHV, BTC-USD'
-    st.markdown(f"<div style='{_lbl}'>SYMBOLS</div>", unsafe_allow_html=True)
-    sym_input = st.text_input("Symbols", key='port_sym_input', label_visibility='collapsed',
-                               placeholder='Enter symbols: AAPL, MSFT, GOOG')
+        st.session_state.port_sym_input = ', '.join(PRESETS['Core 5'])
 
-    # Preset buttons — use on_click callbacks (run before rerender)
-    def _set_preset(syms_str, preset_name='Custom'):
-        st.session_state.port_sym_input = syms_str
-        st.session_state.port_preset_name = preset_name
+    def _on_portfolio_change():
+        sel = st.session_state.port_selector
+        if sel != 'Custom':
+            st.session_state.port_sym_input = ', '.join(PRESETS[sel])
+        st.session_state.port_preset_name = sel
 
-    st.markdown(f"<div style='{_lbl};margin-top:4px'>PRESETS</div>", unsafe_allow_html=True)
-    preset_cols = st.columns(len(PRESETS) + 1)
-    for i, (name, syms) in enumerate(PRESETS.items()):
-        with preset_cols[i]:
-            st.button(name, key=f'preset_{name}', use_container_width=True,
-                      on_click=_set_preset, args=(', '.join(syms), name))
-    with preset_cols[-1]:
-        st.button('Custom', key='preset_custom', use_container_width=True,
-                  on_click=_set_preset, args=('', 'Custom'))
+    p1, p2 = st.columns([1, 4])
+    with p1:
+        st.markdown(f"<div style='{_lbl}'>PORTFOLIO</div>", unsafe_allow_html=True)
+        current_idx = preset_names.index(st.session_state.port_preset_name) if st.session_state.port_preset_name in preset_names else len(preset_names) - 1
+        st.selectbox("Portfolio", preset_names, index=current_idx,
+                     key='port_selector', label_visibility='collapsed', on_change=_on_portfolio_change)
+    with p2:
+        st.markdown(f"<div style='{_lbl}'>SYMBOLS</div>", unsafe_allow_html=True)
+        sym_input = st.text_input("Symbols", key='port_sym_input', label_visibility='collapsed',
+                                   placeholder='AAPL, MSFT, GOOG, ...')
 
-    # Controls row 1: Objective + Rebalance + Period + Direction
-    if is_mobile:
-        c1, c2, c3, c4 = st.columns(4)
-    else:
-        c1, c2, c3, c4 = st.columns(4)
+    # Row 1: Objective, Rebalance, Period, Direction, Sims
+    c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
         st.markdown(f"<div style='{_lbl}'>OBJECTIVE</div>", unsafe_allow_html=True)
         score = st.selectbox("Objective", ['Win Rate', 'Composite', 'Sharpe', 'Sortino', 'MAR', 'R²', 'Total Return'],
@@ -661,41 +670,55 @@ def render_portfolio_tab(is_mobile):
         st.markdown(f"<div style='{_lbl}'>DIRECTION</div>", unsafe_allow_html=True)
         direction = st.selectbox("Direction", ['Long Only', 'Long/Short'],
                                   key='port_direction', label_visibility='collapsed')
-
-    # Controls row 2: Max Wt + Min Wt + Sims + Cost
-    _defaults = {'port_maxwt': '50', 'port_minwt': '0', 'port_sims': '10000', 'port_cost': '0.10',
-                 'port_maxvol': '', 'port_minret': ''}
-    for k, v in _defaults.items():
-        if k not in st.session_state:
-            st.session_state[k] = v
-    # Keep old defaults restored if empty
-    for k, v in [('port_maxwt','50'),('port_minwt','0'),('port_sims','10000'),('port_cost','0.10')]:
-        if not st.session_state.get(k):
-            st.session_state[k] = v
-    c5, c6, c7, c8, c9, c10 = st.columns(6)
     with c5:
+        st.markdown(f"<div style='{_lbl}'>SIMS</div>", unsafe_allow_html=True)
+        _defaults = {'port_sims': '10000'}
+        for k, v in _defaults.items():
+            if k not in st.session_state: st.session_state[k] = v
+        if not st.session_state.get('port_sims'): st.session_state['port_sims'] = '10000'
+        sims_str = st.text_input("Sims", key='port_sims', label_visibility='collapsed')
+
+    # Row 2: Max Wt, Min Wt, Max Vol, Min Ret, Cost
+    _defaults2 = {'port_maxwt': '50', 'port_minwt': '0', 'port_cost': '0.10',
+                   'port_maxvol': '', 'port_minret': ''}
+    for k, v in _defaults2.items():
+        if k not in st.session_state: st.session_state[k] = v
+    for k, v in [('port_maxwt','50'),('port_minwt','0'),('port_cost','0.10')]:
+        if not st.session_state.get(k): st.session_state[k] = v
+
+    c6, c7, c8, c9, c10 = st.columns(5)
+    with c6:
         st.markdown(f"<div style='{_lbl}'>MAX WT %</div>", unsafe_allow_html=True)
         max_wt_str = st.text_input("Max Wt", key='port_maxwt', label_visibility='collapsed')
-    with c6:
+    with c7:
         st.markdown(f"<div style='{_lbl}'>MIN WT %</div>", unsafe_allow_html=True)
         min_wt_str = st.text_input("Min Wt", key='port_minwt', label_visibility='collapsed')
-    with c7:
+    with c8:
         st.markdown(f"<div style='{_lbl}'>MAX VOL %</div>", unsafe_allow_html=True)
         max_vol_str = st.text_input("Max Vol", key='port_maxvol', label_visibility='collapsed',
                                      placeholder='e.g. 15')
-    with c8:
+    with c9:
         st.markdown(f"<div style='{_lbl}'>MIN RET %</div>", unsafe_allow_html=True)
         min_ret_str = st.text_input("Min Ret", key='port_minret', label_visibility='collapsed',
                                      placeholder='e.g. 5')
-    with c9:
-        st.markdown(f"<div style='{_lbl}'>SIMS</div>", unsafe_allow_html=True)
-        sims_str = st.text_input("Sims", key='port_sims', label_visibility='collapsed')
     with c10:
         st.markdown(f"<div style='{_lbl}'>COST %</div>", unsafe_allow_html=True)
         cost_str = st.text_input("Cost", key='port_cost', label_visibility='collapsed')
 
-    # Run button
-    run_clicked = st.button('▶  OPTIMIZE', key='port_run', type='primary', use_container_width=False)
+    # Optimize button — styled via markdown + native button
+    st.markdown("""<style>
+        div[data-testid="stButton"] > button[kind="primary"] {
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            border: none; border-radius: 6px; padding: 8px 32px;
+            font-weight: 700; font-size: 13px; letter-spacing: 0.06em;
+            transition: all 0.2s;
+        }
+        div[data-testid="stButton"] > button[kind="primary"]:hover {
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+            box-shadow: 0 4px 12px rgba(37,99,235,0.4);
+        }
+    </style>""", unsafe_allow_html=True)
+    run_clicked = st.button('▶  OPTIMIZE', key='port_run', type='primary')
 
     if not run_clicked and 'port_grid' not in st.session_state:
         st.markdown(f"<div style='padding:20px;color:{C_MUTE};font-size:11px;font-family:{FONTS}'>Configure parameters and click OPTIMIZE to start walk-forward optimization</div>", unsafe_allow_html=True)
