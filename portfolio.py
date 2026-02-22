@@ -435,10 +435,10 @@ def render_ranking_table(grid, rank_by='win_rate'):
     # Equal weight row
     if eq:
         eq_rebals = grid.get('eq_n_rebals', '—')
-        html += f"<tr><td colspan='14' style='border-bottom:1px solid {C_TXT2};padding:0;height:0'></td></tr>"
+        html += f"<tr><td colspan='14' style='border-bottom:1px solid {C_EW};padding:0;height:0'></td></tr>"
         html += f"<tr style='background:rgba(100,116,139,0.06)'>"
         html += f"<td style='{TD}color:{C_MUTE}'>—</td>"
-        html += f"<td style='{TD}color:{C_EW};font-weight:700'>◆ Equal Weight (1/N)</td>"
+        html += f"<td style='{TD}color:{C_TXT};font-weight:700'>◆ Equal Weight (1/N)</td>"
         html += f"<td style='{TD}text-align:right;font-weight:700'>{_fc(eq['win_rate'],'pct')}</td>"
         html += f"<td style='{TD}text-align:right'>{_fc(eq['sharpe'])}</td>"
         html += f"<td style='{TD}text-align:right'>{_fc(eq['sortino'])}</td>"
@@ -456,7 +456,8 @@ def render_ranking_table(grid, rank_by='win_rate'):
         if best_name and items:
             best_m = items[0][1]
             higher_better = {'win_rate','sharpe','sortino','mar','r2','total_ret','ann_ret','ytd'}
-            html += f"<tr style='border-top:1px solid {C_GOLD};background:rgba(251,191,36,0.06)'>"
+            html += f"<tr><td colspan='14' style='border-bottom:1px solid {C_EW};padding:0;height:0'></td></tr>"
+            html += f"<tr style='background:rgba(251,191,36,0.06)'>"
             html += f"<td style='{TD}color:{C_GOLD}'>Δ</td>"
             html += f"<td style='{TD}color:{C_GOLD};font-weight:600'>★ vs Equal Weight</td>"
             for key, fmt in [('win_rate','pct'),('sharpe','f2'),('sortino','f2'),('mar','f2'),
