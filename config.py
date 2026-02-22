@@ -96,8 +96,8 @@ CHART_CONFIGS = [
 ]
 
 STATUS_LABELS = {
-    'above_high': '▲ ABOVE HIGH', 'above_mid': '● ABOVE MID',
-    'below_mid': '● BELOW MID', 'below_low': '▼ BELOW LOW',
+    'above_high': '▲ ABOVE HIGH', 'above_mid': '– ABOVE MID',
+    'below_mid': '– BELOW MID', 'below_low': '▼ BELOW LOW',
 }
 
 # =============================================================================
