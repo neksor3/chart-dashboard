@@ -76,7 +76,6 @@ def _slice_period(hist, period_type, now=None):
             prev_data = hist[dates < today]
             if prev_data.empty:
                 return None, None
-            # Previous session = last full trading day
             prev_date = prev_data.index[-1].date()
             prev_period = prev_data[prev_data.index.map(_to_date) == prev_date]
             current_bars = hist[dates >= today]
@@ -663,11 +662,7 @@ def render_scanner_table(metrics, selected_symbol):
             <th style='{th}text-align:left' rowspan='2'></th><th style='{th}' rowspan='2'>PRICE</th>
             <th style='{th}border-bottom:none' colspan='4'>CHANGE</th>
             <th style='{th}' rowspan='2'>HV</th><th style='{th}' rowspan='2'>DD</th>
-            <th style='{th}' rowspan='2'>TREND</th>
-            <th style='{th}border-bottom:none' colspan='4'>SHARPE</th>
         </tr><tr>
-            <th style='{th}'>DAY</th><th style='{th}'>WTD</th>
-            <th style='{th}'>MTD</th><th style='{th}'>YTD</th>
             <th style='{th}'>DAY</th><th style='{th}'>WTD</th>
             <th style='{th}'>MTD</th><th style='{th}'>YTD</th>
         </tr></thead><tbody>"""
@@ -692,11 +687,6 @@ def render_scanner_table(metrics, selected_symbol):
             <td style='{td}text-align:center;white-space:nowrap'>{_chg(m.change_ytd, m.year_status, m.year_reversal)}</td>
             <td style='{td}text-align:center'>{hv}</td>
             <td style='{td}text-align:center'>{dd}</td>
-            <td style='{td}text-align:center;white-space:nowrap'>{_trend(m)}</td>
-            <td style='{td}text-align:center'>{_sharpe(m.day_sharpe)}</td>
-            <td style='{td}text-align:center'>{_sharpe(m.wtd_sharpe)}</td>
-            <td style='{td}text-align:center'>{_sharpe(m.mtd_sharpe)}</td>
-            <td style='{td}text-align:center'>{_sharpe(m.ytd_sharpe)}</td>
         </tr>"""
     html += "</tbody></table></div>"
     st.markdown(html, unsafe_allow_html=True)
@@ -764,12 +754,14 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             elif price > mid: return 'above_mid'
             else: return 'below_mid'
 
-        def _hex_to_rgba(hex_color, alpha=0.08):
-            """Convert hex color to rgba string."""
+        def _hex_to_rgba(hex_color, alpha=0.12):
             h = hex_color.lstrip('#')
             if len(h) == 3: h = ''.join(c*2 for c in h)
             r, g, b = int(h[:2], 16), int(h[2:4], 16), int(h[4:6], 16)
             return f'rgba({r},{g},{b},{alpha})'
+
+        # Compute chart floor for area fill (bottom of visible range)
+        chart_y_floor = hist['Low'].min() - (hist['High'].max() - hist['Low'].min()) * 0.08
 
         def plot_colored_segments(x_data, closes, high, low, mid, start_offset=0, datetimes=None):
             zones = [get_zone(c, high, low, mid) for c in closes]
@@ -779,13 +771,19 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                 while i < len(zones) and zones[i] == zone: i += 1
                 seg_end = min(i + 1, len(closes))
                 seg_x = x_data[start_i:seg_end] if isinstance(x_data, list) else list(range(start_offset+start_i, start_offset+seg_end))
-                seg_y = closes[start_i:seg_end]
+                seg_y = list(closes[start_i:seg_end])
                 seg_dt = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in datetimes[start_i:seg_end]] if datetimes is not None else None
                 hover = '%{customdata}<br>%{y:.2f}<extra></extra>' if seg_dt else '%{y:.2f}<extra></extra>'
                 seg_color = zc[zone]
+                # Area fill: polygon from data down to floor
+                poly_x = list(seg_x) + list(reversed(seg_x))
+                poly_y = seg_y + [chart_y_floor] * len(seg_x)
+                fig.add_trace(go.Scatter(x=poly_x, y=poly_y, fill='toself',
+                    fillcolor=_hex_to_rgba(seg_color, 0.12), line=dict(width=0),
+                    showlegend=False, hoverinfo='skip'), row=row, col=col)
+                # Line on top
                 fig.add_trace(go.Scatter(x=seg_x, y=seg_y, mode='lines',
                     line=dict(color=seg_color, width=1.3),
-                    fill='tozeroy', fillcolor=_hex_to_rgba(seg_color, 0.08),
                     showlegend=False, customdata=seg_dt, hovertemplate=hover), row=row, col=col)
 
         if boundaries:
@@ -817,9 +815,11 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             first_tracked = boundaries[-2].idx if len(boundaries) >= 2 else boundary_idx
             if first_tracked > 0 and chart_type == 'line':
                 dt_labels = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in hist.index[:first_tracked]]
-                fig.add_trace(go.Scatter(x=x_vals[:first_tracked], y=hist['Close'].values[:first_tracked], mode='lines', line=dict(color='#4b5563', width=1.2),
-                    fill='tozeroy', fillcolor='rgba(75,85,99,0.06)',
-                    showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
+                pre_x = x_vals[:first_tracked]; pre_y = list(hist['Close'].values[:first_tracked])
+                poly_x = pre_x + list(reversed(pre_x))
+                poly_y = pre_y + [chart_y_floor] * len(pre_x)
+                fig.add_trace(go.Scatter(x=poly_x, y=poly_y, fill='toself', fillcolor='rgba(75,85,99,0.06)', line=dict(width=0), showlegend=False, hoverinfo='skip'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=pre_x, y=pre_y, mode='lines', line=dict(color='#4b5563', width=1.2), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
 
             if boundary_idx < len(hist) and chart_type == 'line':
                 plot_colored_segments(x_vals[boundary_idx:], hist['Close'].values[boundary_idx:], last_b.prev_high, last_b.prev_low, mid, boundary_idx, hist.index[boundary_idx:])
@@ -833,9 +833,11 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                     showlegend=False, line=dict(width=1)), row=row, col=col)
             else:
                 dt_labels = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in hist.index]
-                fig.add_trace(go.Scatter(x=x_vals, y=hist['Close'].values, mode='lines', line=dict(color='#4b5563', width=1.2),
-                    fill='tozeroy', fillcolor='rgba(75,85,99,0.06)',
-                    showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
+                fb_y = list(hist['Close'].values)
+                poly_x = x_vals + list(reversed(x_vals))
+                poly_y = fb_y + [chart_y_floor] * len(x_vals)
+                fig.add_trace(go.Scatter(x=poly_x, y=poly_y, fill='toself', fillcolor='rgba(75,85,99,0.06)', line=dict(width=0), showlegend=False, hoverinfo='skip'), row=row, col=col)
+                fig.add_trace(go.Scatter(x=x_vals, y=fb_y, mode='lines', line=dict(color='#4b5563', width=1.2), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
 
         if boundaries:
             zone_status = get_zone(current_price, last_b.prev_high, last_b.prev_low, mid)
@@ -896,7 +898,13 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             axis_name = f'xaxis{chart_idx+1}' if chart_idx > 0 else 'xaxis'
             fig.update_layout(**{axis_name: dict(tickmode='array', tickvals=tick_indices, ticktext=tick_labels, tickfont=dict(color='#e2e8f0', size=9))})
 
-        y_min, y_max = hist['Low'].min(), hist['High'].max(); pad = (y_max - y_min) * 0.08
+        # Y-axis range: use percentile to clip outlier spikes
+        y_low_vals = hist['Low'].dropna(); y_high_vals = hist['High'].dropna()
+        if len(y_low_vals) > 10:
+            y_min = y_low_vals.quantile(0.005); y_max = y_high_vals.quantile(0.995)
+        else:
+            y_min = y_low_vals.min(); y_max = y_high_vals.max()
+        pad = (y_max - y_min) * 0.08
         yref = f'yaxis{chart_idx+1}' if chart_idx > 0 else 'yaxis'
         fig.update_layout(**{yref: dict(range=[y_min-pad, y_max+pad], side='right', tickfont=dict(size=9, color='#94a3b8'))})
         xref = f'xaxis{chart_idx+1}' if chart_idx > 0 else 'xaxis'
@@ -1127,7 +1135,7 @@ def render_charts_tab(is_mobile, est):
 
     # Scanner table + bar chart side by side
     if metrics:
-        col_scan, col_bars = st.columns([65, 35])
+        col_scan, col_bars = st.columns([55, 45])
         with col_scan:
             render_scanner_table(metrics, st.session_state.symbol)
         with col_bars:
@@ -1156,7 +1164,7 @@ def render_charts_tab(is_mobile, est):
         render_key_levels(st.session_state.symbol, levels)
         render_news_panel(st.session_state.symbol)
     else:
-        col_charts, col_right = st.columns([65, 35])
+        col_charts, col_right = st.columns([55, 45])
         with col_charts:
             with st.spinner('Loading charts...'):
                 try:
