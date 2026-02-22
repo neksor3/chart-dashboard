@@ -989,7 +989,7 @@ def render_key_levels(symbol, levels):
     _txt1 = _t.get('text', '#e2e8f0'); _txt2 = _t.get('text2', '#b0b0b0')
     _mut = _t.get('muted', '#6d6d6d')
 
-    html = f"""<div style='padding:8px 12px;background:linear-gradient(90deg,{pos_c}12,{_hdr_bg});border-left:2px solid {pos_c};display:flex;justify-content:space-between;align-items:center;font-family:{FONTS};border-radius:4px 4px 0 0'>
+    html = f"""<div style='padding:8px 12px;background:{_hdr_bg};border-left:2px solid {pos_c};display:flex;justify-content:space-between;align-items:center;font-family:{FONTS};border-radius:4px 4px 0 0'>
         <span><span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{ds} LEVELS</span>
         <span style='color:{_mut};font-size:10px;margin-left:6px;font-weight:400'>{fn}</span></span>
         <span style='color:{sc};font-size:10px;font-weight:700;letter-spacing:0.05em'>{sig}</span></div>"""
@@ -1034,7 +1034,7 @@ def render_news_panel(symbol):
     _link_c = '#334155' if _il else '#c9d1d9'
     news = fetch_news(symbol)
 
-    html = f"""<div style='padding:8px 12px;background:linear-gradient(90deg,{pos_c}12,{_hdr_bg});border-left:2px solid {pos_c};font-family:{FONTS};margin-top:8px;border-radius:4px 4px 0 0'>
+    html = f"""<div style='padding:8px 12px;background:{_hdr_bg};border-left:2px solid {pos_c};font-family:{FONTS};margin-top:8px;border-radius:4px 4px 0 0'>
         <span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{ds} NEWS</span>
         <span style='color:{_mut};font-size:10px;margin-left:6px;font-weight:400'>{fn}</span></div>"""
 
@@ -1145,13 +1145,16 @@ def render_charts_tab(is_mobile, est):
         with col_bars:
             render_return_bars(metrics, sort_by)
 
+    # Spacer between scanner and charts
+    st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+
     # Chart header markup (reused below)
     _sym = st.session_state.symbol
     _ds = clean_symbol(_sym); _fn = SYMBOL_NAMES.get(_sym, _sym)
     _hdr_bg = t.get('bg3', '#1a2744'); _bdr = t.get('border', '#1e293b')
     _hdr_mut = t.get('muted', '#475569')
     _chart_hdr = (
-        f"<div style='padding:8px 12px;background:linear-gradient(90deg,{pos_c}12,{_hdr_bg});"
+        f"<div style='padding:8px 12px;background:{_hdr_bg};"
         f"border-left:2px solid {pos_c};font-family:{FONTS};border-radius:4px;margin-top:8px'>"
         f"<span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{_ds}</span>"
         f"<span style='color:{_hdr_mut};font-size:10px;margin-left:6px;font-weight:400'>{_fn}</span></div>")
