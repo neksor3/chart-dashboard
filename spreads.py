@@ -67,6 +67,8 @@ LOOKBACK_OPTIONS = {
 def fetch_sector_spread_data(sector, lookback_days=0):
     symbols = FUTURES_GROUPS.get(sector, [])
     if not symbols: return None
+    # Short lookbacks use 1h bars resampled to 4h for better granularity
+    use_intraday = lookback_days in (-1, 5)
     if lookback_days == 0:  # YTD
         start = datetime.now().replace(month=1, day=1).strftime('%Y-%m-%d')
     elif lookback_days == -1:  # WTD: from Monday
@@ -79,19 +81,25 @@ def fetch_sector_spread_data(sector, lookback_days=0):
     for sym in symbols:
         try:
             ticker = yf.Ticker(sym)
-            hist = ticker.history(start=start)
+            if use_intraday:
+                hist = ticker.history(start=start, interval='1h')
+            else:
+                hist = ticker.history(start=start)
             if not hist.empty:
                 closes = hist['Close'].copy()
                 closes.index = closes.index.tz_localize(None) if closes.index.tz else closes.index
-                closes.index = closes.index.normalize()
-                closes = closes.groupby(closes.index).last()
+                if use_intraday:
+                    closes = closes.resample('4h').last().dropna()
+                else:
+                    closes.index = closes.index.normalize()
+                    closes = closes.groupby(closes.index).last()
                 data[sym] = closes
         except Exception as e:
             logger.debug(f"[{sym}] spread data fetch error: {e}")
     if data.empty or len(data.columns) < 2: return None
     data = data.ffill().dropna()
-    # Trim to exact lookback days if not YTD
-    if lookback_days > 0 and len(data) > lookback_days:
+    # Trim to exact lookback days if not YTD and not intraday
+    if lookback_days > 5 and len(data) > lookback_days:
         data = data.iloc[-lookback_days:]
     if len(data) < 2: return None
     data = 100 * (data / data.iloc[0])
@@ -284,7 +292,11 @@ def render_spread_charts(pairs, data, theme, mobile=False):
         n_ticks = 4; idx_step = max(1, len(data) // n_ticks)
         tick_vals = list(range(0, len(data), idx_step))
         if (len(data) - 1) not in tick_vals: tick_vals.append(len(data) - 1)
-        tick_text = [data.index[j].strftime('%d %b') for j in tick_vals if j < len(data)]
+        # Detect intraday: if more data points than calendar days
+        n_days = (data.index[-1] - data.index[0]).days + 1 if len(data) > 1 else 1
+        is_intraday = len(data) > n_days * 1.5
+        tick_fmt = '%d %b %H:%M' if is_intraday else '%d %b'
+        tick_text = [data.index[j].strftime(tick_fmt) for j in tick_vals if j < len(data)]
         tick_vals = tick_vals[:len(tick_text)]
         axis_key = 'xaxis' if axis_idx == 1 else f'xaxis{axis_idx}'
         fig.update_layout(**{axis_key: dict(tickmode='array', tickvals=tick_vals, ticktext=tick_text)})
