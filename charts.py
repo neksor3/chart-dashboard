@@ -868,13 +868,13 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
         # Axis formatting
         if tick_indices:
             axis_name = f'xaxis{chart_idx+1}' if chart_idx > 0 else 'xaxis'
-            fig.update_layout(**{axis_name: dict(tickmode='array', tickvals=tick_indices, ticktext=tick_labels, tickfont=dict(color='#888888', size=8))})
+            fig.update_layout(**{axis_name: dict(tickmode='array', tickvals=tick_indices, ticktext=tick_labels, tickfont=dict(color='#e2e8f0', size=9))})
 
         y_min, y_max = hist['Low'].min(), hist['High'].max(); pad = (y_max - y_min) * 0.08
         yref = f'yaxis{chart_idx+1}' if chart_idx > 0 else 'yaxis'
-        fig.update_layout(**{yref: dict(range=[y_min-pad, y_max+pad], side='right', tickfont=dict(size=9, color='#888888'))})
+        fig.update_layout(**{yref: dict(range=[y_min-pad, y_max+pad], side='right', tickfont=dict(size=9, color='#94a3b8'))})
         xref = f'xaxis{chart_idx+1}' if chart_idx > 0 else 'xaxis'
-        fig.update_layout(**{xref: dict(range=[-2, len(hist)-1+int(len(hist)*0.4)])})
+        fig.update_layout(**{xref: dict(range=[-2, len(hist)-1+int(len(hist)*0.12)])})
 
         pd_dec = 4 if '=X' in symbol else 2
         fig.add_annotation(x=1.02, y=current_price,
@@ -903,16 +903,16 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
 
     _t = get_theme()
     _pbg = _t.get('plot_bg', '#121212'); _grd = _t.get('grid', '#1f1f1f')
-    _axl = _t.get('axis_line', '#2a2a2a'); _tk = _t.get('tick', '#888888')
+    _axl = _t.get('axis_line', '#2a2a2a')
     _tpl = 'plotly_white' if _t.get('mode') == 'light' else 'plotly_dark'
 
-    fig.update_layout(template=_tpl, height=1100 if mobile else 950, margin=dict(l=40,r=80,t=50,b=30),
+    fig.update_layout(template=_tpl, height=1100 if mobile else 850, margin=dict(l=40,r=80,t=50,b=20),
         showlegend=False, plot_bgcolor=_pbg, paper_bgcolor=_pbg,
         dragmode='pan', hovermode='closest', autosize=True)
-    fig.update_xaxes(gridcolor=_grd, linecolor=_axl, tickfont=dict(color=_tk, size=8),
-        showgrid=True, showticklabels=True, tickangle=-45, rangeslider=dict(visible=False),
+    fig.update_xaxes(gridcolor=_grd, linecolor=_axl, tickfont=dict(color='#e2e8f0', size=9),
+        showgrid=True, showticklabels=True, tickangle=0, rangeslider=dict(visible=False),
         fixedrange=False, showspikes=True, spikecolor='#475569', spikethickness=0.5, spikedash='dot', spikemode='across')
-    fig.update_yaxes(gridcolor=_grd, linecolor=_axl, showgrid=True, side='right',
+    fig.update_yaxes(gridcolor=_grd, linecolor=_axl, showgrid=True, side='right', tickfont=dict(color='#94a3b8', size=9),
         fixedrange=False, showspikes=True, spikecolor='#475569', spikethickness=0.5, spikedash='dot', spikemode='across')
 
     return fig, computed_levels
