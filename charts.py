@@ -787,11 +787,13 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                 prev_b = boundaries[-2]; prev_mid = (prev_b.prev_high + prev_b.prev_low) / 2
                 ps, pe = prev_b.idx, boundary_idx
                 if pe > ps and chart_type == 'line':
-                    plot_line(x_vals[ps:pe], hist['Close'].values[ps:pe], ps, hist.index[ps:pe], color='rgba(255,255,255,0.5)', width=1.5)
+                    prev_zone = get_zone(hist['Close'].iloc[pe-1], prev_b.prev_high, prev_b.prev_low, prev_mid)
+                    prev_color = t['pos'] if prev_zone in ('above_high', 'above_mid') else t['neg']
+                    plot_line(x_vals[ps:pe], hist['Close'].values[ps:pe], ps, hist.index[ps:pe], color=prev_color, width=1.5)
 
             first_tracked = boundaries[-2].idx if len(boundaries) >= 2 else boundary_idx
             if first_tracked > 0 and chart_type == 'line':
-                plot_line(x_vals[:first_tracked], hist['Close'].values[:first_tracked], 0, hist.index[:first_tracked], color='rgba(255,255,255,0.3)', width=1.2)
+                plot_line(x_vals[:first_tracked], hist['Close'].values[:first_tracked], 0, hist.index[:first_tracked], color='rgba(255,255,255,0.25)', width=1.0)
 
             if boundary_idx < len(hist) and chart_type == 'line':
                 plot_line(x_vals[boundary_idx:], hist['Close'].values[boundary_idx:], boundary_idx, hist.index[boundary_idx:], color=line_color, width=2.0)
@@ -825,7 +827,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
         num_boundaries = min(2, len(boundaries))
         for j in range(num_boundaries):
             b = boundaries[-(j+1)]; px = b.idx; ex = len(hist)-1 if j == 0 else boundaries[-1].idx
-            fig.add_vline(x=px, line=dict(color='rgba(255,255,255,0.08)', width=0.5, dash='dot'), row=row, col=col)
+            fig.add_vline(x=px, line=dict(color='rgba(255,255,255,0.15)', width=0.8, dash='dot'), row=row, col=col)
             ml = (b.prev_high + b.prev_low) / 2
             fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_high]*2, mode='lines', line=dict(color=zc['above_high'], width=0.9), showlegend=False, hovertemplate=f'High: {b.prev_high:.2f}<extra></extra>'), row=row, col=col)
             fig.add_trace(go.Scatter(x=[px,ex], y=[b.prev_low]*2, mode='lines', line=dict(color=zc['below_low'], width=0.9), showlegend=False, hovertemplate=f'Low: {b.prev_low:.2f}<extra></extra>'), row=row, col=col)
@@ -892,7 +894,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
         txt = str(ann.text) if hasattr(ann, 'text') else ''
         if txt in title_labels:
             status = chart_statuses.get(idx, ''); rsi = chart_rsis.get(idx, np.nan)
-            parts = [f"<span style='color:#f8fafc;font-weight:700'>{_clean_sym}</span>  {txt}"]
+            parts = [f"{_clean_sym}  {txt}"]
             if not np.isnan(rsi):
                 rc = zc['above_mid'] if rsi > 50 else zc['below_low']
                 parts.append(f"<span style='color:{rc};font-size:9px'>RSI {rsi:.0f}</span>")
