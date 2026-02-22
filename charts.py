@@ -638,8 +638,8 @@ def render_scanner_table(metrics, selected_symbol):
         c = zc.get(status, _mut)
         if status == 'above_high': ico = f"<span style='color:{c};font-weight:700;font-size:8px'>▲</span>"
         elif status == 'below_low': ico = f"<span style='color:{c};font-weight:700;font-size:8px'>▼</span>"
-        if reversal == 'buy': ico += f"<span style='color:{pos_c};font-size:8px'>●</span>"
-        elif reversal == 'sell': ico += f"<span style='color:{neg_c};font-size:8px'>●</span>"
+        if reversal == 'buy': ico += f"<span style='color:{pos_c};font-size:10px'>●</span>"
+        elif reversal == 'sell': ico += f"<span style='color:{neg_c};font-size:10px'>●</span>"
         return f"<span style='display:inline-block;width:20px;text-align:left;vertical-align:middle;margin-left:2px'>{ico}</span>"
 
     def _chg(val, status, reversal=''):
@@ -681,7 +681,11 @@ def render_scanner_table(metrics, selected_symbol):
             <th style='{th}text-align:left' rowspan='2'></th><th style='{th}' rowspan='2'>PRICE</th>
             <th style='{th}border-bottom:none' colspan='4'>CHANGE</th>
             <th style='{th}' rowspan='2'>HV</th><th style='{th}' rowspan='2'>DD</th>
+            <th style='{th}' rowspan='2'>TREND</th>
+            <th style='{th}border-bottom:none' colspan='4'>SHARPE</th>
         </tr><tr>
+            <th style='{th}'>DAY</th><th style='{th}'>WTD</th>
+            <th style='{th}'>MTD</th><th style='{th}'>YTD</th>
             <th style='{th}'>DAY</th><th style='{th}'>WTD</th>
             <th style='{th}'>MTD</th><th style='{th}'>YTD</th>
         </tr></thead><tbody>"""
@@ -706,6 +710,11 @@ def render_scanner_table(metrics, selected_symbol):
             <td style='{td}text-align:center;white-space:nowrap'>{_chg(m.change_ytd, m.year_status, m.year_reversal)}</td>
             <td style='{td}text-align:center'>{hv}</td>
             <td style='{td}text-align:center'>{dd}</td>
+            <td style='{td}text-align:center;white-space:nowrap'>{_trend(m)}</td>
+            <td style='{td}text-align:center'>{_sharpe(m.day_sharpe)}</td>
+            <td style='{td}text-align:center'>{_sharpe(m.wtd_sharpe)}</td>
+            <td style='{td}text-align:center'>{_sharpe(m.mtd_sharpe)}</td>
+            <td style='{td}text-align:center'>{_sharpe(m.ytd_sharpe)}</td>
         </tr>"""
     html += "</tbody></table></div>"
     st.markdown(html, unsafe_allow_html=True)
