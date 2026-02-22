@@ -112,34 +112,30 @@ def main():
         <style>
             @keyframes sanpo-sweep {{ from {{ transform: rotate(0deg); }} to {{ transform: rotate(360deg); }} }}
             @keyframes sanpo-glow {{ 0%,100% {{ filter: drop-shadow(0 0 3px {pos_c}40); }} 50% {{ filter: drop-shadow(0 0 8px {pos_c}90); }} }}
-            @keyframes sanpo-core {{ 0%,100% {{ r: 2.5; }} 6% {{ r: 3.5; }} 18% {{ r: 2.6; }} }}
-            @keyframes sanpo-halo {{ 0%,80%,100% {{ opacity: 0.0; }} 6% {{ opacity: 0.30; }} 20% {{ opacity: 0.10; }} 40% {{ opacity: 0.03; }} }}
-            @keyframes sanpo-ring {{ 0%,80%,100% {{ opacity: 0.06; }} 8% {{ opacity: 0.50; }} 20% {{ opacity: 0.20; }} 40% {{ opacity: 0.10; }} 60% {{ opacity: 0.06; }} }}
-            @keyframes sanpo-dot-sm {{ 0%,80%,100% {{ r: 0.6; opacity: 0; }} 8% {{ r: 1.3; opacity: 0.75; }} 15% {{ r: 1.0; opacity: 0.40; }} 30% {{ r: 0.8; opacity: 0.10; }} 50% {{ r: 0.7; opacity: 0.08; }} 75% {{ r: 0.6; opacity: 0.04; }} }}
-            @keyframes sanpo-dot-md {{ 0%,80%,100% {{ r: 0.9; opacity: 0; }} 8% {{ r: 1.8; opacity: 0.80; }} 15% {{ r: 1.5; opacity: 0.45; }} 30% {{ r: 1.2; opacity: 0.12; }} 50% {{ r: 1.0; opacity: 0.08; }} 75% {{ r: 0.9; opacity: 0.04; }} }}
-            @keyframes sanpo-dot-lg {{ 0%,80%,100% {{ r: 1.2; opacity: 0; }} 8% {{ r: 2.5; opacity: 0.85; }} 15% {{ r: 2.1; opacity: 0.50; }} 30% {{ r: 1.7; opacity: 0.15; }} 50% {{ r: 1.4; opacity: 0.10; }} 75% {{ r: 1.2; opacity: 0.04; }} }}
+            @keyframes sanpo-core {{ 0%,100% {{ r: 2.5; }} 50% {{ r: 3.0; }} }}
+            @keyframes sanpo-ring {{ 0%,100% {{ opacity: 0.08; }} 50% {{ opacity: 0.15; }} }}
+            @keyframes sanpo-d1 {{ 0%,70%,100% {{ r: 0.5; opacity: 0; }} 20% {{ r: 1.4; opacity: 0.8; }} 40% {{ r: 0.9; opacity: 0.15; }} }}
+            @keyframes sanpo-d2 {{ 0%,65%,100% {{ r: 0.6; opacity: 0; }} 25% {{ r: 1.2; opacity: 0.7; }} 45% {{ r: 0.8; opacity: 0.1; }} }}
+            @keyframes sanpo-d3 {{ 0%,75%,100% {{ r: 0.8; opacity: 0; }} 15% {{ r: 1.8; opacity: 0.85; }} 35% {{ r: 1.1; opacity: 0.15; }} }}
+            @keyframes sanpo-d4 {{ 0%,60%,100% {{ r: 0.7; opacity: 0; }} 30% {{ r: 1.6; opacity: 0.75; }} 50% {{ r: 1.0; opacity: 0.1; }} }}
+            @keyframes sanpo-d5 {{ 0%,80%,100% {{ r: 1.0; opacity: 0; }} 10% {{ r: 2.2; opacity: 0.9; }} 30% {{ r: 1.4; opacity: 0.2; }} 60% {{ r: 1.1; opacity: 0.04; }} }}
+            @keyframes sanpo-d6 {{ 0%,70%,100% {{ r: 1.1; opacity: 0; }} 18% {{ r: 2.4; opacity: 0.85; }} 40% {{ r: 1.5; opacity: 0.15; }} }}
         </style>
         <div style='display:flex;align-items:center;gap:14px;padding:6px 0'>
             <svg width="56" height="56" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
-                <!-- Rings: pulse outward from core -->
-                <circle cx="20" cy="20" r="6"  stroke="#334155" style="animation:sanpo-ring 8s ease-out infinite 0.5s"/>
-                <circle cx="20" cy="20" r="12" stroke="#334155" style="animation:sanpo-ring 8s ease-out infinite 1.2s"/>
-                <circle cx="20" cy="20" r="18" stroke="#334155" style="animation:sanpo-ring 8s ease-out infinite 2.0s"/>
-                <!-- Core: heartbeat pump -->
-                <circle cx="20" cy="20" r="4.5" fill="{pos_c}" style="animation:sanpo-halo 8s ease-out infinite 0.0s"/>
-                <circle cx="20" cy="20" fill="{pos_c}" style="animation:sanpo-core 8s ease-out infinite 0.0s"/>
+                <circle cx="20" cy="20" r="6"  stroke="#334155" style="animation:sanpo-ring 6s ease-in-out infinite"/>
+                <circle cx="20" cy="20" r="12" stroke="#334155" style="animation:sanpo-ring 6s ease-in-out infinite 1s"/>
+                <circle cx="20" cy="20" r="18" stroke="#334155" style="animation:sanpo-ring 6s ease-in-out infinite 2s"/>
+                <circle cx="20" cy="20" fill="{pos_c}" style="animation:sanpo-core 5s ease-in-out infinite"/>
                 <!-- Sweep line -->
                 <line x1="20" y1="20" x2="20" y2="2" stroke="url(#sanpoSweepG)" stroke-width="1.2" stroke-linecap="round" style="animation:sanpo-sweep 4s linear infinite;transform-origin:20px 20px"/>
-                <!-- 6 dots: invisible → bloom → linger decay. Tiered by ring. -->
-                <!-- Inner ring r≈6: both at 0.7s -->
-                <circle cx="23.0" cy="14.8" fill="{pos_c}" style="animation:sanpo-dot-sm 8s ease-out infinite 0.7s"/>
-                <circle cx="17.0" cy="25.2" fill="{neg_c}" style="animation:sanpo-dot-sm 8s ease-out infinite 0.7s"/>
-                <!-- Mid ring r≈12: both at 1.5s -->
-                <circle cx="31.3" cy="24.1" fill="{pos_c}" style="animation:sanpo-dot-md 8s ease-out infinite 1.5s"/>
-                <circle cx="8.7"  cy="15.9" fill="{neg_c}" style="animation:sanpo-dot-md 8s ease-out infinite 1.5s"/>
-                <!-- Outer ring r≈18: both at 2.5s -->
-                <circle cx="35.6" cy="11.0" fill="{pos_c}" style="animation:sanpo-dot-lg 8s ease-out infinite 2.5s"/>
-                <circle cx="4.4"  cy="29.0" fill="{neg_c}" style="animation:sanpo-dot-lg 8s ease-out infinite 2.5s"/>
+                <!-- 6 dots: each independent cycle + delay -->
+                <circle cx="23.0" cy="14.8" fill="{pos_c}" style="animation:sanpo-d1 3.7s ease-out infinite 0.3s"/>
+                <circle cx="17.0" cy="25.2" fill="{neg_c}" style="animation:sanpo-d2 5.1s ease-out infinite 1.8s"/>
+                <circle cx="31.3" cy="24.1" fill="{pos_c}" style="animation:sanpo-d3 4.3s ease-out infinite 0.9s"/>
+                <circle cx="8.7"  cy="15.9" fill="{neg_c}" style="animation:sanpo-d4 6.2s ease-out infinite 2.5s"/>
+                <circle cx="35.6" cy="11.0" fill="{pos_c}" style="animation:sanpo-d5 5.8s ease-out infinite 0.1s"/>
+                <circle cx="4.4"  cy="29.0" fill="{neg_c}" style="animation:sanpo-d6 4.9s ease-out infinite 3.2s"/>
                 <defs><linearGradient id="sanpoSweepG" x1="20" y1="20" x2="20" y2="3">
                     <stop offset="0%" stop-color="{pos_c}" stop-opacity="0.6"/>
                     <stop offset="100%" stop-color="{pos_c}" stop-opacity="0"/>
