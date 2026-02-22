@@ -1155,8 +1155,8 @@ def render_charts_tab(is_mobile, est):
     _hdr_mut = t.get('muted', '#475569')
     _chart_hdr = (
         f"<div style='padding:8px 12px;background:{_hdr_bg};"
-        f"border-left:2px solid {pos_c};font-family:{FONTS};border-radius:4px;margin-top:8px'>"
-        f"<span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{_ds}</span>"
+        f"border-left:2px solid {pos_c};font-family:{FONTS};border-radius:4px 4px 0 0'>"
+        f"<span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{_ds} CHARTS</span>"
         f"<span style='color:{_hdr_mut};font-size:10px;margin-left:6px;font-weight:400'>{_fn}</span></div>")
 
     # Charts + Levels + News
