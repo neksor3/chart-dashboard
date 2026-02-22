@@ -758,44 +758,22 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             elif price > mid: return 'above_mid'
             else: return 'below_mid'
 
-        def _hex_to_rgba(hex_color, alpha=0.12):
-            h = hex_color.lstrip('#')
-            if len(h) == 3: h = ''.join(c*2 for c in h)
-            r, g, b = int(h[:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-            return f'rgba({r},{g},{b},{alpha})'
-
-        # Compute chart floor for area fill (bottom of visible range)
-        chart_y_floor = hist['Low'].min() - (hist['High'].max() - hist['Low'].min()) * 0.08
-
-        def plot_colored_segments(x_data, closes, high, low, mid, start_offset=0, datetimes=None):
-            zones = [get_zone(c, high, low, mid) for c in closes]
-            # Zone-colored fill polygons (underneath)
-            i = 0
-            while i < len(zones):
-                zone = zones[i]; start_i = i
-                while i < len(zones) and zones[i] == zone: i += 1
-                seg_end = min(i + 1, len(closes))
-                seg_x = x_data[start_i:seg_end] if isinstance(x_data, list) else list(range(start_offset+start_i, start_offset+seg_end))
-                seg_y = list(closes[start_i:seg_end])
-                seg_color = zc[zone]
-                poly_x = list(seg_x) + list(reversed(seg_x))
-                poly_y = seg_y + [chart_y_floor] * len(seg_x)
-                fig.add_trace(go.Scatter(x=poly_x, y=poly_y, fill='toself',
-                    fillcolor=_hex_to_rgba(seg_color, 0.15), line=dict(width=0),
-                    showlegend=False, hoverinfo='skip'), row=row, col=col)
-            # One continuous white line on top (no segment breaks)
+        def plot_line(x_data, closes, start_offset=0, datetimes=None, color='rgba(255,255,255,0.85)', width=1.8):
+            """Single clean line — no fill, no segments."""
             all_x = x_data if isinstance(x_data, list) else list(range(start_offset, start_offset+len(closes)))
             all_y = list(closes)
             all_dt = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in datetimes] if datetimes is not None else None
             hover = '%{customdata}<br>%{y:.2f}<extra></extra>' if all_dt else '%{y:.2f}<extra></extra>'
             fig.add_trace(go.Scatter(x=all_x, y=all_y, mode='lines',
-                line=dict(color='rgba(255,255,255,0.85)', width=1.8),
+                line=dict(color=color, width=width, shape='spline', smoothing=0.3),
                 showlegend=False, customdata=all_dt, hovertemplate=hover), row=row, col=col)
 
         if boundaries:
             last_b = boundaries[-1]
             mid = (last_b.prev_high + last_b.prev_low) / 2
-            line_color = zc[get_zone(current_price, last_b.prev_high, last_b.prev_low, mid)]
+            zone_status = get_zone(current_price, last_b.prev_high, last_b.prev_low, mid)
+            # Line color matches theme: green above mid, amber below
+            line_color = t['pos'] if zone_status in ('above_high', 'above_mid') else t['neg']
             boundary_idx = last_b.idx
 
             if chart_type == 'bars':
@@ -808,21 +786,17 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             if len(boundaries) >= 2:
                 prev_b = boundaries[-2]; prev_mid = (prev_b.prev_high + prev_b.prev_low) / 2
                 ps, pe = prev_b.idx, boundary_idx
-                if pe > ps:
-                    if chart_type == 'line':
-                        plot_colored_segments(x_vals[ps:pe], hist['Close'].values[ps:pe], prev_b.prev_high, prev_b.prev_low, prev_mid, ps, hist.index[ps:pe])
+                if pe > ps and chart_type == 'line':
+                    prev_zone = get_zone(hist['Close'].iloc[pe-1], prev_b.prev_high, prev_b.prev_low, prev_mid)
+                    prev_color = t['pos'] if prev_zone in ('above_high', 'above_mid') else t['neg']
+                    plot_line(x_vals[ps:pe], hist['Close'].values[ps:pe], ps, hist.index[ps:pe], color=prev_color, width=1.5)
 
             first_tracked = boundaries[-2].idx if len(boundaries) >= 2 else boundary_idx
             if first_tracked > 0 and chart_type == 'line':
-                dt_labels = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in hist.index[:first_tracked]]
-                pre_x = x_vals[:first_tracked]; pre_y = list(hist['Close'].values[:first_tracked])
-                poly_x = pre_x + list(reversed(pre_x))
-                poly_y = pre_y + [chart_y_floor] * len(pre_x)
-                fig.add_trace(go.Scatter(x=poly_x, y=poly_y, fill='toself', fillcolor='rgba(148,163,184,0.06)', line=dict(width=0), showlegend=False, hoverinfo='skip'), row=row, col=col)
-                fig.add_trace(go.Scatter(x=pre_x, y=pre_y, mode='lines', line=dict(color='rgba(148,163,184,0.5)', width=1.5), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
+                plot_line(x_vals[:first_tracked], hist['Close'].values[:first_tracked], 0, hist.index[:first_tracked], color='rgba(148,163,184,0.4)', width=1.2)
 
             if boundary_idx < len(hist) and chart_type == 'line':
-                plot_colored_segments(x_vals[boundary_idx:], hist['Close'].values[boundary_idx:], last_b.prev_high, last_b.prev_low, mid, boundary_idx, hist.index[boundary_idx:])
+                plot_line(x_vals[boundary_idx:], hist['Close'].values[boundary_idx:], boundary_idx, hist.index[boundary_idx:], color=line_color, width=2.0)
 
         elif not boundaries:
             if chart_type == 'bars':
@@ -832,12 +806,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                     increasing_fillcolor=t['pos'], decreasing_fillcolor=t['neg'],
                     showlegend=False, line=dict(width=1)), row=row, col=col)
             else:
-                dt_labels = [dt.strftime('%d %b %H:%M') if boundary_type == 'session' else dt.strftime('%d %b %Y') for dt in hist.index]
-                fb_y = list(hist['Close'].values)
-                poly_x = x_vals + list(reversed(x_vals))
-                poly_y = fb_y + [chart_y_floor] * len(x_vals)
-                fig.add_trace(go.Scatter(x=poly_x, y=poly_y, fill='toself', fillcolor='rgba(148,163,184,0.06)', line=dict(width=0), showlegend=False, hoverinfo='skip'), row=row, col=col)
-                fig.add_trace(go.Scatter(x=x_vals, y=fb_y, mode='lines', line=dict(color='rgba(148,163,184,0.5)', width=1.5), showlegend=False, customdata=dt_labels, hovertemplate='%{customdata}<br>%{y:.2f}<extra></extra>'), row=row, col=col)
+                plot_line(x_vals, hist['Close'].values, 0, hist.index, color='rgba(148,163,184,0.5)', width=1.5)
 
         if boundaries:
             zone_status = get_zone(current_price, last_b.prev_high, last_b.prev_low, mid)
@@ -1108,11 +1077,11 @@ def render_charts_tab(is_mobile, est):
             key='scanner_sort', label_visibility='collapsed')
     with col_ct:
         st.markdown(f"<div style='{_lbl}'>CHART</div>", unsafe_allow_html=True)
-        chart_options = ['Area', 'Bars']
+        chart_options = ['Line', 'Bars']
         ct_idx = 0 if st.session_state.chart_type == 'line' else 1
         ct = st.selectbox("Chart", chart_options, index=ct_idx,
             key='chart_select', label_visibility='collapsed')
-        st.session_state.chart_type = 'line' if ct == 'Area' else 'bars'
+        st.session_state.chart_type = 'line' if ct == 'Line' else 'bars'
 
     # Fetch data
     with st.spinner('Loading market data...'):
