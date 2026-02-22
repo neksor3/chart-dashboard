@@ -1145,20 +1145,20 @@ def render_charts_tab(is_mobile, est):
         with col_bars:
             render_return_bars(metrics, sort_by)
 
-    # Chart header
+    # Chart header markup (reused below)
     _sym = st.session_state.symbol
     _ds = clean_symbol(_sym); _fn = SYMBOL_NAMES.get(_sym, _sym)
     _hdr_bg = t.get('bg3', '#1a2744'); _bdr = t.get('border', '#1e293b')
     _hdr_mut = t.get('muted', '#475569')
-    st.markdown(
+    _chart_hdr = (
         f"<div style='padding:8px 12px;background:linear-gradient(90deg,{pos_c}12,{_hdr_bg});"
         f"border-left:2px solid {pos_c};font-family:{FONTS};border-radius:4px;margin-top:8px'>"
         f"<span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{_ds}</span>"
-        f"<span style='color:{_hdr_mut};font-size:10px;margin-left:6px;font-weight:400'>{_fn}</span></div>",
-        unsafe_allow_html=True)
+        f"<span style='color:{_hdr_mut};font-size:10px;margin-left:6px;font-weight:400'>{_fn}</span></div>")
 
     # Charts + Levels + News
     if is_mobile:
+        st.markdown(_chart_hdr, unsafe_allow_html=True)
         with st.spinner('Loading charts...'):
             try:
                 fig, levels = create_4_chart_grid(st.session_state.symbol, st.session_state.chart_type, mobile=True)
@@ -1170,6 +1170,7 @@ def render_charts_tab(is_mobile, est):
     else:
         col_charts, col_right = st.columns([55, 45])
         with col_charts:
+            st.markdown(_chart_hdr, unsafe_allow_html=True)
             with st.spinner('Loading charts...'):
                 try:
                     fig, levels = create_4_chart_grid(st.session_state.symbol, st.session_state.chart_type, mobile=False)
