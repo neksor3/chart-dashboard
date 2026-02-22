@@ -878,21 +878,22 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
                 fig.add_trace(go.Scatter(x=rx, y=((rh+last_b.prev_low)/2).values, mode='lines', line=dict(color='#be185d', width=0.6, dash='dot'), showlegend=False, hovertemplate='Retrace Buy: %{y:.2f}<extra></extra>'), row=row, col=col)
                 fig.add_trace(go.Scatter(x=rx, y=((rl+last_b.prev_high)/2).values, mode='lines', line=dict(color='#0369a1', width=0.6, dash='dot'), showlegend=False, hovertemplate='Retrace Sell: %{y:.2f}<extra></extra>'), row=row, col=col)
 
-        # Reversal dots — wick rejection only: High pierces level high but Close stays below,
-        # or Low pierces level low but Close stays above
+        # Reversal dots — close-to-close failed breakout only:
+        # Bar N closes above high, Bar N+1 closes back below → dot at N+1
+        # Bar N closes below low, Bar N+1 closes back above → dot at N+1
         if boundaries:
             rev_x, rev_y = [], []
             bi = last_b.idx; ph, pl = last_b.prev_high, last_b.prev_low
-            for j in range(bi, len(hist)):
-                h_j = hist['High'].iloc[j]; l_j = hist['Low'].iloc[j]; c_j = hist['Close'].iloc[j]
-                if h_j > ph and c_j <= ph: rev_x.append(j); rev_y.append(c_j)
-                elif l_j < pl and c_j >= pl: rev_x.append(j); rev_y.append(c_j)
+            for j in range(bi, len(hist) - 1):
+                c0 = hist['Close'].iloc[j]; c1 = hist['Close'].iloc[j + 1]
+                if c0 > ph and c1 <= ph: rev_x.append(j + 1); rev_y.append(c1)
+                elif c0 < pl and c1 >= pl: rev_x.append(j + 1); rev_y.append(c1)
             if len(boundaries) >= 2:
                 pb = boundaries[-2]; end_i = last_b.idx
-                for j in range(pb.idx, end_i):
-                    h_j = hist['High'].iloc[j]; l_j = hist['Low'].iloc[j]; c_j = hist['Close'].iloc[j]
-                    if h_j > pb.prev_high and c_j <= pb.prev_high: rev_x.append(j); rev_y.append(c_j)
-                    elif l_j < pb.prev_low and c_j >= pb.prev_low: rev_x.append(j); rev_y.append(c_j)
+                for j in range(pb.idx, end_i - 1):
+                    c0 = hist['Close'].iloc[j]; c1 = hist['Close'].iloc[j + 1]
+                    if c0 > pb.prev_high and c1 <= pb.prev_high: rev_x.append(j + 1); rev_y.append(c1)
+                    elif c0 < pb.prev_low and c1 >= pb.prev_low: rev_x.append(j + 1); rev_y.append(c1)
             if rev_x:
                 fig.add_trace(go.Scatter(x=rev_x, y=rev_y, mode='markers',
                     marker=dict(color='#facc15', size=5, symbol='circle', line=dict(color='#92400e', width=0.8)),
@@ -903,21 +904,15 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
             axis_name = f'xaxis{chart_idx+1}' if chart_idx > 0 else 'xaxis'
             fig.update_layout(**{axis_name: dict(tickmode='array', tickvals=tick_indices, ticktext=tick_labels, tickfont=dict(color='#e2e8f0', size=9))})
 
-        # X-range: focus current period = ~60% of visible chart
+        # X-range: last data point at ~60% of visible chart width
         xref = f'xaxis{chart_idx+1}' if chart_idx > 0 else 'xaxis'
-        if boundaries:
-            cur_len = max(len(hist) - last_b.idx, 1)
-            visible_total = max(int(cur_len / 0.6), cur_len + 10)
-            x_start = max(len(hist) - visible_total, 0)
-            x_end = len(hist) - 1 + int(cur_len * 0.15)
-        else:
-            x_start = 0
-            x_end = len(hist) - 1 + int(len(hist) * 0.12)
-        fig.update_layout(**{xref: dict(range=[x_start - 2, x_end])})
+        x_left = -2
+        last_bar = len(hist) - 1
+        x_right = x_left + int((last_bar - x_left) / 0.6)
+        fig.update_layout(**{xref: dict(range=[x_left, x_right])})
 
-        # Y-axis range: based on visible portion only
-        visible_hist = hist.iloc[max(x_start, 0):]
-        y_low_vals = visible_hist['Low'].dropna(); y_high_vals = visible_hist['High'].dropna()
+        # Y-axis range
+        y_low_vals = hist['Low'].dropna(); y_high_vals = hist['High'].dropna()
         if len(y_low_vals) > 10:
             y_min = y_low_vals.quantile(0.005); y_max = y_high_vals.quantile(0.995)
         else:
