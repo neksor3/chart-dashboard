@@ -911,13 +911,19 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
 
         # X-range: last data point at ~60% of visible chart width
         xref = f'xaxis{chart_idx+1}' if chart_idx > 0 else 'xaxis'
-        x_left = -2
         last_bar = len(hist) - 1
+        if boundary_type == 'session' and boundaries and len(boundaries) >= 2:
+            # Zoom to prev session + current session only
+            x_left = boundaries[-2].idx - 2
+        else:
+            x_left = -2
         x_right = x_left + int((last_bar - x_left) / 0.6)
         fig.update_layout(**{xref: dict(range=[x_left, x_right])})
 
-        # Y-axis range
-        y_low_vals = hist['Low'].dropna(); y_high_vals = hist['High'].dropna()
+        # Y-axis range — fit to visible data only
+        visible_start = max(0, x_left)
+        visible_hist = hist.iloc[visible_start:]
+        y_low_vals = visible_hist['Low'].dropna(); y_high_vals = visible_hist['High'].dropna()
         if len(y_low_vals) > 10:
             y_min = y_low_vals.quantile(0.005); y_max = y_high_vals.quantile(0.995)
         else:
