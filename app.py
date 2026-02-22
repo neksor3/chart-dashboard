@@ -167,14 +167,14 @@ def main():
     with tab_charts:
         render_charts_tab(is_mobile, est)
 
-    # Global auto-refresh aligned to :00 :15 :30 :45
+    # Global auto-refresh aligned to :00 :30
     from streamlit.components.v1 import html as st_html
     st_html("""<script>
     (function(){
         var now=new Date(), m=now.getMinutes(), s=now.getSeconds(), ms=now.getMilliseconds();
-        var next15=15-m%15;
-        var delay=(next15*60-s)*1000-ms;
-        if(delay<5000) delay+=900000;
+        var next30=30-m%30;
+        var delay=(next30*60-s)*1000-ms;
+        if(delay<5000) delay+=1800000;
         setTimeout(function(){window.parent.location.reload()}, delay);
     })();
     </script>""", height=0)

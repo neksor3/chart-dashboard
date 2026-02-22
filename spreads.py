@@ -63,7 +63,7 @@ LOOKBACK_OPTIONS = {
     '520 Days': 520,
 }
 
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def fetch_sector_spread_data(sector, lookback_days=0):
     symbols = FUTURES_GROUPS.get(sector, [])
     if not symbols: return None

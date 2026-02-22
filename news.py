@@ -73,7 +73,7 @@ def _fetch_with_ua(url, timeout=10):
     except Exception:
         return None
 
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def fetch_rss_feed(name, url):
     try:
         # Try with browser user-agent first (needed for Nikkei, etc)

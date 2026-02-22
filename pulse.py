@@ -95,7 +95,7 @@ SPARKLINE_SYMBOLS = ['ES=F', 'BTC-USD', 'GC=F', 'CL=F', 'ZN=F']
 
 # ── FETCH ────────────────────────────────────────────────────────────────────
 
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def _fetch_pulse_batch():
     all_syms = list(HERO_SYMBOLS.keys())
     for syms in HEATMAP_SECTORS.values():
@@ -128,7 +128,7 @@ def _fetch_pulse_batch():
     return result
 
 
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def _fetch_sparklines():
     result = {}
     for sym in SPARKLINE_SYMBOLS:
@@ -232,15 +232,15 @@ def _render_market_status_bar():
     for m in markets:
         # Dot color: red for SG, blue for US (always their color, brighter when open)
         dot_c = m['dot_color']
-        glow = f'box-shadow:0 0 6px {dot_c}80;' if m['open'] else ''
-        pulse = 'animation:pulse-dot 2s ease-in-out infinite;' if m['open'] else f'opacity:0.6;'
+        glow = ''
+        pulse = ''
         # Country name: strong text
         nc = ('#0f172a' if is_light else '#f8fafc') if m['open'] else ('#64748b' if is_light else '#f8fafc')
         # Time: always visible
         tc = ('#334155' if is_light else '#f8fafc') if m['open'] else ('#94a3b8' if is_light else '#f8fafc')
         dots += (
             f"<div style='display:flex;align-items:center;gap:4px'>"
-            f"<div style='width:6px;height:6px;border-radius:50%;background:{dot_c};{glow}{pulse}'></div>"
+            f"<div style='width:6px;height:6px;border-radius:50%;background:{dot_c}'></div>"
             f"<span style='color:{nc};font-size:9px;font-weight:600;letter-spacing:0.06em'>{m['name']}</span>"
             f"<span style='color:{tc};font-size:9px;font-weight:600'>{m['time']}</span>"
             f"</div>"

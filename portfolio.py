@@ -79,7 +79,7 @@ SCORE_TO_RANK = {
 # DATA FETCHING
 # =============================================================================
 
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=1800, show_spinner=False)
 def fetch_symbol_history(symbols_tuple, days=1800):
     symbols = list(symbols_tuple)
     if not symbols: return None, []
