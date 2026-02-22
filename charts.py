@@ -763,7 +763,7 @@ def create_4_chart_grid(symbol, chart_type='line', mobile=False):
 
         if boundary_type == 'session':
             tick_indices = [i for i, dt in enumerate(hist.index) if dt.minute == 0 and dt.hour % 4 == 0]
-            tick_labels = [hist.index[i].strftime('%H:%M') for i in tick_indices]
+            tick_labels = [hist.index[i].strftime('%d %b') if hist.index[i].hour == 0 else hist.index[i].strftime('%H:%M') for i in tick_indices]
         elif boundary_type == 'week':
             n = 8; tick_indices = list(range(0, len(hist), max(1, len(hist)//n)))
             tick_labels = [hist.index[i].strftime('%a %d') for i in tick_indices]
