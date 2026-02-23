@@ -27,6 +27,7 @@ NEWS_FEEDS = {
         ('STI Index', 'https://news.google.com/rss/search?q=Straits+Times+Index+STI&hl=en&gl=SG&ceid=SG:en'),
         ('Amova MBH', 'https://news.google.com/rss/search?q=Singapore+corporate+bonds+investment+grade+HDB+Temasek+UOB+LTA&hl=en&gl=SG&ceid=SG:en'),
         ('SG T-Bill', 'https://news.google.com/rss/search?q=Singapore+T-bill+rate+MAS+government+securities&hl=en&gl=SG&ceid=SG:en'),
+        ('CPF', 'https://news.google.com/rss/search?q=CPF+Singapore+Central+Provident+Fund+interest+rate&hl=en&gl=SG&ceid=SG:en'),
     ],
     'Local': [
         ('CNA', 'https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6511'),
