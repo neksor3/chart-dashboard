@@ -139,19 +139,8 @@ def render_news_panel(region, feeds, max_items=20, max_height='75vh'):
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
-def _render_portfolio_header(label):
-    """Small header for the right-column portfolio news sections."""
-    t = get_theme(); pos_c = t['pos']
-    _hdr_bg = t.get('bg3', '#131b2e')
-    st.markdown(
-        f"<div style='padding:5px 10px;background:{_hdr_bg};border-left:2px solid {pos_c};"
-        f"border-radius:4px 4px 0 0;font-family:{FONTS}'>"
-        f"<span style='color:#f8fafc;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{label}</span></div>",
-        unsafe_allow_html=True,
-    )
-
 def render_news_tab(is_mobile):
-    # Left: general news tabs | Right: portfolio news stacked
+    # Left: general news tabs | Right: portfolio news tabs
     left, right = st.columns([3, 2])
 
     with left:
@@ -162,8 +151,8 @@ def render_news_tab(is_mobile):
                 render_news_panel(region, NEWS_FEEDS[region])
 
     with right:
-        _render_portfolio_header('MACRO')
-        render_news_panel('Macro', NEWS_FEEDS['Macro'], max_items=12, max_height='35vh')
-        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
-        _render_portfolio_header('SINGAPORE')
-        render_news_panel('Singapore', NEWS_FEEDS['Singapore'], max_items=12, max_height='35vh')
+        portfolio_tabs = ['Macro', 'Singapore']
+        tabs = st.tabs(portfolio_tabs)
+        for tab, region in zip(tabs, portfolio_tabs):
+            with tab:
+                render_news_panel(region, NEWS_FEEDS[region])
