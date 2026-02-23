@@ -27,6 +27,8 @@ NEWS_FEEDS = {
         ('STI Index', 'https://news.google.com/rss/search?q=Straits+Times+Index+STI&hl=en&gl=SG&ceid=SG:en'),
         ('Amova MBH', 'https://news.google.com/rss/search?q=Singapore+corporate+bonds+investment+grade+HDB+Temasek+UOB+LTA&hl=en&gl=SG&ceid=SG:en'),
         ('SG T-Bill', 'https://news.google.com/rss/search?q=Singapore+T-bill+rate+MAS+government+securities&hl=en&gl=SG&ceid=SG:en'),
+    ],
+    'CPF': [
         ('CPF', 'https://news.google.com/rss/search?q=CPF+Singapore+Central+Provident+Fund+interest+rate&hl=en&gl=SG&ceid=SG:en'),
     ],
     'Local': [
@@ -156,7 +158,7 @@ def render_news_tab(is_mobile):
                 render_news_panel(region, NEWS_FEEDS[region])
 
     with right:
-        portfolio_tabs = ['Macro', 'Singapore']
+        portfolio_tabs = ['Macro', 'Singapore', 'CPF']
         tabs = st.tabs(portfolio_tabs)
         for tab, region in zip(tabs, portfolio_tabs):
             with tab:
