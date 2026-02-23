@@ -102,13 +102,13 @@ def fetch_rss_feed(name, url):
         logger.warning(f"RSS error [{name}]: {e}")
         return []
 
-def render_news_panel(region, feeds, max_items=20):
-    """Render a single news feed with equal source representation."""
+def render_news_panel(region, feeds, max_items=20, max_height='75vh'):
+    """Render a single news feed — compact rows matching charts panel."""
     t = get_theme(); pos_c = t['pos']
     _body_bg = t.get('bg2', '#0f1522')
-    _bdr = t.get('border', '#1e293b'); _txt = t.get('text', '#e2e8f0')
+    _bdr = t.get('border', '#1e293b')
     _mut = t.get('muted', '#4a5568'); _link_c = t.get('text', '#c9d1d9')
-    _row_alt = '#131d2e'
+    _row_alt = t.get('bg3', '#131b2e')
 
     # Fetch all items, sort by date then source
     all_items = []
@@ -117,30 +117,53 @@ def render_news_panel(region, feeds, max_items=20):
     all_items.sort(key=lambda x: (x['date'], x['source']), reverse=True)
     all_items = all_items[:max_items]
 
-    html = f"<div style='background:{_body_bg};border:1px solid {_bdr};border-radius:4px;max-height:75vh;overflow-y:auto'>"
+    html = f"<div style='background:{_body_bg};border:1px solid {_bdr};border-radius:4px;max-height:{max_height};overflow-y:auto'>"
     if not all_items:
-        html += f"<div style='padding:16px;color:{_mut};font-size:11px;font-family:{FONTS};text-align:center'>Feeds loading…</div>"
+        html += f"<div style='padding:12px;color:{_mut};font-size:10px;font-family:{FONTS};text-align:center'>Feeds loading…</div>"
     else:
         _txt2 = t.get('text2', '#94a3b8')
         _accent = t.get('accent', pos_c)
         for i, item in enumerate(all_items):
             bg = _body_bg if i % 2 == 0 else _row_alt
-            title_el = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:12px;font-weight:500'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:12px'>{item['title']}</span>"
+            title_el = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:10.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:10.5px'>{item['title']}</span>"
             html += (
-                f"<div style='padding:4px 10px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
-                f"display:flex;align-items:baseline;gap:8px;white-space:nowrap;overflow:hidden'>"
-                f"<span style='font-size:10px;flex-shrink:0;width:200px;display:flex;gap:6px;align-items:baseline'>"
-                f"<span style='color:{_accent};font-weight:600'>{item['source']}</span>"
-                f"<span style='color:{_txt2}'>{item['date']}</span></span>"
+                f"<div style='padding:3px 10px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
+                f"display:flex;align-items:baseline;gap:0;white-space:nowrap;overflow:hidden'>"
+                f"<span style='flex-shrink:0;width:100px;text-align:left'>"
+                f"<span style='color:{_accent};font-weight:600;font-size:9px'>{item['source']}</span></span>"
+                f"<span style='flex-shrink:0;width:60px;text-align:left'>"
+                f"<span style='color:{_txt2};font-size:9px'>{item['date']}</span></span>"
                 f"<span style='overflow:hidden;text-overflow:ellipsis'>{title_el}</span>"
                 f"</div>"
             )
     html += "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
+def _render_portfolio_header(label):
+    """Small header for the right-column portfolio news sections."""
+    t = get_theme(); pos_c = t['pos']
+    _hdr_bg = t.get('bg3', '#131b2e')
+    st.markdown(
+        f"<div style='padding:5px 10px;background:{_hdr_bg};border-left:2px solid {pos_c};"
+        f"border-radius:4px 4px 0 0;font-family:{FONTS}'>"
+        f"<span style='color:#f8fafc;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{label}</span></div>",
+        unsafe_allow_html=True,
+    )
+
 def render_news_tab(is_mobile):
-    regions = list(NEWS_FEEDS.keys())
-    tabs = st.tabs(regions)
-    for tab, region in zip(tabs, regions):
-        with tab:
-            render_news_panel(region, NEWS_FEEDS[region])
+    # Left: general news tabs | Right: portfolio news stacked
+    left, right = st.columns([3, 2])
+
+    with left:
+        general_tabs = ['Local', 'Regional', 'World', 'Tech']
+        tabs = st.tabs(general_tabs)
+        for tab, region in zip(tabs, general_tabs):
+            with tab:
+                render_news_panel(region, NEWS_FEEDS[region])
+
+    with right:
+        _render_portfolio_header('MACRO')
+        render_news_panel('Macro', NEWS_FEEDS['Macro'], max_items=12, max_height='35vh')
+        st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+        _render_portfolio_header('SINGAPORE')
+        render_news_panel('Singapore', NEWS_FEEDS['Singapore'], max_items=12, max_height='35vh')
