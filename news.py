@@ -136,9 +136,9 @@ def render_news_panel(region, feeds, max_items=20, max_height='75vh'):
             html += (
                 f"<div style='padding:3px 10px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
                 f"display:flex;align-items:baseline;gap:0;white-space:nowrap;overflow:hidden'>"
-                f"<span style='flex-shrink:0;width:100px;text-align:left'>"
+                f"<span style='flex-shrink:0;width:70px;text-align:left;overflow:hidden;text-overflow:ellipsis'>"
                 f"<span style='color:{_accent};font-weight:600;font-size:9px'>{item['source']}</span></span>"
-                f"<span style='flex-shrink:0;width:60px;text-align:left'>"
+                f"<span style='flex-shrink:0;width:55px;text-align:left'>"
                 f"<span style='color:{_txt2};font-size:9px'>{item['date']}</span></span>"
                 f"<span style='overflow:hidden;text-overflow:ellipsis'>{title_el}</span>"
                 f"</div>"
@@ -148,7 +148,7 @@ def render_news_panel(region, feeds, max_items=20, max_height='75vh'):
 
 def render_news_tab(is_mobile):
     # Left: general news tabs | Right: portfolio news tabs
-    left, right = st.columns([3, 2])
+    left, right = st.columns([1, 1])
 
     with left:
         general_tabs = ['Local', 'Regional', 'World', 'Tech']
