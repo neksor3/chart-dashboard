@@ -90,13 +90,17 @@ def fetch_rss_feed(name, url):
             if not title or 'shareholders are encouraged' in title.lower():
                 continue
             date_str = ''
+            sort_key = ''
             if pub:
                 try:
                     from email.utils import parsedate_to_datetime
-                    date_str = parsedate_to_datetime(pub).strftime('%d %b %H:%M')
+                    dt = parsedate_to_datetime(pub)
+                    date_str = dt.strftime('%d %b %H:%M')
+                    sort_key = dt.isoformat()
                 except Exception:
                     date_str = pub[:16]
-            items.append({'title': html_escape(title), 'url': link, 'date': date_str, 'source': name})
+                    sort_key = ''
+            items.append({'title': html_escape(title), 'url': link, 'date': date_str, 'sort_key': sort_key, 'source': name})
         return items
     except Exception as e:
         logger.warning(f"RSS error [{name}]: {e}")
@@ -114,7 +118,7 @@ def render_news_panel(region, feeds, max_items=20, max_height='75vh'):
     all_items = []
     for name, url in feeds:
         all_items.extend(fetch_rss_feed(name, url))
-    all_items.sort(key=lambda x: (x['date'], x['source']), reverse=True)
+    all_items.sort(key=lambda x: x.get('sort_key', ''), reverse=True)
     all_items = all_items[:max_items]
 
     html = f"<div style='background:{_body_bg};border:1px solid {_bdr};border-radius:4px;max-height:{max_height};overflow-y:auto'>"
