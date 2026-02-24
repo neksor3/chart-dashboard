@@ -98,7 +98,7 @@ def fetch_rss_feed(name, url):
                 try:
                     from email.utils import parsedate_to_datetime
                     dt = parsedate_to_datetime(pub)
-                    date_str = dt.strftime('%d %b %H:%M')
+                    date_str = dt.strftime('%d %b')
                     sort_key = dt.isoformat()
                 except Exception:
                     date_str = pub[:16]
@@ -135,10 +135,10 @@ def render_news_panel(region, feeds, max_items=20, max_height='75vh'):
             title_el = f"<a href='{item['url']}' target='_blank' style='color:{_link_c};text-decoration:none;font-size:10.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis'>{item['title']}</a>" if item['url'] else f"<span style='color:{_link_c};font-size:10.5px'>{item['title']}</span>"
             html += (
                 f"<div style='padding:3px 10px;border-bottom:1px solid {_bdr}10;font-family:{FONTS};background:{bg};"
-                f"display:flex;align-items:baseline;gap:0;white-space:nowrap;overflow:hidden'>"
-                f"<span style='flex-shrink:0;width:70px;text-align:left;overflow:hidden;text-overflow:ellipsis'>"
+                f"display:flex;align-items:baseline;gap:6px;white-space:nowrap;overflow:hidden'>"
+                f"<span style='flex-shrink:0;width:65px;overflow:hidden;text-overflow:ellipsis'>"
                 f"<span style='color:{_accent};font-weight:600;font-size:9px'>{item['source']}</span></span>"
-                f"<span style='flex-shrink:0;width:55px;text-align:left'>"
+                f"<span style='flex-shrink:0;width:38px'>"
                 f"<span style='color:{_txt2};font-size:9px'>{item['date']}</span></span>"
                 f"<span style='overflow:hidden;text-overflow:ellipsis'>{title_el}</span>"
                 f"</div>"
