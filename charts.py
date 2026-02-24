@@ -1070,7 +1070,7 @@ def render_news_panel(symbol):
             src_html = f"<span style='color:{pos_c};font-weight:600;font-size:9px'>{p}</span>" if p else ""
             date_html = f"<span style='color:{_mut};font-size:9px'>{d}</span>" if d else ""
             html += (
-                f"<div style='padding:5px 12px;border-bottom:1px solid {_bdr_ln}10;font-family:{FONTS};background:{row_bg};"
+                f"<div style='padding:3px 10px;border-bottom:1px solid {_bdr_ln}10;font-family:{FONTS};background:{row_bg};"
                 f"display:flex;align-items:baseline;gap:0;white-space:nowrap;overflow:hidden'>"
                 f"<span style='flex-shrink:0;width:100px;text-align:left'>{src_html}</span>"
                 f"<span style='flex-shrink:0;width:60px;text-align:left'>{date_html}</span>"
