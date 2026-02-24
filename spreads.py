@@ -67,8 +67,9 @@ LOOKBACK_OPTIONS = {
 def fetch_sector_spread_data(sector, lookback_days=0):
     symbols = FUTURES_GROUPS.get(sector, [])
     if not symbols: return None
-    # Short lookbacks use 1h bars resampled to 4h for better granularity
-    use_intraday = lookback_days in (-1, 5)
+
+    # Determine start date and whether to try intraday bars
+    try_intraday = lookback_days in (-1, 5)
     if lookback_days == 0:  # YTD
         start = datetime.now().replace(month=1, day=1).strftime('%Y-%m-%d')
     elif lookback_days == -1:  # WTD: from Monday
@@ -77,34 +78,72 @@ def fetch_sector_spread_data(sector, lookback_days=0):
         start = monday.strftime('%Y-%m-%d')
     else:
         start = (datetime.now() - pd.Timedelta(days=int(lookback_days * 1.5))).strftime('%Y-%m-%d')
+
+    # For short lookbacks, also compute a wider daily start as fallback
+    if lookback_days == -1:
+        daily_start = (datetime.now() - pd.Timedelta(days=10)).strftime('%Y-%m-%d')
+    elif lookback_days == 5:
+        daily_start = (datetime.now() - pd.Timedelta(days=12)).strftime('%Y-%m-%d')
+    else:
+        daily_start = start
+
+    def _fetch(symbols, start_dt, interval='1d'):
+        df = pd.DataFrame()
+        for sym in symbols:
+            try:
+                ticker = yf.Ticker(sym)
+                hist = ticker.history(start=start_dt, interval=interval)
+                if not hist.empty:
+                    closes = hist['Close'].copy()
+                    closes.index = closes.index.tz_localize(None) if closes.index.tz else closes.index
+                    if interval == '1d':
+                        closes.index = closes.index.normalize()
+                        closes = closes.groupby(closes.index).last()
+                    df[sym] = closes
+            except Exception as e:
+                logger.debug(f"[{sym}] spread data fetch error ({interval}): {e}")
+        return df
+
+    use_intraday = False
     data = pd.DataFrame()
-    for sym in symbols:
-        try:
-            ticker = yf.Ticker(sym)
-            if use_intraday:
-                hist = ticker.history(start=start, interval='1h')
-            else:
-                hist = ticker.history(start=start)
-            if not hist.empty:
-                closes = hist['Close'].copy()
-                closes.index = closes.index.tz_localize(None) if closes.index.tz else closes.index
-                if not use_intraday:
-                    closes.index = closes.index.normalize()
-                    closes = closes.groupby(closes.index).last()
-                data[sym] = closes
-        except Exception as e:
-            logger.debug(f"[{sym}] spread data fetch error: {e}")
-    if data.empty or len(data.columns) < 2: return None
-    if use_intraday:
-        # Filter out overnight bars (00:00-05:59) where data is sparse/stale
-        data = data[data.index.hour >= 6]
-        # Resample all symbols together so they share the same 4h bins
-        data = data.resample('4h', offset='6h').last()
-    data = data.ffill().dropna()
-    # Trim to exact lookback days if not YTD and not intraday
+
+    if try_intraday:
+        # Try 1h bars first for better granularity
+        data = _fetch(symbols, start, '1h')
+        if not data.empty and len(data.columns) >= 2:
+            data = data[data.index.hour >= 6]
+            data = data.resample('4h', offset='6h').last()
+            data = data.ffill().dropna()
+            if len(data) >= 3:
+                use_intraday = True
+
+        # Fallback to daily bars if intraday didn't produce enough data
+        if not use_intraday:
+            data = _fetch(symbols, daily_start, '1d')
+    else:
+        data = _fetch(symbols, start, '1d')
+
+    if data.empty or len(data.columns) < 2:
+        return None
+
+    if not use_intraday:
+        data = data.ffill().dropna()
+
+    # Trim to exact lookback days for longer periods
     if lookback_days > 5 and len(data) > lookback_days:
         data = data.iloc[-lookback_days:]
-    if len(data) < 2: return None
+    # For WTD daily fallback, trim to this week's trading days
+    elif lookback_days == -1 and not use_intraday:
+        today = datetime.now()
+        monday = today - pd.Timedelta(days=today.weekday())
+        monday_ts = pd.Timestamp(monday.strftime('%Y-%m-%d'))
+        data = data[data.index >= monday_ts]
+    # For 5-day daily fallback, keep last 5 trading days
+    elif lookback_days == 5 and not use_intraday:
+        data = data.iloc[-5:]
+
+    if len(data) < 2:
+        return None
     data = 100 * (data / data.iloc[0])
     return data
 
@@ -378,8 +417,10 @@ def render_spreads_tab(is_mobile):
         st.markdown(f"<div style='padding:12px;color:{theme.get('muted','#475569')};font-size:11px;font-family:{FONTS}'>Need at least 2 assets with data for spread analysis</div>", unsafe_allow_html=True)
         return
 
-    # Annualization: 4h bars = 6 per day × 252 = 1512; daily = 252
-    ann_factor = 1512 if lookback_days in (-1, 5) else 252
+    # Annualization: detect actual bar frequency from data
+    n_days = (data.index[-1] - data.index[0]).days + 1 if len(data) > 1 else 1
+    is_intraday = len(data) > n_days * 1.5
+    ann_factor = 1512 if is_intraday else 252
     pairs = compute_sector_spreads(data, ann_factor)
     if not pairs:
         st.markdown(f"<div style='padding:12px;color:{theme.get('muted','#475569')};font-size:11px;font-family:{FONTS}'>No spreads computed</div>", unsafe_allow_html=True)
