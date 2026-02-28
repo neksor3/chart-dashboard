@@ -65,6 +65,9 @@ REBAL_OPTIONS = OrderedDict([
     ('Monthly', 1), ('Quarterly', 3), ('Semi-Annual', 6), ('Annual', 12),
 ])
 
+REBAL_SHORT = {1: 'Mo', 3: 'Qt', 6: 'SA', 12: 'An'}
+REBAL_LABEL = {1: 'Monthly', 3: 'Quarterly', 6: 'Semi-Annual', 12: 'Annual'}
+
 PERIOD_OPTIONS = OrderedDict([
     ('1 Year', 365), ('2 Years', 730), ('5 Years', 1825),
     ('10 Years', 3650), ('Max', 9999),
@@ -72,7 +75,7 @@ PERIOD_OPTIONS = OrderedDict([
 
 SCORE_TO_RANK = {
     'Win Rate': 'win_rate', 'Sharpe': 'sharpe', 'Sortino': 'sortino',
-    'MAR': 'mar', 'R²': 'r2', 'Composite': 'sharpe', 'Total Return': 'total_ret',
+    'MAR': 'mar', 'R\u00b2': 'r2', 'Composite': 'sharpe', 'Total Return': 'total_ret',
 }
 
 # =============================================================================
@@ -138,11 +141,10 @@ def _optimize_window_vectorized(returns_array, n_portfolios, n_assets, max_weigh
     ann_rets = np.mean(port_returns, axis=1) * 252
     ann_vols = np.std(port_returns, axis=1, ddof=1) * np.sqrt(252)
 
-    # Apply constraints as soft penalties — penalize violations instead of hard filter
     penalty = np.zeros(n_portfolios)
     if max_vol is not None and max_vol > 0:
         vol_excess = np.maximum(ann_vols - max_vol, 0)
-        penalty += vol_excess * 50  # strong penalty: 1% over = 0.5 penalty on 0-1 score
+        penalty += vol_excess * 50
     if min_ann_ret is not None:
         ret_shortfall = np.maximum(min_ann_ret - ann_rets, 0)
         penalty += ret_shortfall * 50
@@ -171,7 +173,7 @@ def _optimize_window_vectorized(returns_array, n_portfolios, n_assets, max_weigh
     elif score_type == 'MAR':
         avg_dd = _vec_avg_dd(port_returns)
         scores = np.where(avg_dd < 0, ann_rets / np.abs(avg_dd), 0)
-    elif score_type == 'R²':
+    elif score_type == 'R\u00b2':
         cum = np.cumprod(1 + port_returns, axis=1)
         n = cum.shape[1]; x = np.arange(n, dtype=float); xm = x.mean()
         ss_xx = np.sum(x * x) - n * xm * xm
@@ -194,13 +196,11 @@ def _optimize_window_vectorized(returns_array, n_portfolios, n_assets, max_weigh
     else:  # Sharpe
         scores = np.where(ann_vols > 0, ann_rets / ann_vols, 0)
 
-    # Normalize scores to 0-1 range, then apply constraint penalty
     s_min, s_max = scores.min(), scores.max()
     if s_max > s_min:
         norm_scores = (scores - s_min) / (s_max - s_min)
     else:
         norm_scores = np.ones_like(scores) * 0.5
-    # Penalty is 0 when constraints satisfied, large when violated
     final_scores = norm_scores - penalty
     return weights[np.argmax(final_scores)]
 
@@ -320,18 +320,10 @@ def _calc_oos_metrics(returns_series):
             'ytd': ytd, 'mtd': mtd, 'n_days': n, 'oos_years': round(oos_years, 1)}
 
 # =============================================================================
-# GRID SEARCH
+# EQUAL WEIGHT BENCHMARK (per rebalance frequency)
 # =============================================================================
 
-def run_walkforward_grid(symbols, score_type='Win Rate', rebal_months=3, n_portfolios=10000,
-                         fetch_days=1800, max_weight=0.50, min_weight=0.0,
-                         txn_cost=0.001, allow_short=False, progress_bar=None,
-                         max_vol=None, min_ann_ret=None):
-    data, valid = fetch_symbol_history(tuple(symbols), days=fetch_days)
-    if data is None or len(valid) < 2: return None
-    returns = data.pct_change().dropna(); n_assets = len(valid)
-
-    # Equal weight benchmark with drift + transaction costs
+def _build_eq_benchmark(returns, n_assets, rebal_months, txn_cost):
     eq_w = np.ones(n_assets) / n_assets
     if rebal_months == 1: rebal_month_set = set(range(1, 13))
     elif rebal_months == 3: rebal_month_set = {1, 4, 7, 10}
@@ -349,15 +341,43 @@ def run_walkforward_grid(symbols, score_type='Win Rate', rebal_months=3, n_portf
         if t + 1 < n_days and dates[t + 1] in eq_rebal_set:
             turnover = np.sum(np.abs(eq_w - curr_w)) / 2.0
             eq_daily[t] -= turnover * txn_cost; curr_w = eq_w.copy()
-    eq_ret = pd.Series(eq_daily, index=returns.index)
+    return pd.Series(eq_daily, index=returns.index), eq_rebal_set
+
+# =============================================================================
+# GRID SEARCH (approach x rebalance frequency)
+# =============================================================================
+
+def run_walkforward_grid(symbols, score_type='Win Rate', n_portfolios=10000,
+                         fetch_days=1800, max_weight=0.50, min_weight=0.0,
+                         txn_cost=0.001, allow_short=False, progress_bar=None,
+                         max_vol=None, min_ann_ret=None):
+    data, valid = fetch_symbol_history(tuple(symbols), days=fetch_days)
+    if data is None or len(valid) < 2: return None
+    returns = data.pct_change().dropna(); n_assets = len(valid)
+
+    # Pre-build EW benchmarks for each rebal frequency
+    eq_benchmarks = {}
+    for rebal_months in REBAL_OPTIONS.values():
+        eq_ret, eq_rebal_set = _build_eq_benchmark(returns, n_assets, rebal_months, txn_cost)
+        eq_benchmarks[rebal_months] = {'returns': eq_ret, 'rebal_set': eq_rebal_set}
 
     results = OrderedDict()
-    window_cache = {}  # shared cache: (window_name, data_len) -> best_weights
+    window_cache = {}
+
+    # Build the full grid: approach x rebal frequency
     approach_list = list(PORTFOLIO_APPROACHES.items())
-    for i, (name, approach) in enumerate(approach_list):
-        if progress_bar: progress_bar.progress((i + 1) / len(approach_list), text=f'Walk-forward: {name}')
+    rebal_list = list(REBAL_OPTIONS.items())
+    combos = [(aname, approach, rlabel, rmonths)
+              for aname, approach in approach_list
+              for rlabel, rmonths in rebal_list]
+    n_combos = len(combos)
+
+    for i, (aname, approach, rlabel, rmonths) in enumerate(combos):
+        combo_key = f"{aname} \u00b7 {rlabel}"
+        if progress_bar:
+            progress_bar.progress((i + 1) / n_combos, text=f'Walk-forward: {combo_key}')
         try:
-            wf = _walk_forward_single(returns, approach, score_type, rebal_months,
+            wf = _walk_forward_single(returns, approach, score_type, rmonths,
                                       n_portfolios, max_weight, min_weight, txn_cost, allow_short,
                                       max_vol=max_vol, min_ann_ret=min_ann_ret,
                                       window_cache=window_cache)
@@ -365,19 +385,27 @@ def run_walkforward_grid(symbols, score_type='Win Rate', rebal_months=3, n_portf
                 metrics = _calc_oos_metrics(wf['oos_returns'])
                 if metrics is not None:
                     metrics['n_rebalances'] = len(wf['weight_history'])
-                    results[name] = {'wf': wf, 'metrics': metrics}
+                    # Per-approach EW: align to this combo's OOS start
+                    oos_start = wf['oos_returns'].index[0]
+                    eq_full = eq_benchmarks[rmonths]['returns']
+                    eq_aligned = eq_full.loc[eq_full.index >= oos_start]
+                    eq_metrics = _calc_oos_metrics(eq_aligned)
+                    eq_rebal_set = eq_benchmarks[rmonths]['rebal_set']
+                    eq_n_rebals = sum(1 for d in eq_rebal_set if d >= oos_start)
+                    results[combo_key] = {
+                        'wf': wf, 'metrics': metrics,
+                        'rebal_months': rmonths, 'rebal_label': rlabel,
+                        'approach_name': aname,
+                        'eq_returns': eq_aligned, 'eq_metrics': eq_metrics,
+                        'eq_n_rebals': eq_n_rebals,
+                    }
         except Exception as e:
-            logger.warning(f"Walk-forward failed for {name}: {e}")
+            logger.warning(f"Walk-forward failed for {combo_key}: {e}")
 
     if not results: return None
-    logger.info(f"Window cache: {len(window_cache)} unique optimizations (vs ~{sum(len(a['windows']) * 30 for _, a in approach_list)} without cache)")
-    earliest_oos = min(r['wf']['oos_returns'].index[0] for r in results.values())
-    eq_trimmed = eq_ret.loc[eq_ret.index >= earliest_oos]
-    eq_metrics = _calc_oos_metrics(eq_trimmed)
-    eq_n_rebals = sum(1 for d in eq_rebal_set if d >= earliest_oos)
+    logger.info(f"Window cache: {len(window_cache)} unique optimizations across {n_combos} combos")
     return {'results': results, 'symbols': valid, 'returns': returns,
-            'eq_returns': eq_trimmed, 'eq_metrics': eq_metrics, 'eq_n_rebals': eq_n_rebals,
-            'score_type': score_type, 'rebal_months': rebal_months, 'txn_cost': txn_cost}
+            'score_type': score_type, 'txn_cost': txn_cost}
 
 # =============================================================================
 # DISPLAY: RANKING TABLE
@@ -393,31 +421,33 @@ def _fc(v, fmt='f2', neg_is_bad=True):
 
 
 def render_ranking_table(grid, rank_by='win_rate'):
-    results = grid['results']; eq = grid['eq_metrics']
+    results = grid['results']
     lower_better = {'ann_vol', 'max_dd', 'avg_dd'}
-    items = [(name, r['metrics']) for name, r in results.items()]
+    items = [(name, r['metrics'], r) for name, r in results.items()]
     reverse = rank_by not in lower_better
     items.sort(key=lambda x: x[1].get(rank_by, 0), reverse=reverse)
     best_name = items[0][0] if items else None
 
     html = f"<div style='overflow-x:auto;border:1px solid {C_BORDER};border-radius:6px'><table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>"
     html += "<thead><tr>"
-    for label, align in [('#','left'),('Approach','left'),('Win%','right'),('Sharpe','right'),
-                          ('Sortino','right'),('MAR','right'),('R²','right'),('Total','right'),
+    for label, align in [('#','left'),('Approach','left'),('Rebal','left'),('Win%','right'),('Sharpe','right'),
+                          ('Sortino','right'),('MAR','right'),('R\u00b2','right'),('Total','right'),
                           ('Ann Ret','right'),('Vol','right'),('MaxDD','right'),('YTD','right'),
                           ('OOS','right'),('Rebals','right')]:
         html += f"<th style='{TH}text-align:{align}'>{label}</th>"
     html += "</tr></thead><tbody>"
 
-    for rank, (name, m) in enumerate(items, 1):
+    for rank, (name, m, r) in enumerate(items, 1):
         is_best = name == best_name
         bg = 'rgba(96,165,250,0.08)' if is_best else 'transparent'
-        badge = f" <span style='color:{C_GOLD};font-size:9px'>★</span>" if is_best else ""
+        badge = f" <span style='color:{C_GOLD};font-size:9px'>\u2605</span>" if is_best else ""
         nc = C_GOLD if is_best else C_TXT; fw = '700' if is_best else '500'
         best_border = f'border-top:2px solid {C_GOLD};border-bottom:2px solid {C_GOLD};' if is_best else ''
+        rebal_short = REBAL_SHORT.get(r['rebal_months'], '?')
         html += f"<tr style='background:{bg};{best_border}'>"
         html += f"<td style='{TD}color:{C_MUTE}'>{rank}</td>"
-        html += f"<td style='{TD}color:{nc};font-weight:{fw}'>{name}{badge}</td>"
+        html += f"<td style='{TD}color:{nc};font-weight:{fw}'>{r['approach_name']}{badge}</td>"
+        html += f"<td style='{TD}color:{C_TXT2};font-size:10px'>{rebal_short}</td>"
         html += f"<td style='{TD}text-align:right;font-weight:700'>{_fc(m['win_rate'],'pct')}</td>"
         html += f"<td style='{TD}text-align:right'>{_fc(m['sharpe'])}</td>"
         html += f"<td style='{TD}text-align:right'>{_fc(m['sortino'])}</td>"
@@ -432,34 +462,39 @@ def render_ranking_table(grid, rank_by='win_rate'):
         html += f"<td style='{TD}text-align:right;color:{C_TXT2}'>{m['n_rebalances']}</td>"
         html += "</tr>"
 
-    # Equal weight row
-    if eq:
-        eq_rebals = grid.get('eq_n_rebals', '—')
-        html += f"<tr><td colspan='14' style='border-bottom:1px solid {C_EW};padding:0;height:0'></td></tr>"
-        html += f"<tr style='background:rgba(100,116,139,0.06)'>"
-        html += f"<td style='{TD}color:{C_MUTE}'>—</td>"
-        html += f"<td style='{TD}color:{C_TXT};font-weight:700'>◆ Equal Weight (1/N)</td>"
-        html += f"<td style='{TD}text-align:right;font-weight:700'>{_fc(eq['win_rate'],'pct')}</td>"
-        html += f"<td style='{TD}text-align:right'>{_fc(eq['sharpe'])}</td>"
-        html += f"<td style='{TD}text-align:right'>{_fc(eq['sortino'])}</td>"
-        html += f"<td style='{TD}text-align:right'>{_fc(eq['mar'])}</td>"
-        html += f"<td style='{TD}text-align:right'>{_fc(eq['r2'],'f3')}</td>"
-        html += f"<td style='{TD}text-align:right;font-weight:600'>{_fc(eq['total_ret'],'pct')}</td>"
-        html += f"<td style='{TD}text-align:right'>{_fc(eq['ann_ret'],'pct')}</td>"
-        html += f"<td style='{TD}text-align:right'>{_fc(eq['ann_vol'],'pct',False)}</td>"
-        html += f"<td style='{TD}text-align:right'>{_fc(eq['max_dd'],'pct',False)}</td>"
-        html += f"<td style='{TD}text-align:right'>{_fc(eq['ytd'],'pct')}</td>"
-        html += f"<td style='{TD}text-align:right;color:{C_TXT2}'>{eq['oos_years']}y</td>"
-        html += f"<td style='{TD}text-align:right;color:{C_TXT2}'>{eq_rebals}</td></tr>"
+    # Equal weight row — use the best approach's per-approach EW (aligned to same OOS period)
+    if best_name and items:
+        best_r = items[0][2]
+        eq = best_r['eq_metrics']
+        eq_rebals = best_r.get('eq_n_rebals', '\u2014')
+        if eq:
+            rebal_short = REBAL_SHORT.get(best_r['rebal_months'], '?')
+            html += f"<tr><td colspan='15' style='border-bottom:1px solid {C_EW};padding:0;height:0'></td></tr>"
+            html += f"<tr style='background:rgba(100,116,139,0.06)'>"
+            html += f"<td style='{TD}color:{C_MUTE}'>\u2014</td>"
+            html += f"<td style='{TD}color:{C_TXT};font-weight:700'>\u25c6 Equal Weight (1/N)</td>"
+            html += f"<td style='{TD}color:{C_TXT2};font-size:10px'>{rebal_short}</td>"
+            html += f"<td style='{TD}text-align:right;font-weight:700'>{_fc(eq['win_rate'],'pct')}</td>"
+            html += f"<td style='{TD}text-align:right'>{_fc(eq['sharpe'])}</td>"
+            html += f"<td style='{TD}text-align:right'>{_fc(eq['sortino'])}</td>"
+            html += f"<td style='{TD}text-align:right'>{_fc(eq['mar'])}</td>"
+            html += f"<td style='{TD}text-align:right'>{_fc(eq['r2'],'f3')}</td>"
+            html += f"<td style='{TD}text-align:right;font-weight:600'>{_fc(eq['total_ret'],'pct')}</td>"
+            html += f"<td style='{TD}text-align:right'>{_fc(eq['ann_ret'],'pct')}</td>"
+            html += f"<td style='{TD}text-align:right'>{_fc(eq['ann_vol'],'pct',False)}</td>"
+            html += f"<td style='{TD}text-align:right'>{_fc(eq['max_dd'],'pct',False)}</td>"
+            html += f"<td style='{TD}text-align:right'>{_fc(eq['ytd'],'pct')}</td>"
+            html += f"<td style='{TD}text-align:right;color:{C_TXT2}'>{eq['oos_years']}y</td>"
+            html += f"<td style='{TD}text-align:right;color:{C_TXT2}'>{eq_rebals}</td></tr>"
 
-        # Delta row
-        if best_name and items:
+            # Delta row
             best_m = items[0][1]
             higher_better = {'win_rate','sharpe','sortino','mar','r2','total_ret','ann_ret','ytd'}
-            html += f"<tr><td colspan='14' style='border-bottom:1px solid {C_EW};padding:0;height:0'></td></tr>"
+            html += f"<tr><td colspan='15' style='border-bottom:1px solid {C_EW};padding:0;height:0'></td></tr>"
             html += f"<tr style='background:rgba(251,191,36,0.06)'>"
-            html += f"<td style='{TD}color:{C_GOLD}'>Δ</td>"
-            html += f"<td style='{TD}color:{C_GOLD};font-weight:600'>★ vs Equal Weight</td>"
+            html += f"<td style='{TD}color:{C_GOLD}'>\u0394</td>"
+            html += f"<td style='{TD}color:{C_GOLD};font-weight:600'>\u2605 vs Equal Weight</td>"
+            html += f"<td style='{TD}'></td>"
             for key, fmt in [('win_rate','pct'),('sharpe','f2'),('sortino','f2'),('mar','f2'),
                              ('r2','f3'),('total_ret','pct'),('ann_ret','pct'),('ann_vol','pct'),
                              ('max_dd','pct'),('ytd','pct')]:
@@ -471,14 +506,14 @@ def render_ranking_table(grid, rank_by='win_rate'):
                 if fmt == 'pct': ds = f"{sign}{d*100:.1f}%"
                 elif fmt == 'f3': ds = f"{sign}{d:.3f}"
                 else: ds = f"{sign}{d:.2f}"
-                if abs(d) < 1e-6: ds = "—"; c = C_MUTE
+                if abs(d) < 1e-6: ds = "\u2014"; c = C_MUTE
                 html += f"<td style='{TD}text-align:right;color:{c};font-weight:600'>{ds}</td>"
-            html += f"<td style='{TD}text-align:right;color:{C_MUTE}'>—</td>"
-            html += f"<td style='{TD}text-align:right;color:{C_MUTE}'>—</td></tr>"
+            html += f"<td style='{TD}text-align:right;color:{C_MUTE}'>\u2014</td>"
+            html += f"<td style='{TD}text-align:right;color:{C_MUTE}'>\u2014</td></tr>"
 
     html += "</tbody></table></div>"
     st.markdown(html, unsafe_allow_html=True)
-    sorted_names = [name for name, _ in items]
+    sorted_names = [name for name, _, _ in items]
     return best_name, sorted_names
 
 # =============================================================================
@@ -526,21 +561,25 @@ def render_weights_table(grid, approach_name):
 # =============================================================================
 
 def render_oos_chart(grid, approach_name):
-    # Read theme fresh from session state every time
     theme_name = st.session_state.get('theme', 'Dark')
     theme = THEMES.get(theme_name, THEMES['Dark'])
     pos_c = theme['pos']; neg_c = theme['neg']
 
-    wf = grid['results'][approach_name]['wf']
-    oos = wf['oos_returns']; m = grid['results'][approach_name]['metrics']; eq_m = grid['eq_metrics']
-    eq_aligned = grid['eq_returns'].loc[grid['eq_returns'].index >= oos.index[0]]
+    r = grid['results'][approach_name]
+    wf = r['wf']; m = r['metrics']
+    oos = wf['oos_returns']
+    # EW aligned to this approach's OOS start
+    eq_aligned = r['eq_returns'].loc[r['eq_returns'].index >= oos.index[0]]
     opt_cum = np.cumprod(1 + oos.values); eq_cum = np.cumprod(1 + eq_aligned.values)
     opt_peak = np.maximum.accumulate(opt_cum); opt_dd = (opt_cum - opt_peak) / opt_peak
     opt_pct = (opt_cum[-1] - 1) * 100; eq_pct = (eq_cum[-1] - 1) * 100
 
-    # Concise legend — just Sharpe + Win%
-    opt_lbl = f'{approach_name} ({opt_pct:+.1f}%)  Sharpe {m["sharpe"]:.2f} · Win {m["win_rate"]*100:.0f}%'
-    eq_lbl = f'Equal Weight ({eq_pct:+.1f}%)  Sharpe {eq_m["sharpe"]:.2f} · Win {eq_m["win_rate"]*100:.0f}%'
+    # Recompute EW metrics aligned to this approach's OOS for accurate legend
+    eq_m_aligned = _calc_oos_metrics(eq_aligned) or r['eq_metrics']
+
+    rebal_lbl = r.get('rebal_label', '')
+    opt_lbl = f'{r["approach_name"]} \u00b7 {rebal_lbl} ({opt_pct:+.1f}%)  Sharpe {m["sharpe"]:.2f} \u00b7 Win {m["win_rate"]*100:.0f}%'
+    eq_lbl = f'Equal Weight ({eq_pct:+.1f}%)  Sharpe {eq_m_aligned["sharpe"]:.2f} \u00b7 Win {eq_m_aligned["win_rate"]*100:.0f}%'
 
     fig = make_subplots(rows=2, cols=1, row_heights=[0.75, 0.25], shared_xaxes=True, vertical_spacing=0.04)
     fig.add_trace(go.Scatter(x=oos.index, y=opt_cum, mode='lines', line=dict(color=pos_c, width=2),
@@ -553,7 +592,6 @@ def render_oos_chart(grid, approach_name):
             fig.add_vline(x=wh['date'], line=dict(color=C_GOLD, width=0.6, dash='dot'), opacity=0.4, row=1, col=1)
     fig.add_hline(y=1.0, line=dict(color='#1f1f1f', width=0.8, dash='dash'), row=1, col=1)
 
-    # End value annotations
     fig.add_annotation(x=oos.index[-1], y=opt_cum[-1], text=f'${opt_cum[-1]:.2f}',
         showarrow=False, xanchor='left', xshift=5,
         font=dict(size=11, color=pos_c, family=FONTS), row=1, col=1)
@@ -566,7 +604,6 @@ def render_oos_chart(grid, approach_name):
         line=dict(color=neg_c, width=1), fillcolor=f'rgba({rv},{gv},{bv},0.2)',
         name='Drawdown', showlegend=False, hovertemplate='DD: %{y:.1f}%<extra></extra>'), row=2, col=1)
 
-    # Title — use preset name instead of symbols
     params = st.session_state.get('port_params', {})
     title_name = params.get('preset_name', 'Portfolio').upper()
     fig.update_layout(template='plotly_dark', height=400, margin=dict(l=55, r=55, t=35, b=25),
@@ -577,7 +614,6 @@ def render_oos_chart(grid, approach_name):
     fig.add_annotation(text=f"<b>{title_name}</b>  <span style='font-size:10px;color:{C_GOLD}'>OOS WALK-FORWARD</span>",
         x=0.01, y=0.99, xref='paper', yref='paper', showarrow=False,
         font=dict(size=14, color='#ffffff', family=FONTS), xanchor='left', yanchor='top')
-    # White axes
     fig.update_xaxes(gridcolor='#1f1f1f', linecolor='#2a2a2a', tickfont=dict(size=9, color='#94a3b8', family=FONTS))
     fig.update_yaxes(gridcolor='#1f1f1f', linecolor='#2a2a2a', tickfont=dict(size=9, color='#94a3b8', family=FONTS), side='right')
     fig.update_yaxes(tickprefix='$', tickformat='.2f', row=1, col=1)
@@ -633,35 +669,30 @@ def render_portfolio_tab(is_mobile):
     C_POS = theme['pos']; C_NEG = theme['neg']
     _lbl = f"color:#f8fafc;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
-    # Consistent input styling across all controls
     st.markdown(f"""<style>
-        /* All selectbox displayed values */
         div[data-baseweb="select"] span,
         div[data-baseweb="select"] div[aria-selected] {{
             font-family: {FONTS} !important;
             font-size: 13px !important;
             letter-spacing: 0.01em !important;
         }}
-        /* Dropdown menu items */
         div[data-baseweb="menu"] li,
         ul[role="listbox"] li {{
             font-family: {FONTS} !important;
             font-size: 13px !important;
         }}
-        /* All text inputs */
         .stTextInput input {{
             font-family: {FONTS} !important;
             font-size: 13px !important;
             letter-spacing: 0.01em !important;
         }}
-        /* Placeholder text */
         .stTextInput input::placeholder {{
             font-family: {FONTS} !important;
             font-size: 13px !important;
         }}
     </style>""", unsafe_allow_html=True)
 
-    # Portfolio selector — use FUTURES_GROUPS (same list as Charts tab)
+    # Portfolio selector
     group_names = ['Custom'] + list(FUTURES_GROUPS.keys())
     if 'port_preset_name' not in st.session_state:
         st.session_state.port_preset_name = 'Custom'
@@ -686,25 +717,21 @@ def render_portfolio_tab(is_mobile):
         sym_input = st.text_input("Symbols", key='port_sym_input', label_visibility='collapsed',
                                    placeholder='AAPL, MSFT, GOOG, ...')
 
-    # Row 1: Objective, Rebalance, Period, Direction, Sims
-    c1, c2, c3, c4, c5 = st.columns(5)
+    # Row 1: Objective, Period, Direction, Sims (rebalance removed - now in grid)
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
         st.markdown(f"<div style='{_lbl}'>OBJECTIVE</div>", unsafe_allow_html=True)
-        score = st.selectbox("Objective", ['Win Rate', 'Composite', 'Sharpe', 'Sortino', 'MAR', 'R²', 'Total Return'],
+        score = st.selectbox("Objective", ['Win Rate', 'Composite', 'Sharpe', 'Sortino', 'MAR', 'R\u00b2', 'Total Return'],
                               key='port_score', label_visibility='collapsed')
     with c2:
-        st.markdown(f"<div style='{_lbl}'>REBALANCE</div>", unsafe_allow_html=True)
-        rebal_label = st.selectbox("Rebalance", list(REBAL_OPTIONS.keys()),
-                                    index=1, key='port_rebal', label_visibility='collapsed')
-    with c3:
         st.markdown(f"<div style='{_lbl}'>PERIOD</div>", unsafe_allow_html=True)
         period_label = st.selectbox("Period", list(PERIOD_OPTIONS.keys()),
                                      index=3, key='port_period', label_visibility='collapsed')
-    with c4:
+    with c3:
         st.markdown(f"<div style='{_lbl}'>DIRECTION</div>", unsafe_allow_html=True)
         direction = st.selectbox("Direction", ['Long Only', 'Long/Short'],
                                   key='port_direction', label_visibility='collapsed')
-    with c5:
+    with c4:
         st.markdown(f"<div style='{_lbl}'>SIMS</div>", unsafe_allow_html=True)
         _defaults = {'port_sims': '10000'}
         for k, v in _defaults.items():
@@ -760,10 +787,11 @@ def render_portfolio_tab(is_mobile):
             box-shadow: 0 1px 4px rgba(37,99,235,0.3);
         }
     </style>""", unsafe_allow_html=True)
-    run_clicked = st.button('▶  OPTIMIZE', key='port_run', type='primary')
+    n_combos = len(PORTFOLIO_APPROACHES) * len(REBAL_OPTIONS)
+    run_clicked = st.button(f'\u25b6  OPTIMIZE ({n_combos} combos)', key='port_run', type='primary')
 
     if not run_clicked and 'port_grid' not in st.session_state:
-        st.markdown(f"<div style='padding:20px;color:{C_MUTE};font-size:11px;font-family:{FONTS}'>Configure parameters and click OPTIMIZE to start walk-forward optimization</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='padding:20px;color:{C_MUTE};font-size:11px;font-family:{FONTS}'>Configure parameters and click OPTIMIZE \u00b7 grid searches {len(PORTFOLIO_APPROACHES)} approaches \u00d7 {len(REBAL_OPTIONS)} rebalance frequencies = {n_combos} combinations</div>", unsafe_allow_html=True)
         return
 
     if run_clicked:
@@ -781,21 +809,19 @@ def render_portfolio_tab(is_mobile):
         except (ValueError, TypeError): n_sims = 10000
         try: txn_cost = max(0, min(5.0, float(cost_str))) / 100.0
         except (ValueError, TypeError): txn_cost = 0.001
-        # Optional constraints
         try: max_vol = float(max_vol_str) / 100.0 if max_vol_str.strip() else None
         except (ValueError, TypeError): max_vol = None
         try: min_ann_ret = float(min_ret_str) / 100.0 if min_ret_str.strip() else None
         except (ValueError, TypeError): min_ann_ret = None
 
         allow_short = direction == 'Long/Short'
-        rebal = REBAL_OPTIONS[rebal_label]
         fetch_days = PERIOD_OPTIONS[period_label]
         n_syms = len(symbols)
         if min_wt > 0 and min_wt * n_syms > 1.0: min_wt = round(1.0 / n_syms, 4)
         if min_wt >= max_wt: min_wt = 0.0
 
-        progress = st.progress(0, text='Starting walk-forward...')
-        grid = run_walkforward_grid(symbols, score_type=score, rebal_months=rebal,
+        progress = st.progress(0, text='Starting walk-forward grid...')
+        grid = run_walkforward_grid(symbols, score_type=score,
                                      fetch_days=fetch_days, n_portfolios=n_sims,
                                      max_weight=max_wt, min_weight=min_wt,
                                      txn_cost=txn_cost, allow_short=allow_short,
@@ -804,13 +830,11 @@ def render_portfolio_tab(is_mobile):
         progress.empty()
 
         if not grid or not grid['results']:
-            st.warning('Need ≥2 assets with sufficient history for walk-forward'); return
+            st.warning('Need \u22652 assets with sufficient history for walk-forward'); return
 
         st.session_state.port_grid = grid
-        # Determine display name
         preset_name = st.session_state.get('port_preset_name', 'Custom')
         if preset_name == 'Custom' or not preset_name:
-            # Try to match symbols to a preset
             sym_set = set(symbols)
             for pname, psyms in PRESETS.items():
                 if set(psyms) == sym_set:
@@ -818,13 +842,12 @@ def render_portfolio_tab(is_mobile):
             else:
                 preset_name = 'Portfolio'
         st.session_state.port_params = {
-            'score': score, 'rebal_label': rebal_label, 'period_label': period_label,
+            'score': score, 'period_label': period_label,
             'direction': 'L/S' if allow_short else 'Long',
             'min_wt': min_wt, 'max_wt': max_wt, 'n_sims': n_sims, 'txn_cost': txn_cost,
             'max_vol': max_vol, 'min_ann_ret': min_ann_ret,
             'preset_name': preset_name,
         }
-        # Reset approach selector to winner on new run
         if 'port_view_approach' in st.session_state:
             del st.session_state.port_view_approach
 
@@ -837,37 +860,37 @@ def render_portfolio_tab(is_mobile):
 
     # 1. Approach Ranking
     constraints_str = ''
-    if params.get('max_vol'): constraints_str += f" · max vol {params['max_vol']*100:.0f}%"
-    if params.get('min_ann_ret'): constraints_str += f" · min ret {params['min_ann_ret']*100:.0f}%"
-    _section('APPROACH RANKING',
-             f"{n_app} lookbacks · {params['rebal_label']} · {params['period_label']} · "
-             f"{params['direction']} · wt {params['min_wt']*100:.0f}–{params['max_wt']*100:.0f}% · "
-             f"cost {params['txn_cost']*100:.2f}% · {params['n_sims']:,} sims · max {params['score']}{constraints_str} · all OOS")
+    if params.get('max_vol'): constraints_str += f" \u00b7 max vol {params['max_vol']*100:.0f}%"
+    if params.get('min_ann_ret'): constraints_str += f" \u00b7 min ret {params['min_ann_ret']*100:.0f}%"
+    _section('APPROACH \u00d7 REBALANCE RANKING',
+             f"{n_app} combos \u00b7 {params['period_label']} \u00b7 "
+             f"{params['direction']} \u00b7 wt {params['min_wt']*100:.0f}\u2013{params['max_wt']*100:.0f}% \u00b7 "
+             f"cost {params['txn_cost']*100:.2f}% \u00b7 {params['n_sims']:,} sims \u00b7 max {params['score']}{constraints_str} \u00b7 all OOS")
     result = render_ranking_table(grid, rank_metric)
     best_name, sorted_names = result
     if not best_name or not sorted_names: return
 
     # Approach selector — default to winner, user can pick any
-    _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
-    # Reset to winner if current selection invalid
+    _lbl2 = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
     cur = st.session_state.get('port_view_approach')
     if cur not in sorted_names:
         st.session_state.port_view_approach = sorted_names[0]
     sel_col, _ = st.columns([3, 5])
     with sel_col:
-        st.markdown(f"<div style='{_lbl};margin-top:8px'>VIEW APPROACH</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='{_lbl2};margin-top:8px'>VIEW APPROACH</div>", unsafe_allow_html=True)
         selected_approach = st.selectbox("Approach", sorted_names,
                                           key='port_view_approach', label_visibility='collapsed')
 
     sel = grid['results'][selected_approach]; sm = sel['metrics']; swf = sel['wf']
     is_best = selected_approach == best_name
-    star = f"<span style='color:{C_GOLD}'>★</span> " if is_best else ""
+    star = f"<span style='color:{C_GOLD}'>\u2605</span> " if is_best else ""
+    rebal_lbl = sel.get('rebal_label', '')
 
     # 2. Summary bar
     st.markdown(f"""<div style='margin-top:12px;padding:5px 10px;background:{C_BG};font-family:{FONTS};border-radius:4px;
         font-size:10px;color:{C_TXT2};display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px'>
         <span>{star}<b style='color:{C_TXT}'>{selected_approach}</b>
-        &nbsp;·&nbsp;{sm['n_days']} OOS days · {sm['oos_years']}y · {sm['n_rebalances']} rebalances</span>
+        &nbsp;\u00b7&nbsp;{sm['n_days']} OOS days \u00b7 {sm['oos_years']}y \u00b7 {sm['n_rebalances']} rebalances</span>
         <span>Win% <b style='color:{C_POS}'>{sm["win_rate"]*100:.1f}%</b>
         &nbsp;Sharpe <b style='color:{C_POS}'>{sm["sharpe"]:.2f}</b>
         &nbsp;Sortino <b style='color:{C_POS}'>{sm["sortino"]:.2f}</b>
@@ -875,13 +898,13 @@ def render_portfolio_tab(is_mobile):
     </div>""", unsafe_allow_html=True)
 
     # 3. OOS Equity Curve
-    _section('OOS EQUITY CURVE', f'{selected_approach} · {params["rebal_label"]} · yellow = rebalance dates')
+    _section('OOS EQUITY CURVE', f'{selected_approach} \u00b7 yellow = rebalance dates')
     render_oos_chart(grid, selected_approach)
 
-    # 4. Monthly Returns (above weights)
-    _section('OOS MONTHLY RETURNS', f'{selected_approach} · walk-forward out-of-sample only')
+    # 4. Monthly Returns
+    _section('OOS MONTHLY RETURNS', f'{selected_approach} \u00b7 walk-forward out-of-sample only')
     render_monthly_table(swf['oos_returns'])
 
-    # 5. Current Weights (below monthly)
-    _section('CURRENT / NEXT WEIGHTS', f'{selected_approach} · optimized on all data through today · trade these')
+    # 5. Current Weights
+    _section('CURRENT / NEXT WEIGHTS', f'{selected_approach} \u00b7 optimized on all data through today \u00b7 trade these')
     render_weights_table(grid, selected_approach)
