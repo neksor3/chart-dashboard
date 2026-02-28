@@ -391,3 +391,122 @@ def render_spreads_tab(is_mobile):
 
     # Table (top 10)
     render_spread_table(sorted_pairs, theme, top_n=10)
+
+    # =================================================================
+    # SCAN ALL GROUPS — top spread from every portfolio group
+    # =================================================================
+    st.markdown(f"""<div style='margin-top:24px;padding:8px 12px;background:linear-gradient(90deg,{theme.get("muted","#64748b")}12,{theme.get("bg3","#0f172a")});
+        border-left:2px solid {theme.get("muted","#64748b")};font-family:{FONTS};border-radius:4px'>
+        <span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>SCAN ALL GROUPS</span>
+        <span style='color:{theme.get("muted","#475569")};font-size:10px;margin-left:8px'>Top spread from each portfolio group · {lookback_label}</span>
+    </div>""", unsafe_allow_html=True)
+
+    scan_clicked = st.button('▶  SCAN ALL', key='spread_scan_all', type='primary')
+
+    if scan_clicked:
+        _run_scan_all(lookback_days, lookback_label, ann_factor, theme)
+
+    elif 'spread_scan_results' in st.session_state:
+        _render_scan_results(st.session_state.spread_scan_results, theme)
+
+
+def _run_scan_all(lookback_days, lookback_label, ann_factor, theme):
+    """Scan every FUTURES_GROUPS group, pick #1 spread pair, rank across all."""
+    all_top = []
+    groups = list(FUTURES_GROUPS.items())
+    progress = st.progress(0, text='Scanning groups...')
+
+    for i, (gname, syms) in enumerate(groups):
+        progress.progress((i + 1) / len(groups), text=f'Scanning: {gname}')
+        if len(syms) < 2:
+            continue
+        try:
+            data = fetch_sector_spread_data(gname, lookback_days)
+            if data is None or len(data.columns) < 2:
+                continue
+            pairs = compute_sector_spreads(data, ann_factor)
+            if not pairs:
+                continue
+            # Sort by composite score (lowest = best)
+            pairs.sort(key=lambda x: x.get('_score', 999))
+            top = pairs[0]
+            all_top.append({
+                'group': gname,
+                'long': top['long'], 'short': top['short'],
+                'Sharpe': top['Sharpe'], 'Sortino': top['Sortino'],
+                'MAR': top['MAR'], 'R²': top['R²'], 'Win%': top['Win%'],
+                'Tot%': top['Tot%'], 'Vol%': top['Vol%'],
+                'MDD%': top['MDD%'], 'Corr': top['Corr'],
+                '_score': top['_score'],
+            })
+        except Exception as e:
+            logger.warning(f"Scan error for {gname}: {e}")
+
+    progress.empty()
+
+    if not all_top:
+        st.warning('No valid spreads found across groups')
+        return
+
+    # Global ranking by Sharpe across all groups
+    all_top.sort(key=lambda x: -x['Sharpe'])
+    st.session_state.spread_scan_results = all_top
+    _render_scan_results(all_top, theme)
+
+
+def _render_scan_results(all_top, theme):
+    """Render the scan-all summary table."""
+    pos_c = theme['pos']; neg_c = theme['neg']; short_c = theme['short']
+    _bg3 = theme.get('bg3', '#0f172a'); _bdr = theme.get('border', '#1e293b')
+    _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8')
+    _mut = theme.get('muted', '#475569')
+    th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
+    td = f"padding:5px 8px;border-bottom:1px solid {_bdr}22;"
+
+    html = f"""<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:6px;margin-top:8px'>
+    <table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
+        <thead style='background:{_bg3}'><tr>
+            <th style='{th}text-align:left'>#</th>
+            <th style='{th}text-align:left'>GROUP</th>
+            <th style='{th}text-align:left'>LONG</th>
+            <th style='{th}text-align:left'>SHORT</th>
+            <th style='{th}text-align:right'>SHARPE</th>
+            <th style='{th}text-align:right'>SORTINO</th>
+            <th style='{th}text-align:right'>MAR</th>
+            <th style='{th}text-align:right'>R²</th>
+            <th style='{th}text-align:right'>WIN%</th>
+            <th style='{th}text-align:right'>TOT%</th>
+            <th style='{th}text-align:right'>VOL%</th>
+            <th style='{th}text-align:right'>MDD%</th>
+            <th style='{th}text-align:right'>CORR</th>
+        </tr></thead><tbody>"""
+
+    for rank, p in enumerate(all_top, 1):
+        ln = SYMBOL_NAMES.get(p['long'], clean_symbol(p['long']))
+        sn = SYMBOL_NAMES.get(p['short'], clean_symbol(p['short']))
+        sh_c = pos_c if p['Sharpe'] >= 0 else neg_c
+        tot_c = pos_c if p['Tot%'] >= 0 else neg_c
+        tot_s = '+' if p['Tot%'] >= 0 else ''
+        win_c = pos_c if p['Win%'] >= 55 else (neg_c if p['Win%'] < 45 else _txt2)
+        is_top3 = rank <= 3
+        bg = f'rgba(74,222,128,0.06)' if is_top3 else 'transparent'
+        fw = '700' if is_top3 else '500'
+        gc = pos_c if is_top3 else _txt
+        html += f"""<tr style='background:{bg}'>
+            <td style='{td}color:{_mut}'>{rank}</td>
+            <td style='{td}color:{gc};font-weight:{fw}'>{p['group']}</td>
+            <td style='{td}color:{pos_c};font-weight:600'>{ln}</td>
+            <td style='{td}color:{short_c};font-weight:600'>{sn}</td>
+            <td style='{td}text-align:right'><span style='color:{sh_c};font-weight:700'>{p["Sharpe"]:.2f}</span></td>
+            <td style='{td}text-align:right;color:{_txt2}'>{p["Sortino"]:.2f}</td>
+            <td style='{td}text-align:right;color:{_txt2}'>{p["MAR"]:.2f}</td>
+            <td style='{td}text-align:right;color:{_txt2}'>{p["R²"]:.3f}</td>
+            <td style='{td}text-align:right'><span style='color:{win_c};font-weight:600'>{p["Win%"]:.0f}%</span></td>
+            <td style='{td}text-align:right'><span style='color:{tot_c};font-weight:600'>{tot_s}{p["Tot%"]:.1f}%</span></td>
+            <td style='{td}text-align:right;color:{_txt2}'>{p["Vol%"]:.1f}%</td>
+            <td style='{td}text-align:right;color:{neg_c}'>{p["MDD%"]:.1f}%</td>
+            <td style='{td}text-align:right;color:{_txt2}'>{p["Corr"]:.2f}</td>
+        </tr>"""
+
+    html += "</tbody></table></div>"
+    st.markdown(html, unsafe_allow_html=True)
