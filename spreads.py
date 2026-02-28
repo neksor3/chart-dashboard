@@ -459,6 +459,19 @@ def _run_scan_all(lookback_days, lookback_label, ann_factor, theme, scan_sort, i
         st.warning('No valid spreads found across groups')
         return
 
+    # Recompute global ranks across all groups' top pairs
+    n = len(all_top)
+    if n > 1:
+        for metric in ['Sharpe', 'Sortino', 'MAR', 'R²']:
+            vals = [p[metric] for p in all_top]
+            order = sorted(range(n), key=lambda i: -vals[i])
+            for rank, idx in enumerate(order):
+                all_top[idx][f'_{metric}_rank'] = rank + 1
+        for p in all_top:
+            p['_score'] = np.mean([p[f'_{m}_rank'] for m in ['Sharpe', 'Sortino', 'MAR', 'R²']])
+    else:
+        all_top[0]['_score'] = 1.0
+
     st.session_state.spread_scan_results = all_top
     _render_scan_all(all_top, theme, scan_sort, lookback_days, ann_factor, is_mobile)
 
