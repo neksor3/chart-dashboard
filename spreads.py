@@ -563,13 +563,9 @@ def _render_scan_table(sorted_results, theme):
 
 
 def _render_scan_charts(sorted_results, lookback_days, ann_factor, theme, is_mobile):
-    """Render top pair chart for each scanned group in a grid."""
+    """Render top pair chart for each scanned group, in batches of 6."""
     if not sorted_results:
         return
-
-    _pbg = theme.get('plot_bg', '#121212'); _grd = theme.get('grid', '#1f1f1f')
-    _axl = theme.get('axis_line', '#2a2a2a'); _tk = theme.get('tick', '#888888')
-    _mut = theme.get('muted', '#475569')
 
     # Collect chart data for each group's top pair
     chart_pairs = []
@@ -583,80 +579,91 @@ def _render_scan_charts(sorted_results, lookback_days, ann_factor, theme, is_mob
                 continue
             pairs.sort(key=lambda x: x.get('_score', 999))
             top = pairs[0]
-            chart_pairs.append({'group': r['group'], 'pair': top, 'data': data})
+            # Inject group name into pair for subtitle
+            top['_group'] = r['group']
+            chart_pairs.append({'pair': top, 'data': data})
         except Exception:
             continue
 
     if not chart_pairs:
         return
 
-    n_total = len(chart_pairs)
-    n_cols = 1 if is_mobile else min(3, n_total)
-    n_rows = (n_total + n_cols - 1) // n_cols
+    # Render in batches of 6 (3 cols × 2 rows), reusing render_spread_charts layout
+    _pbg = theme.get('plot_bg', '#121212'); _grd = theme.get('grid', '#1f1f1f')
+    _axl = theme.get('axis_line', '#2a2a2a'); _tk = theme.get('tick', '#888888')
+    _mut = theme.get('muted', '#475569')
 
-    subtitles = []
-    for cp in chart_pairs:
-        p = cp['pair']; g = cp['group']
-        ln = SYMBOL_NAMES.get(p['long'], clean_symbol(p['long']))
-        sn = SYMBOL_NAMES.get(p['short'], clean_symbol(p['short']))
-        lc = theme['long']; sc = theme['short']
-        subtitles.append(
-            f"<b>{g}</b>  <span style='color:{lc}'>■</span> {ln}  "
-            f"<span style='color:{sc}'>■</span> {sn}  "
-            f"<span style='color:#ffffff'>■</span> Spread"
-        )
-    while len(subtitles) < n_rows * n_cols:
-        subtitles.append("")
+    batch_size = 6
+    for batch_start in range(0, len(chart_pairs), batch_size):
+        batch = chart_pairs[batch_start:batch_start + batch_size]
+        n_charts = len(batch)
+        n_cols = 1 if is_mobile else min(3, n_charts)
+        n_rows = (n_charts + n_cols - 1) // n_cols
 
-    fig = make_subplots(rows=n_rows, cols=n_cols, subplot_titles=subtitles,
-        horizontal_spacing=0.06, vertical_spacing=0.18 if not is_mobile else 0.08)
+        subtitles = []
+        for cp in batch:
+            p = cp['pair']; g = p.get('_group', '')
+            ln = SYMBOL_NAMES.get(p['long'], clean_symbol(p['long']))
+            sn = SYMBOL_NAMES.get(p['short'], clean_symbol(p['short']))
+            lc = theme['long']; sc = theme['short']
+            subtitles.append(
+                f"<b>{g}</b>  <span style='color:{lc}'>■</span> {ln}  "
+                f"<span style='color:{sc}'>■</span> {sn}  "
+                f"<span style='color:#ffffff'>■</span> Spread"
+            )
+        while len(subtitles) < n_rows * n_cols:
+            subtitles.append("")
 
-    for i, cp in enumerate(chart_pairs):
-        p = cp['pair']; data = cp['data']
-        row = i // n_cols + 1; col = i % n_cols + 1
+        fig = make_subplots(rows=n_rows, cols=n_cols, subplot_titles=subtitles,
+            horizontal_spacing=0.06, vertical_spacing=0.18 if not is_mobile else 0.08)
 
-        fig.add_trace(go.Scatter(x=list(range(len(p['cum_long']))), y=p['cum_long'].values,
-            mode='lines', line=dict(color=theme['long'], width=1.3, shape='spline', smoothing=1.0),
-            showlegend=False, hovertemplate='Long: %{y:.1f}<extra></extra>'), row=row, col=col)
-        fig.add_trace(go.Scatter(x=list(range(len(p['cum_short']))), y=p['cum_short'].values,
-            mode='lines', line=dict(color=theme['short'], width=1.3, shape='spline', smoothing=1.0),
-            showlegend=False, hovertemplate='Short: %{y:.1f}<extra></extra>'), row=row, col=col)
-        fig.add_trace(go.Scatter(x=list(range(len(p['cum_spread']))), y=p['cum_spread'].values,
-            mode='lines', line=dict(color='#ffffff', width=1.5, dash='dot', shape='spline', smoothing=1.0),
-            showlegend=False, hovertemplate='Spread: %{y:.1f}<extra></extra>'), row=row, col=col)
-        fig.add_hline(y=100, line=dict(color=_grd, width=0.8, dash='dot'), row=row, col=col)
+        for i, cp in enumerate(batch):
+            p = cp['pair']; data = cp['data']
+            row = i // n_cols + 1; col = i % n_cols + 1
 
-        axis_idx = (row - 1) * n_cols + col
-        fig.add_annotation(
-            text=f"<b>{i+1}</b>", x=0.02, y=0.95,
-            xref=f"x{'' if axis_idx == 1 else axis_idx} domain",
-            yref=f"y{'' if axis_idx == 1 else axis_idx} domain",
-            showarrow=False, font=dict(size=12, color=_mut, family=FONTS),
-            xanchor='left', yanchor='top')
+            fig.add_trace(go.Scatter(x=list(range(len(p['cum_long']))), y=p['cum_long'].values,
+                mode='lines', line=dict(color=theme['long'], width=1.3, shape='spline', smoothing=1.0),
+                showlegend=False, hovertemplate='Long: %{y:.1f}<extra></extra>'), row=row, col=col)
+            fig.add_trace(go.Scatter(x=list(range(len(p['cum_short']))), y=p['cum_short'].values,
+                mode='lines', line=dict(color=theme['short'], width=1.3, shape='spline', smoothing=1.0),
+                showlegend=False, hovertemplate='Short: %{y:.1f}<extra></extra>'), row=row, col=col)
+            fig.add_trace(go.Scatter(x=list(range(len(p['cum_spread']))), y=p['cum_spread'].values,
+                mode='lines', line=dict(color='#ffffff', width=1.5, dash='dot', shape='spline', smoothing=1.0),
+                showlegend=False, hovertemplate='Spread: %{y:.1f}<extra></extra>'), row=row, col=col)
+            fig.add_hline(y=100, line=dict(color=_grd, width=0.8, dash='dot'), row=row, col=col)
 
-        n_ticks = 4; idx_step = max(1, len(data) // n_ticks)
-        tick_vals = list(range(0, len(data), idx_step))
-        if (len(data) - 1) not in tick_vals: tick_vals.append(len(data) - 1)
-        tick_text = [data.index[j].strftime('%d %b') for j in tick_vals if j < len(data)]
-        tick_vals = tick_vals[:len(tick_text)]
-        axis_key = 'xaxis' if axis_idx == 1 else f'xaxis{axis_idx}'
-        fig.update_layout(**{axis_key: dict(tickmode='array', tickvals=tick_vals, ticktext=tick_text)})
+            axis_idx = (row - 1) * n_cols + col
+            global_rank = batch_start + i + 1
+            fig.add_annotation(
+                text=f"<b>{global_rank}</b>", x=0.02, y=0.95,
+                xref=f"x{'' if axis_idx == 1 else axis_idx} domain",
+                yref=f"y{'' if axis_idx == 1 else axis_idx} domain",
+                showarrow=False, font=dict(size=12, color=_mut, family=FONTS),
+                xanchor='left', yanchor='top')
 
-    for ann in fig['layout']['annotations']:
-        xref_str = str(ann['xref']) if ann['xref'] else ''
-        if 'domain' not in xref_str:
-            ann['font'] = dict(size=10, family=FONTS)
+            n_ticks = 4; idx_step = max(1, len(data) // n_ticks)
+            tick_vals = list(range(0, len(data), idx_step))
+            if (len(data) - 1) not in tick_vals: tick_vals.append(len(data) - 1)
+            tick_text = [data.index[j].strftime('%d %b') for j in tick_vals if j < len(data)]
+            tick_vals = tick_vals[:len(tick_text)]
+            axis_key = 'xaxis' if axis_idx == 1 else f'xaxis{axis_idx}'
+            fig.update_layout(**{axis_key: dict(tickmode='array', tickvals=tick_vals, ticktext=tick_text)})
 
-    chart_h = 350 * n_rows if is_mobile else 220 * n_rows
-    fig.update_layout(
-        template='plotly_dark', height=chart_h,
-        margin=dict(l=40, r=40, t=45, b=30),
-        plot_bgcolor=_pbg, paper_bgcolor=_pbg,
-        showlegend=False, hovermode='x unified', font=dict(family=FONTS))
-    fig.update_xaxes(gridcolor=_grd, linecolor=_axl,
-        tickfont=dict(color=_tk, size=8, family=FONTS), showgrid=False, tickangle=0)
-    fig.update_yaxes(gridcolor=_grd, linecolor=_axl,
-        tickfont=dict(color=_tk, size=8, family=FONTS), side='right')
+        for ann in fig['layout']['annotations']:
+            xref_str = str(ann['xref']) if ann['xref'] else ''
+            if 'domain' not in xref_str:
+                ann['font'] = dict(size=10, family=FONTS)
 
-    st.plotly_chart(fig, use_container_width=True, config={
-        'scrollZoom': True, 'displayModeBar': False, 'responsive': True})
+        chart_h = 350 * n_rows if is_mobile else 220 * n_rows
+        fig.update_layout(
+            template='plotly_dark', height=chart_h,
+            margin=dict(l=40, r=40, t=45, b=30),
+            plot_bgcolor=_pbg, paper_bgcolor=_pbg,
+            showlegend=False, hovermode='x unified', font=dict(family=FONTS))
+        fig.update_xaxes(gridcolor=_grd, linecolor=_axl,
+            tickfont=dict(color=_tk, size=8, family=FONTS), showgrid=False, tickangle=0)
+        fig.update_yaxes(gridcolor=_grd, linecolor=_axl,
+            tickfont=dict(color=_tk, size=8, family=FONTS), side='right')
+
+        st.plotly_chart(fig, use_container_width=True, config={
+            'scrollZoom': True, 'displayModeBar': False, 'responsive': True})
