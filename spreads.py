@@ -318,52 +318,12 @@ def render_spreads_tab(is_mobile):
     pos_c = theme['pos']
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
     _bg3 = theme.get('bg3', '#0f172a'); _mut = theme.get('muted', '#475569'); _txt2 = theme.get('text2', '#94a3b8')
+    _hdr_c = '#64748b'  # slate blue for section headers
     ann_factor = 252
 
     # =================================================================
-    # SCAN ALL GROUPS (top section)
+    # SHARED CONTROLS
     # =================================================================
-    st.markdown(f"""<div style='padding:8px 12px;background:linear-gradient(90deg,{_mut}12,{_bg3});
-        border-left:2px solid {_mut};font-family:{FONTS};border-radius:4px'>
-        <span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>SCAN ALL GROUPS</span>
-        <span style='color:{_mut};font-size:10px;margin-left:8px'>Top spread from each portfolio group</span>
-    </div>""", unsafe_allow_html=True)
-
-    # Scan controls: Button + Lookback + Sort
-    if is_mobile:
-        sc1, sc2, sc3 = st.columns([2, 2, 2])
-    else:
-        sc1, sc2, sc3 = st.columns([2, 3, 3])
-
-    with sc1:
-        scan_clicked = st.button('▶  SCAN ALL', key='spread_scan_all', type='primary')
-    with sc2:
-        st.markdown(f"<div style='{_lbl}'>LOOKBACK</div>", unsafe_allow_html=True)
-        scan_lb_label = st.selectbox("Scan Lookback", list(LOOKBACK_OPTIONS.keys()), index=0,
-            key='spread_scan_lb', label_visibility='collapsed')
-        scan_lb_days = LOOKBACK_OPTIONS[scan_lb_label]
-    with sc3:
-        st.markdown(f"<div style='{_lbl}'>SORT BY</div>", unsafe_allow_html=True)
-        scan_sort_options = ['Composite', 'Sharpe', 'Sortino', 'MAR', 'R²', 'Total', 'Win Rate']
-        scan_sort = st.selectbox("Scan Sort", scan_sort_options, index=0,
-            key='spread_scan_sort', label_visibility='collapsed')
-
-    if scan_clicked:
-        _run_scan_all(scan_lb_days, scan_lb_label, ann_factor, theme, scan_sort, is_mobile)
-    elif 'spread_scan_results' in st.session_state:
-        _render_scan_all(st.session_state.spread_scan_results, theme, scan_sort,
-                         scan_lb_days, ann_factor, is_mobile)
-
-    # =================================================================
-    # SINGLE GROUP DRILL-DOWN (bottom section)
-    # =================================================================
-    st.markdown(f"""<div style='margin-top:24px;padding:8px 12px;background:linear-gradient(90deg,{pos_c}12,{_bg3});
-        border-left:2px solid {pos_c};font-family:{FONTS};border-radius:4px'>
-        <span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>GROUP DRILL-DOWN</span>
-        <span style='color:{_mut};font-size:10px;margin-left:8px'>All pairs for a single group</span>
-    </div>""", unsafe_allow_html=True)
-
-    # Drill controls: Sector + Lookback + Sort + Direction
     if is_mobile:
         col_sec, col_lb, col_sort = st.columns([2, 1, 1])
     else:
@@ -394,6 +354,32 @@ def render_spreads_tab(is_mobile):
             ascending = sort_dir == 'Asc'
     else:
         ascending = False
+
+    # =================================================================
+    # SCAN ALL GROUPS
+    # =================================================================
+    st.markdown(f"""<div style='margin-top:12px;padding:8px 12px;background:linear-gradient(90deg,{_hdr_c}18,{_bg3});
+        border-left:2px solid {_hdr_c};font-family:{FONTS};border-radius:4px'>
+        <span style='color:{_hdr_c};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>SCAN ALL GROUPS</span>
+        <span style='color:{_mut};font-size:10px;margin-left:8px'>Top spread from each portfolio group · {lookback_label}</span>
+    </div>""", unsafe_allow_html=True)
+
+    scan_clicked = st.button('▶  SCAN ALL', key='spread_scan_all', type='primary')
+
+    if scan_clicked:
+        _run_scan_all(lookback_days, lookback_label, ann_factor, theme, sort_key, is_mobile)
+    elif 'spread_scan_results' in st.session_state:
+        _render_scan_all(st.session_state.spread_scan_results, theme, sort_key,
+                         lookback_days, ann_factor, is_mobile)
+
+    # =================================================================
+    # GROUP DRILL-DOWN
+    # =================================================================
+    st.markdown(f"""<div style='margin-top:24px;padding:8px 12px;background:linear-gradient(90deg,{_hdr_c}18,{_bg3});
+        border-left:2px solid {_hdr_c};font-family:{FONTS};border-radius:4px'>
+        <span style='color:{_hdr_c};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>GROUP DRILL-DOWN</span>
+        <span style='color:{_mut};font-size:10px;margin-left:8px'>{spread_sector} · All pairs</span>
+    </div>""", unsafe_allow_html=True)
 
     # Fetch and compute single group
     with st.spinner(f'Computing {spread_sector} spreads ({lookback_label})...'):
