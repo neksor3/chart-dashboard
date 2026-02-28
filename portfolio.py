@@ -25,19 +25,6 @@ TD = f"padding:5px 8px;border-bottom:1px solid #1e293b22;"
 def _short(sym):
     return SYMBOL_NAMES.get(sym, sym.replace('=F','').replace('=X','').replace('.SI',''))
 
-# =============================================================================
-# PRESETS
-# =============================================================================
-
-PRESETS = OrderedDict([
-    ('Singapore',  ['ES3.SI', 'S68.SI', 'MBH.SI', 'MMS.SI']),
-    ('US Sectors', ['XLB', 'XLC', 'XLY', 'XLP', 'XLE', 'XLF', 'XLV', 'XLI', 'XLK', 'XLU', 'XLRE', 'SPY']),
-    ('Countries',  ['EWA', 'EWZ', 'EWC', 'GXC', 'EWQ', 'EWG', 'EWH', 'PIN', 'EWI', 'EWJ', 'EWM', 'EWW', 'EWS', 'EWY', 'EWP', 'EWT', 'EWU', 'VNM', 'KSA', 'ARGT']),
-    ('Macro',      ['DBC', 'USO', 'GLD', 'SLV', 'CPER', 'BIL', 'HYG', 'LQD', 'TLT', 'BND', 'EMB', 'EEM', 'SPY', 'BTC-USD', 'ETH-USD']),
-    ('Core 5',     ['IAU', 'VOO', 'VTI', 'SHV', 'IBIT']),
-    ('Exchanges',  ['ICE', 'NDAQ', 'CME', 'CBOE', 'X.TO', 'LSEG.L', 'DB1.DE', 'ENX.PA', '8697.T', '0388.HK', 'ASX.AX', 'S68.SI']),
-])
-
 PORTFOLIO_APPROACHES = OrderedDict([
     ('3mo',              {'windows': OrderedDict([('3mo', 63)]),
                           'blend': {'3mo': 1.0}, 'min_days': 63}),
@@ -698,7 +685,7 @@ def render_portfolio_tab(is_mobile):
     def _on_portfolio_change():
         sel = st.session_state.port_selector
         if sel != 'Custom':
-            syms = FUTURES_GROUPS.get(sel, PRESETS.get(sel, []))
+            syms = FUTURES_GROUPS.get(sel, [])
             st.session_state.port_sym_input = ', '.join(syms)
         st.session_state.port_preset_name = sel
 
@@ -839,7 +826,7 @@ def render_portfolio_tab(is_mobile):
         if preset_name == 'Custom' or not preset_name:
             # Try to match symbols to a preset
             sym_set = set(symbols)
-            for pname, psyms in PRESETS.items():
+            for pname, psyms in FUTURES_GROUPS.items():
                 if set(psyms) == sym_set:
                     preset_name = pname; break
             else:
