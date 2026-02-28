@@ -488,7 +488,7 @@ SCAN_SORT_KEYS = {
 
 
 def _render_scan_all(all_top, theme, scan_sort, lookback_days, ann_factor, is_mobile):
-    """Render scan results table + drill-down selector."""
+    """Render scan results table + top pair charts for all groups."""
     # Sort
     key, reverse = SCAN_SORT_KEYS.get(scan_sort, ('_score', False))
     sorted_results = sorted(all_top, key=lambda x: x.get(key, 0), reverse=reverse)
@@ -496,20 +496,8 @@ def _render_scan_all(all_top, theme, scan_sort, lookback_days, ann_factor, is_mo
     # Render summary table
     _render_scan_table(sorted_results, theme)
 
-    # Drill-down selector
-    group_names = [r['group'] for r in sorted_results]
-    if not group_names:
-        return
-
-    _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
-    sel_col, _ = st.columns([3, 5])
-    with sel_col:
-        st.markdown(f"<div style='{_lbl};margin-top:8px'>DRILL INTO GROUP</div>", unsafe_allow_html=True)
-        selected_group = st.selectbox("Drill", group_names,
-            key='spread_scan_drill', label_visibility='collapsed')
-
-    if selected_group:
-        _render_drill_down(selected_group, lookback_days, ann_factor, theme, is_mobile)
+    # Render top pair charts for all groups
+    _render_scan_charts(sorted_results, lookback_days, ann_factor, theme, is_mobile)
 
 
 def _render_scan_table(sorted_results, theme):
@@ -574,49 +562,101 @@ def _render_scan_table(sorted_results, theme):
     st.markdown(html, unsafe_allow_html=True)
 
 
-def _render_drill_down(group_name, lookback_days, ann_factor, theme, is_mobile):
-    """Load full spread analysis for a selected group — charts + table."""
-    _bg3 = theme.get('bg3', '#0f172a'); _mut = theme.get('muted', '#475569')
-    pos_c = theme['pos']
-
-    st.markdown(f"""<div style='margin-top:16px;padding:8px 12px;background:linear-gradient(90deg,{pos_c}12,{_bg3});
-        border-left:2px solid {pos_c};font-family:{FONTS};border-radius:4px'>
-        <span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{group_name} — ALL PAIRS</span>
-    </div>""", unsafe_allow_html=True)
-
-    data = fetch_sector_spread_data(group_name, lookback_days)
-    if data is None or len(data.columns) < 2:
-        st.markdown(f"<div style='padding:12px;color:{_mut};font-size:11px;font-family:{FONTS}'>Insufficient data for {group_name}</div>", unsafe_allow_html=True)
+def _render_scan_charts(sorted_results, lookback_days, ann_factor, theme, is_mobile):
+    """Render top pair chart for each scanned group in a grid."""
+    if not sorted_results:
         return
 
-    pairs = compute_sector_spreads(data, ann_factor)
-    if not pairs:
-        st.markdown(f"<div style='padding:12px;color:{_mut};font-size:11px;font-family:{FONTS}'>No pairs for {group_name}</div>", unsafe_allow_html=True)
+    _pbg = theme.get('plot_bg', '#121212'); _grd = theme.get('grid', '#1f1f1f')
+    _axl = theme.get('axis_line', '#2a2a2a'); _tk = theme.get('tick', '#888888')
+    _mut = theme.get('muted', '#475569')
+
+    # Collect chart data for each group's top pair
+    chart_pairs = []
+    for r in sorted_results:
+        try:
+            data = fetch_sector_spread_data(r['group'], lookback_days)
+            if data is None or len(data.columns) < 2:
+                continue
+            pairs = compute_sector_spreads(data, ann_factor)
+            if not pairs:
+                continue
+            pairs.sort(key=lambda x: x.get('_score', 999))
+            top = pairs[0]
+            chart_pairs.append({'group': r['group'], 'pair': top, 'data': data})
+        except Exception:
+            continue
+
+    if not chart_pairs:
         return
 
-    # Sort by composite
-    sorted_pairs = sort_spread_pairs(pairs, 'Composite', ascending=False)
+    n_total = len(chart_pairs)
+    n_cols = 1 if is_mobile else min(3, n_total)
+    n_rows = (n_total + n_cols - 1) // n_cols
 
-    # Info bar
-    best_long_sym = pairs[0].get('best_long_sym', '')
-    best_long_sharpe = pairs[0].get('best_long_sharpe', 0)
-    best_long_name = SYMBOL_NAMES.get(best_long_sym, clean_symbol(best_long_sym))
-    n_combos = len(pairs)
-    n_beats = sum(1 for p in pairs if p['beats_long'])
-    _txt2 = theme.get('text2', '#94a3b8')
-    beats_c = pos_c if n_beats > 0 else _mut
-    st.markdown(f"""<div style='padding:5px 10px;background-color:{_bg3};font-family:{FONTS};display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;border-radius:4px'>
-        <span style='color:{_mut};font-size:10px'>{n_combos} pairs</span>
-        <span style='color:{_txt2};font-size:10px'>
-            Best long: <span style='color:{pos_c};font-weight:600'>{best_long_name}</span>
-            <span style='color:{_mut}'>Sharpe {best_long_sharpe:.2f}</span>
-            &nbsp;·&nbsp;
-            <span style='color:{beats_c}'>{n_beats} spread{"s" if n_beats != 1 else ""} beat{"s" if n_beats == 1 else ""} it</span>
-        </span>
-    </div>""", unsafe_allow_html=True)
+    subtitles = []
+    for cp in chart_pairs:
+        p = cp['pair']; g = cp['group']
+        ln = SYMBOL_NAMES.get(p['long'], clean_symbol(p['long']))
+        sn = SYMBOL_NAMES.get(p['short'], clean_symbol(p['short']))
+        lc = theme['long']; sc = theme['short']
+        subtitles.append(
+            f"<b>{g}</b>  <span style='color:{lc}'>■</span> {ln}  "
+            f"<span style='color:{sc}'>■</span> {sn}  "
+            f"<span style='color:#ffffff'>■</span> Spread"
+        )
+    while len(subtitles) < n_rows * n_cols:
+        subtitles.append("")
 
-    # Charts (top 6)
-    render_spread_charts(sorted_pairs, data, theme, mobile=is_mobile)
+    fig = make_subplots(rows=n_rows, cols=n_cols, subplot_titles=subtitles,
+        horizontal_spacing=0.06, vertical_spacing=0.18 if not is_mobile else 0.08)
 
-    # Full table
-    render_spread_table(sorted_pairs, theme, top_n=len(sorted_pairs))
+    for i, cp in enumerate(chart_pairs):
+        p = cp['pair']; data = cp['data']
+        row = i // n_cols + 1; col = i % n_cols + 1
+
+        fig.add_trace(go.Scatter(x=list(range(len(p['cum_long']))), y=p['cum_long'].values,
+            mode='lines', line=dict(color=theme['long'], width=1.3, shape='spline', smoothing=1.0),
+            showlegend=False, hovertemplate='Long: %{y:.1f}<extra></extra>'), row=row, col=col)
+        fig.add_trace(go.Scatter(x=list(range(len(p['cum_short']))), y=p['cum_short'].values,
+            mode='lines', line=dict(color=theme['short'], width=1.3, shape='spline', smoothing=1.0),
+            showlegend=False, hovertemplate='Short: %{y:.1f}<extra></extra>'), row=row, col=col)
+        fig.add_trace(go.Scatter(x=list(range(len(p['cum_spread']))), y=p['cum_spread'].values,
+            mode='lines', line=dict(color='#ffffff', width=1.5, dash='dot', shape='spline', smoothing=1.0),
+            showlegend=False, hovertemplate='Spread: %{y:.1f}<extra></extra>'), row=row, col=col)
+        fig.add_hline(y=100, line=dict(color=_grd, width=0.8, dash='dot'), row=row, col=col)
+
+        axis_idx = (row - 1) * n_cols + col
+        fig.add_annotation(
+            text=f"<b>{i+1}</b>", x=0.02, y=0.95,
+            xref=f"x{'' if axis_idx == 1 else axis_idx} domain",
+            yref=f"y{'' if axis_idx == 1 else axis_idx} domain",
+            showarrow=False, font=dict(size=12, color=_mut, family=FONTS),
+            xanchor='left', yanchor='top')
+
+        n_ticks = 4; idx_step = max(1, len(data) // n_ticks)
+        tick_vals = list(range(0, len(data), idx_step))
+        if (len(data) - 1) not in tick_vals: tick_vals.append(len(data) - 1)
+        tick_text = [data.index[j].strftime('%d %b') for j in tick_vals if j < len(data)]
+        tick_vals = tick_vals[:len(tick_text)]
+        axis_key = 'xaxis' if axis_idx == 1 else f'xaxis{axis_idx}'
+        fig.update_layout(**{axis_key: dict(tickmode='array', tickvals=tick_vals, ticktext=tick_text)})
+
+    for ann in fig['layout']['annotations']:
+        xref_str = str(ann['xref']) if ann['xref'] else ''
+        if 'domain' not in xref_str:
+            ann['font'] = dict(size=10, family=FONTS)
+
+    chart_h = 350 * n_rows if is_mobile else 220 * n_rows
+    fig.update_layout(
+        template='plotly_dark', height=chart_h,
+        margin=dict(l=40, r=40, t=45, b=30),
+        plot_bgcolor=_pbg, paper_bgcolor=_pbg,
+        showlegend=False, hovermode='x unified', font=dict(family=FONTS))
+    fig.update_xaxes(gridcolor=_grd, linecolor=_axl,
+        tickfont=dict(color=_tk, size=8, family=FONTS), showgrid=False, tickangle=0)
+    fig.update_yaxes(gridcolor=_grd, linecolor=_axl,
+        tickfont=dict(color=_tk, size=8, family=FONTS), side='right')
+
+    st.plotly_chart(fig, use_container_width=True, config={
+        'scrollZoom': True, 'displayModeBar': False, 'responsive': True})
