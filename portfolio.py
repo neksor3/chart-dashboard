@@ -722,7 +722,7 @@ def render_portfolio_tab(is_mobile):
     with c2:
         st.markdown(f"<div style='{_lbl}'>REBALANCE</div>", unsafe_allow_html=True)
         rebal_label = st.selectbox("Rebalance", list(REBAL_OPTIONS.keys()),
-                                    index=1, key='port_rebal', label_visibility='collapsed')
+                                    index=2, key='port_rebal', label_visibility='collapsed')
     with c3:
         st.markdown(f"<div style='{_lbl}'>PERIOD</div>", unsafe_allow_html=True)
         period_label = st.selectbox("Period", list(PERIOD_OPTIONS.keys()),
