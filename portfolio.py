@@ -371,7 +371,7 @@ def run_walkforward_grid(symbols, score_type='Win Rate', rebal_months=3, n_portf
 
     if not results: return None
     logger.info(f"Window cache: {len(window_cache)} unique optimizations (vs ~{sum(len(a['windows']) * 30 for _, a in approach_list)} without cache)")
-    # Store per-approach EW metrics (aligned to each approach's OOS start)
+    # Per-approach EW: align to each approach's OOS start
     for name, r in results.items():
         oos_start = r['wf']['oos_returns'].index[0]
         eq_aligned = eq_ret.loc[eq_ret.index >= oos_start]
@@ -435,7 +435,7 @@ def render_ranking_table(grid, rank_by='win_rate'):
         html += f"<td style='{TD}text-align:right;color:{C_TXT2}'>{m['n_rebalances']}</td>"
         html += "</tr>"
 
-    # Equal weight row — aligned to the best approach's OOS period
+    # Equal weight row — aligned to best approach's OOS period
     if best_name and items:
         best_r = items[0][2]
         eq = best_r.get('eq_metrics')
@@ -538,7 +538,6 @@ def render_oos_chart(grid, approach_name):
 
     wf = grid['results'][approach_name]['wf']
     oos = wf['oos_returns']; m = grid['results'][approach_name]['metrics']
-    # Use per-approach aligned EW
     r_entry = grid['results'][approach_name]
     eq_aligned = r_entry['eq_returns'].loc[r_entry['eq_returns'].index >= oos.index[0]]
     eq_m = _calc_oos_metrics(eq_aligned) or r_entry['eq_metrics']
@@ -569,10 +568,16 @@ def render_oos_chart(grid, approach_name):
         showarrow=False, xanchor='left', xshift=5,
         font=dict(size=11, color=C_EW, family=FONTS), row=1, col=1)
 
+    # EW drawdown
+    eq_peak = np.maximum.accumulate(eq_cum); eq_dd = (eq_cum - eq_peak) / eq_peak
+
     nr = neg_c.lstrip('#'); rv, gv, bv = int(nr[:2], 16), int(nr[2:4], 16), int(nr[4:6], 16)
     fig.add_trace(go.Scatter(x=oos.index, y=opt_dd * 100, mode='lines', fill='tozeroy',
         line=dict(color=neg_c, width=1), fillcolor=f'rgba({rv},{gv},{bv},0.2)',
         name='Drawdown', showlegend=False, hovertemplate='DD: %{y:.1f}%<extra></extra>'), row=2, col=1)
+    fig.add_trace(go.Scatter(x=eq_aligned.index, y=eq_dd * 100, mode='lines',
+        line=dict(color=C_EW, width=1, dash='dot'),
+        name='EW Drawdown', showlegend=False, hovertemplate='EW DD: %{y:.1f}%<extra></extra>'), row=2, col=1)
 
     # Title — use preset name instead of symbols
     params = st.session_state.get('port_params', {})
