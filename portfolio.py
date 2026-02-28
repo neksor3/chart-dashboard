@@ -62,7 +62,7 @@ PORTFOLIO_APPROACHES = OrderedDict([
 ])
 
 REBAL_OPTIONS = OrderedDict([
-    ('Monthly', 1), ('Quarterly', 3), ('Semi-Annual', 6), ('Annual', 12),
+    ('Weekly', 0), ('Monthly', 1), ('Quarterly', 3), ('Semi-Annual', 6), ('Annual', 12),
 ])
 
 PERIOD_OPTIONS = OrderedDict([
@@ -239,16 +239,24 @@ def _walk_forward_single(returns_df, approach, score_type, rebal_months,
     n_assets = returns_df.shape[1]; mw = max_weight; mnw = min_weight
     min_is_days = max(approach['windows'].values()); dates = returns_df.index
 
-    if rebal_months == 1: rebal_month_set = set(range(1, 13))
-    elif rebal_months == 3: rebal_month_set = {1, 4, 7, 10}
-    elif rebal_months == 6: rebal_month_set = {1, 7}
-    else: rebal_month_set = {1}
+    if rebal_months == 0:
+        # Weekly: rebalance on first trading day of each week
+        candidate_dates = []; seen_weeks = set()
+        for d in dates:
+            yw = (d.year, d.isocalendar()[1])
+            if yw not in seen_weeks:
+                seen_weeks.add(yw); candidate_dates.append(d)
+    else:
+        if rebal_months == 1: rebal_month_set = set(range(1, 13))
+        elif rebal_months == 3: rebal_month_set = {1, 4, 7, 10}
+        elif rebal_months == 6: rebal_month_set = {1, 7}
+        else: rebal_month_set = {1}
 
-    candidate_dates = []; seen_months = set()
-    for d in dates:
-        ym = (d.year, d.month)
-        if ym not in seen_months and d.month in rebal_month_set:
-            seen_months.add(ym); candidate_dates.append(d)
+        candidate_dates = []; seen_months = set()
+        for d in dates:
+            ym = (d.year, d.month)
+            if ym not in seen_months and d.month in rebal_month_set:
+                seen_months.add(ym); candidate_dates.append(d)
 
     rebal_dates = []
     for d in candidate_dates:
@@ -333,14 +341,21 @@ def run_walkforward_grid(symbols, score_type='Win Rate', rebal_months=3, n_portf
 
     # Equal weight benchmark with drift + transaction costs
     eq_w = np.ones(n_assets) / n_assets
-    if rebal_months == 1: rebal_month_set = set(range(1, 13))
-    elif rebal_months == 3: rebal_month_set = {1, 4, 7, 10}
-    elif rebal_months == 6: rebal_month_set = {1, 7}
-    else: rebal_month_set = {1}
-    dates = returns.index; eq_rebal_set = set(); seen = set()
-    for d in dates:
-        ym = (d.year, d.month)
-        if ym not in seen and d.month in rebal_month_set: seen.add(ym); eq_rebal_set.add(d)
+    if rebal_months == 0:
+        # Weekly
+        dates = returns.index; eq_rebal_set = set(); seen_weeks = set()
+        for d in dates:
+            yw = (d.year, d.isocalendar()[1])
+            if yw not in seen_weeks: seen_weeks.add(yw); eq_rebal_set.add(d)
+    else:
+        if rebal_months == 1: rebal_month_set = set(range(1, 13))
+        elif rebal_months == 3: rebal_month_set = {1, 4, 7, 10}
+        elif rebal_months == 6: rebal_month_set = {1, 7}
+        else: rebal_month_set = {1}
+        dates = returns.index; eq_rebal_set = set(); seen = set()
+        for d in dates:
+            ym = (d.year, d.month)
+            if ym not in seen and d.month in rebal_month_set: seen.add(ym); eq_rebal_set.add(d)
     ret_arr = returns.values; n_days = len(ret_arr); eq_daily = np.zeros(n_days)
     curr_w = eq_w.copy()
     for t in range(n_days):
@@ -371,7 +386,7 @@ def run_walkforward_grid(symbols, score_type='Win Rate', rebal_months=3, n_portf
 
     if not results: return None
     logger.info(f"Window cache: {len(window_cache)} unique optimizations (vs ~{sum(len(a['windows']) * 30 for _, a in approach_list)} without cache)")
-    # Per-approach EW: align to each approach's OOS start
+    # Store per-approach EW metrics (aligned to each approach's OOS start)
     for name, r in results.items():
         oos_start = r['wf']['oos_returns'].index[0]
         eq_aligned = eq_ret.loc[eq_ret.index >= oos_start]
@@ -435,7 +450,7 @@ def render_ranking_table(grid, rank_by='win_rate'):
         html += f"<td style='{TD}text-align:right;color:{C_TXT2}'>{m['n_rebalances']}</td>"
         html += "</tr>"
 
-    # Equal weight row — aligned to best approach's OOS period
+    # Equal weight row — aligned to the best approach's OOS period
     if best_name and items:
         best_r = items[0][2]
         eq = best_r.get('eq_metrics')
@@ -538,11 +553,13 @@ def render_oos_chart(grid, approach_name):
 
     wf = grid['results'][approach_name]['wf']
     oos = wf['oos_returns']; m = grid['results'][approach_name]['metrics']
+    # Use per-approach aligned EW
     r_entry = grid['results'][approach_name]
     eq_aligned = r_entry['eq_returns'].loc[r_entry['eq_returns'].index >= oos.index[0]]
     eq_m = _calc_oos_metrics(eq_aligned) or r_entry['eq_metrics']
     opt_cum = np.cumprod(1 + oos.values); eq_cum = np.cumprod(1 + eq_aligned.values)
     opt_peak = np.maximum.accumulate(opt_cum); opt_dd = (opt_cum - opt_peak) / opt_peak
+    eq_peak = np.maximum.accumulate(eq_cum); eq_dd = (eq_cum - eq_peak) / eq_peak
     opt_pct = (opt_cum[-1] - 1) * 100; eq_pct = (eq_cum[-1] - 1) * 100
 
     # Concise legend — just Sharpe + Win%
@@ -567,9 +584,6 @@ def render_oos_chart(grid, approach_name):
     fig.add_annotation(x=eq_aligned.index[-1], y=eq_cum[-1], text=f'${eq_cum[-1]:.2f}',
         showarrow=False, xanchor='left', xshift=5,
         font=dict(size=11, color=C_EW, family=FONTS), row=1, col=1)
-
-    # EW drawdown
-    eq_peak = np.maximum.accumulate(eq_cum); eq_dd = (eq_cum - eq_peak) / eq_peak
 
     nr = neg_c.lstrip('#'); rv, gv, bv = int(nr[:2], 16), int(nr[2:4], 16), int(nr[4:6], 16)
     fig.add_trace(go.Scatter(x=oos.index, y=opt_dd * 100, mode='lines', fill='tozeroy',
