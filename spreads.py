@@ -191,6 +191,7 @@ def render_spread_table(pairs, theme, top_n=10):
             <th style='{th}text-align:left'>RANK</th>
             <th style='{th}text-align:left'>LONG</th>
             <th style='{th}text-align:left'>SHORT</th>
+            <th style='{th}text-align:right'>SCORE</th>
             <th style='{th}text-align:right'>SHARPE</th>
             <th style='{th}text-align:right'>SORTINO</th>
             <th style='{th}text-align:right'>MAR</th>
@@ -212,10 +213,13 @@ def render_spread_table(pairs, theme, top_n=10):
         win_c = pos_c if p['Win%'] >= 55 else (neg_c if p['Win%'] < 45 else _txt2)
         vs = f"<span style='color:{pos_c};font-weight:700'>▲</span>" if p['beats_long'] else f"<span style='color:{_mut}'>—</span>"
         bg = f'linear-gradient(90deg,{pos_c}08,{_bg3},{pos_c}08)' if p['beats_long'] else 'transparent'
+        score = p.get('_score', 0)
+        sc_c = pos_c if score <= 3 else (_txt2 if score <= 6 else _mut)
         html += f"""<tr style='background:{bg}'>
             <td style='{td}color:{_mut};text-align:left'>{rank}</td>
             <td style='{td}color:{pos_c};font-weight:600;text-align:left'>{ln}</td>
             <td style='{td}color:{short_c};font-weight:600;text-align:left'>{sn}</td>
+            <td style='{td}text-align:right;color:{sc_c};font-weight:600'>{score:.1f}</td>
             <td style='{td}text-align:right'><span style='color:{sh_c};font-weight:700'>{p["Sharpe"]:.2f}</span></td>
             <td style='{td}text-align:right;color:{_txt2}'>{p["Sortino"]:.2f}</td>
             <td style='{td}text-align:right;color:{_txt2}'>{p["MAR"]:.2f}</td>
@@ -393,25 +397,32 @@ def render_spreads_tab(is_mobile):
     render_spread_table(sorted_pairs, theme, top_n=10)
 
     # =================================================================
-    # SCAN ALL GROUPS — top spread from every portfolio group
+    # SCAN ALL GROUPS
     # =================================================================
-    st.markdown(f"""<div style='margin-top:24px;padding:8px 12px;background:linear-gradient(90deg,{theme.get("muted","#64748b")}12,{theme.get("bg3","#0f172a")});
-        border-left:2px solid {theme.get("muted","#64748b")};font-family:{FONTS};border-radius:4px'>
+    _bg3 = theme.get('bg3', '#0f172a'); _mut = theme.get('muted', '#475569')
+    st.markdown(f"""<div style='margin-top:24px;padding:8px 12px;background:linear-gradient(90deg,{_mut}12,{_bg3});
+        border-left:2px solid {_mut};font-family:{FONTS};border-radius:4px'>
         <span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>SCAN ALL GROUPS</span>
-        <span style='color:{theme.get("muted","#475569")};font-size:10px;margin-left:8px'>Top spread from each portfolio group · {lookback_label}</span>
+        <span style='color:{_mut};font-size:10px;margin-left:8px'>Top spread from each group · {lookback_label}</span>
     </div>""", unsafe_allow_html=True)
 
-    scan_clicked = st.button('▶  SCAN ALL', key='spread_scan_all', type='primary')
+    sc1, sc2 = st.columns([2, 6])
+    with sc1:
+        scan_clicked = st.button('▶  SCAN ALL', key='spread_scan_all', type='primary')
+    with sc2:
+        scan_sort_options = ['Composite', 'Sharpe', 'Sortino', 'MAR', 'R²', 'Total', 'Win Rate']
+        scan_sort = st.selectbox("Sort scan by", scan_sort_options, index=0,
+            key='spread_scan_sort', label_visibility='collapsed')
 
     if scan_clicked:
-        _run_scan_all(lookback_days, lookback_label, ann_factor, theme)
-
+        _run_scan_all(lookback_days, lookback_label, ann_factor, theme, scan_sort, is_mobile)
     elif 'spread_scan_results' in st.session_state:
-        _render_scan_results(st.session_state.spread_scan_results, theme)
+        _render_scan_all(st.session_state.spread_scan_results, theme, scan_sort,
+                         lookback_days, ann_factor, is_mobile)
 
 
-def _run_scan_all(lookback_days, lookback_label, ann_factor, theme):
-    """Scan every FUTURES_GROUPS group, pick #1 spread pair, rank across all."""
+def _run_scan_all(lookback_days, lookback_label, ann_factor, theme, scan_sort, is_mobile):
+    """Scan every group, pick #1 pair, rank across all."""
     all_top = []
     groups = list(FUTURES_GROUPS.items())
     progress = st.progress(0, text='Scanning groups...')
@@ -427,7 +438,7 @@ def _run_scan_all(lookback_days, lookback_label, ann_factor, theme):
             pairs = compute_sector_spreads(data, ann_factor)
             if not pairs:
                 continue
-            # Sort by composite score (lowest = best)
+            # Best by composite score
             pairs.sort(key=lambda x: x.get('_score', 999))
             top = pairs[0]
             all_top.append({
@@ -448,14 +459,48 @@ def _run_scan_all(lookback_days, lookback_label, ann_factor, theme):
         st.warning('No valid spreads found across groups')
         return
 
-    # Global ranking by Sharpe across all groups
-    all_top.sort(key=lambda x: -x['Sharpe'])
     st.session_state.spread_scan_results = all_top
-    _render_scan_results(all_top, theme)
+    _render_scan_all(all_top, theme, scan_sort, lookback_days, ann_factor, is_mobile)
 
 
-def _render_scan_results(all_top, theme):
-    """Render the scan-all summary table."""
+SCAN_SORT_KEYS = {
+    'Composite': ('_score', False),   # lower is better
+    'Sharpe': ('Sharpe', True),
+    'Sortino': ('Sortino', True),
+    'MAR': ('MAR', True),
+    'R²': ('R²', True),
+    'Total': ('Tot%', True),
+    'Win Rate': ('Win%', True),
+}
+
+
+def _render_scan_all(all_top, theme, scan_sort, lookback_days, ann_factor, is_mobile):
+    """Render scan results table + drill-down selector."""
+    # Sort
+    key, reverse = SCAN_SORT_KEYS.get(scan_sort, ('_score', False))
+    sorted_results = sorted(all_top, key=lambda x: x.get(key, 0), reverse=reverse)
+
+    # Render summary table
+    _render_scan_table(sorted_results, theme)
+
+    # Drill-down selector
+    group_names = [r['group'] for r in sorted_results]
+    if not group_names:
+        return
+
+    _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
+    sel_col, _ = st.columns([3, 5])
+    with sel_col:
+        st.markdown(f"<div style='{_lbl};margin-top:8px'>DRILL INTO GROUP</div>", unsafe_allow_html=True)
+        selected_group = st.selectbox("Drill", group_names,
+            key='spread_scan_drill', label_visibility='collapsed')
+
+    if selected_group:
+        _render_drill_down(selected_group, lookback_days, ann_factor, theme, is_mobile)
+
+
+def _render_scan_table(sorted_results, theme):
+    """Render the scan-all ranked summary table with Score column."""
     pos_c = theme['pos']; neg_c = theme['neg']; short_c = theme['short']
     _bg3 = theme.get('bg3', '#0f172a'); _bdr = theme.get('border', '#1e293b')
     _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8')
@@ -470,6 +515,7 @@ def _render_scan_results(all_top, theme):
             <th style='{th}text-align:left'>GROUP</th>
             <th style='{th}text-align:left'>LONG</th>
             <th style='{th}text-align:left'>SHORT</th>
+            <th style='{th}text-align:right'>SCORE</th>
             <th style='{th}text-align:right'>SHARPE</th>
             <th style='{th}text-align:right'>SORTINO</th>
             <th style='{th}text-align:right'>MAR</th>
@@ -481,13 +527,15 @@ def _render_scan_results(all_top, theme):
             <th style='{th}text-align:right'>CORR</th>
         </tr></thead><tbody>"""
 
-    for rank, p in enumerate(all_top, 1):
+    for rank, p in enumerate(sorted_results, 1):
         ln = SYMBOL_NAMES.get(p['long'], clean_symbol(p['long']))
         sn = SYMBOL_NAMES.get(p['short'], clean_symbol(p['short']))
         sh_c = pos_c if p['Sharpe'] >= 0 else neg_c
         tot_c = pos_c if p['Tot%'] >= 0 else neg_c
         tot_s = '+' if p['Tot%'] >= 0 else ''
         win_c = pos_c if p['Win%'] >= 55 else (neg_c if p['Win%'] < 45 else _txt2)
+        score = p.get('_score', 0)
+        sc_c = pos_c if score <= 3 else (_txt2 if score <= 6 else _mut)
         is_top3 = rank <= 3
         bg = f'rgba(74,222,128,0.06)' if is_top3 else 'transparent'
         fw = '700' if is_top3 else '500'
@@ -497,6 +545,7 @@ def _render_scan_results(all_top, theme):
             <td style='{td}color:{gc};font-weight:{fw}'>{p['group']}</td>
             <td style='{td}color:{pos_c};font-weight:600'>{ln}</td>
             <td style='{td}color:{short_c};font-weight:600'>{sn}</td>
+            <td style='{td}text-align:right;color:{sc_c};font-weight:600'>{score:.1f}</td>
             <td style='{td}text-align:right'><span style='color:{sh_c};font-weight:700'>{p["Sharpe"]:.2f}</span></td>
             <td style='{td}text-align:right;color:{_txt2}'>{p["Sortino"]:.2f}</td>
             <td style='{td}text-align:right;color:{_txt2}'>{p["MAR"]:.2f}</td>
@@ -510,3 +559,51 @@ def _render_scan_results(all_top, theme):
 
     html += "</tbody></table></div>"
     st.markdown(html, unsafe_allow_html=True)
+
+
+def _render_drill_down(group_name, lookback_days, ann_factor, theme, is_mobile):
+    """Load full spread analysis for a selected group — charts + table."""
+    _bg3 = theme.get('bg3', '#0f172a'); _mut = theme.get('muted', '#475569')
+    pos_c = theme['pos']
+
+    st.markdown(f"""<div style='margin-top:16px;padding:8px 12px;background:linear-gradient(90deg,{pos_c}12,{_bg3});
+        border-left:2px solid {pos_c};font-family:{FONTS};border-radius:4px'>
+        <span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>{group_name} — ALL PAIRS</span>
+    </div>""", unsafe_allow_html=True)
+
+    data = fetch_sector_spread_data(group_name, lookback_days)
+    if data is None or len(data.columns) < 2:
+        st.markdown(f"<div style='padding:12px;color:{_mut};font-size:11px;font-family:{FONTS}'>Insufficient data for {group_name}</div>", unsafe_allow_html=True)
+        return
+
+    pairs = compute_sector_spreads(data, ann_factor)
+    if not pairs:
+        st.markdown(f"<div style='padding:12px;color:{_mut};font-size:11px;font-family:{FONTS}'>No pairs for {group_name}</div>", unsafe_allow_html=True)
+        return
+
+    # Sort by composite
+    sorted_pairs = sort_spread_pairs(pairs, 'Composite', ascending=False)
+
+    # Info bar
+    best_long_sym = pairs[0].get('best_long_sym', '')
+    best_long_sharpe = pairs[0].get('best_long_sharpe', 0)
+    best_long_name = SYMBOL_NAMES.get(best_long_sym, clean_symbol(best_long_sym))
+    n_combos = len(pairs)
+    n_beats = sum(1 for p in pairs if p['beats_long'])
+    _txt2 = theme.get('text2', '#94a3b8')
+    beats_c = pos_c if n_beats > 0 else _mut
+    st.markdown(f"""<div style='padding:5px 10px;background-color:{_bg3};font-family:{FONTS};display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;border-radius:4px'>
+        <span style='color:{_mut};font-size:10px'>{n_combos} pairs</span>
+        <span style='color:{_txt2};font-size:10px'>
+            Best long: <span style='color:{pos_c};font-weight:600'>{best_long_name}</span>
+            <span style='color:{_mut}'>Sharpe {best_long_sharpe:.2f}</span>
+            &nbsp;·&nbsp;
+            <span style='color:{beats_c}'>{n_beats} spread{"s" if n_beats != 1 else ""} beat{"s" if n_beats == 1 else ""} it</span>
+        </span>
+    </div>""", unsafe_allow_html=True)
+
+    # Charts (top 6)
+    render_spread_charts(sorted_pairs, data, theme, mobile=is_mobile)
+
+    # Full table
+    render_spread_table(sorted_pairs, theme, top_n=len(sorted_pairs))
