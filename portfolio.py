@@ -279,7 +279,7 @@ def _walk_forward_single(returns_df, approach, score_type, rebal_months,
 
     if not oos_segments or len(weight_history) < 2: return None
     current_w = _optimize_at_rebalance(returns_df, approach, score_type, n_portfolios, mw, mnw, allow_short,
-                                        window_cache=window_cache)
+                                        max_vol=max_vol, min_ann_ret=min_ann_ret, window_cache=window_cache)
     if current_w is None: current_w = weight_history[-1]['weights']
     full_oos = pd.concat(oos_segments)
     return {'oos_returns': full_oos, 'weight_history': weight_history,
