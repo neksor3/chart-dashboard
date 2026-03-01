@@ -389,43 +389,83 @@ def _render_scan_table(sorted_results, theme, is_mc):
 
 
 # =============================================================================
-# WEIGHTS PER GROUP (MC only — EW is trivially 1/n)
+# WEIGHTS PER GROUP — dropdown selector
 # =============================================================================
 
 def _render_weights_all(sorted_results, theme, is_mc=False):
     import portfolio
-    pos_c = portfolio.C_POS
+    pos_c = portfolio.C_POS; neg_c = portfolio.C_NEG
     _bdr = theme.get('border', '#1e293b')
-    _txt2 = theme.get('text2', '#94a3b8')
+    _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8')
+    _mut = theme.get('muted', '#475569')
+    _lbl = f"color:#f8fafc;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
-    label = 'OPTIMIZED WEIGHTS' if is_mc else 'EQUAL WEIGHTS'
-    sub = 'Current weights per group from best approach' if is_mc else 'Equal weight (1/n) per group'
+    label = 'WEIGHTS' if is_mc else 'WEIGHTS'
+    sub = 'Optimized weights from best approach' if is_mc else 'Equal weight (1/n)'
     _section(label, sub)
 
-    for r in sorted_results:
-        gname = r.get('group', '?')
-        approach = r.get('best_approach', '') if is_mc else ''
-        syms = r.get('symbols', [])
-        n = len(syms)
-        if n == 0:
-            continue
+    group_names = [r.get('group', '?') for r in sorted_results]
+    if not group_names:
+        return
 
-        w = r.get('weights', None)
-        if is_mc and w and isinstance(w, dict) and len(w) > 0:
-            sorted_w = sorted(w.items(), key=lambda x: x[1], reverse=True)
-            parts = [f"<b>{s}</b> {v*100:.1f}%" for s, v in sorted_w]
-        else:
-            ew = 1.0 / n
-            parts = [f"<b>{s}</b> {ew*100:.1f}%" for s in syms]
+    sel_col, _ = st.columns([3, 5])
+    with sel_col:
+        st.markdown(f"<div style='{_lbl};margin-top:4px'>GROUP</div>", unsafe_allow_html=True)
+        selected = st.selectbox("Group", group_names,
+                                key='portall_wt_group', label_visibility='collapsed')
 
-        line = ' &nbsp;·&nbsp; '.join(parts)
+    # Find selected group
+    sel_r = next((r for r in sorted_results if r.get('group') == selected), None)
+    if sel_r is None:
+        return
+
+    syms = sel_r.get('symbols', [])
+    n = len(syms)
+    if n == 0:
+        return
+
+    approach = sel_r.get('best_approach', 'EW') if is_mc else 'EW'
+    w = sel_r.get('weights', None)
+    if is_mc and w and isinstance(w, dict) and len(w) > 0:
+        sorted_w = sorted(w.items(), key=lambda x: x[1], reverse=True)
+    else:
+        ew = 1.0 / n
+        sorted_w = [(s, ew) for s in syms]
+
+    # Render weights table
+    th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
+    td = f"padding:5px 8px;border-bottom:1px solid {_bdr}22;"
+
+    html = (f"<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:6px;margin-top:6px'>"
+        f"<table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>"
+        f"<thead style='background:{theme.get(\"bg3\",\"#0f172a\")}'><tr>"
+        f"<th style='{th}text-align:left'>SYMBOL</th>"
+        f"<th style='{th}text-align:right'>WEIGHT</th>"
+        f"<th style='{th}text-align:left'>BAR</th>"
+        f"</tr></thead><tbody>")
+
+    max_w = max(v for _, v in sorted_w) if sorted_w else 1.0
+    for sym, wt in sorted_w:
+        pct = wt * 100
+        bar_w = (wt / max_w) * 100 if max_w > 0 else 0
+        html += (f"<tr>"
+            f"<td style='{td}color:{_txt};font-weight:600'>{sym}</td>"
+            f"<td style='{td}text-align:right;color:{pos_c};font-weight:700'>{pct:.1f}%</td>"
+            f"<td style='{td}width:50%'>"
+            f"<div style='background:{pos_c}22;border-radius:2px;height:14px;width:100%'>"
+            f"<div style='background:{pos_c};border-radius:2px;height:14px;width:{bar_w:.1f}%'></div>"
+            f"</div></td>"
+            f"</tr>")
+
+    html += "</tbody></table></div>"
+
+    if is_mc:
         st.markdown(
-            f"<div style='font-family:{FONTS};font-size:10px;padding:4px 8px;"
-            f"border-bottom:1px solid {_bdr}22;color:{_txt2};line-height:1.6'>"
-            f"<span style='color:{pos_c};font-weight:700;display:inline-block;min-width:100px'>{gname}</span>"
-            f"<span style='color:#64748b;font-size:9px;display:inline-block;min-width:80px'>{approach}</span>"
-            f"{line}</div>",
+            f"<div style='font-family:{FONTS};font-size:9px;color:{_mut};margin-top:4px'>"
+            f"Approach: <b style='color:{_txt2}'>{approach}</b></div>",
             unsafe_allow_html=True)
+
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # =============================================================================
