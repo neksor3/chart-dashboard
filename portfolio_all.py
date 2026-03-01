@@ -290,35 +290,62 @@ def _render_results(results, theme, rank_by, is_mobile, is_mc=False):
     _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8')
     _mut = theme.get('muted', '#475569')
 
+    # Compute composite score (avg rank of Sharpe, Sortino, MAR, R²)
+    n = len(results)
+    if n > 1:
+        for metric in ['sharpe', 'sortino', 'mar', 'r2']:
+            vals = [r[metric] for r in results]
+            order = sorted(range(n), key=lambda i: -vals[i])
+            for rank, idx in enumerate(order):
+                results[idx][f'_{metric}_rank'] = rank + 1
+        for r in results:
+            r['_score'] = np.mean([r.get(f'_{m}_rank', n) for m in ['sharpe', 'sortino', 'mar', 'r2']])
+    else:
+        results[0]['_score'] = 1.0
+
     # Sort
     sort_key, reverse = SCAN_SORT_KEYS.get(rank_by, ('win_rate', True))
     sorted_results = sorted(results, key=lambda x: x.get(sort_key, 0), reverse=reverse)
 
-    # Table
+    # Build table — same pattern as spreads_scan (works reliably)
+    _render_scan_table(sorted_results, theme, is_mc)
+
+    # Weights per group
+    _render_weights_all(sorted_results, theme, is_mc)
+
+    # Equity charts
+    _render_ew_charts(sorted_results, theme, is_mobile)
+
+
+def _render_scan_table(sorted_results, theme, is_mc):
+    import portfolio
+    pos_c = portfolio.C_POS; neg_c = portfolio.C_NEG
+    _bg3 = theme.get('bg3', '#0f172a'); _bdr = theme.get('border', '#1e293b')
+    _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8')
+    _mut = theme.get('muted', '#475569')
     th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
     td = f"padding:5px 8px;border-bottom:1px solid {_bdr}22;"
 
-    extra_th = f"<th style='{th}text-align:left'>APPROACH</th>" if is_mc else ""
-
-    html = f"""<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:6px;margin-top:8px'>
-    <table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
-        <thead style='background:{_bg3}'><tr>
-            <th style='{th}text-align:left'>#</th>
-            <th style='{th}text-align:left'>GROUP</th>
-            <th style='{th}text-align:right'>N</th>
-            {extra_th}
-            <th style='{th}text-align:right'>WIN%</th>
-            <th style='{th}text-align:right'>SHARPE</th>
-            <th style='{th}text-align:right'>SORTINO</th>
-            <th style='{th}text-align:right'>MAR</th>
-            <th style='{th}text-align:right'>R²</th>
-            <th style='{th}text-align:right'>TOT%</th>
-            <th style='{th}text-align:right'>ANN%</th>
-            <th style='{th}text-align:right'>VOL%</th>
-            <th style='{th}text-align:right'>MDD%</th>
-            <th style='{th}text-align:right'>YTD%</th>
-            <th style='{th}text-align:right'>MTD%</th>
-        </tr></thead><tbody>"""
+    html = (f"<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:6px;margin-top:8px'>"
+        f"<table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>"
+        f"<thead style='background:{_bg3}'><tr>"
+        f"<th style='{th}text-align:left'>#</th>"
+        f"<th style='{th}text-align:left'>GROUP</th>"
+        f"<th style='{th}text-align:right'>N</th>"
+        f"<th style='{th}text-align:left'>APPROACH</th>"
+        f"<th style='{th}text-align:right'>SCORE</th>"
+        f"<th style='{th}text-align:right'>WIN%</th>"
+        f"<th style='{th}text-align:right'>SHARPE</th>"
+        f"<th style='{th}text-align:right'>SORTINO</th>"
+        f"<th style='{th}text-align:right'>MAR</th>"
+        f"<th style='{th}text-align:right'>R²</th>"
+        f"<th style='{th}text-align:right'>TOT%</th>"
+        f"<th style='{th}text-align:right'>ANN%</th>"
+        f"<th style='{th}text-align:right'>VOL%</th>"
+        f"<th style='{th}text-align:right'>MDD%</th>"
+        f"<th style='{th}text-align:right'>YTD%</th>"
+        f"<th style='{th}text-align:right'>MTD%</th>"
+        f"</tr></thead><tbody>")
 
     for rank, r in enumerate(sorted_results, 1):
         sh_c = pos_c if r['sharpe'] >= 0 else neg_c
@@ -327,47 +354,38 @@ def _render_results(results, theme, rank_by, is_mobile, is_mc=False):
         win_c = pos_c if r['win_rate'] >= 0.55 else (neg_c if r['win_rate'] < 0.45 else _txt2)
         ytd_c = pos_c if r.get('ytd', 0) >= 0 else neg_c
         mtd_c = pos_c if r.get('mtd', 0) >= 0 else neg_c
+        score = r.get('_score', 0)
+        sc_c = pos_c if score <= 3 else (_txt2 if score <= 6 else _mut)
         is_top3 = rank <= 3
-        bg = f'rgba(74,222,128,0.06)' if is_top3 else 'transparent'
+        bg = 'rgba(74,222,128,0.06)' if is_top3 else 'transparent'
         fw = '700' if is_top3 else '500'
         gc = pos_c if is_top3 else _txt
-
+        approach = r.get('best_approach', 'EW') if is_mc else 'EW'
         syms_str = ', '.join(r.get('symbols', [])[:6])
         if len(r.get('symbols', [])) > 6:
-            syms_str += f' +{len(r["symbols"])-6}'
+            syms_str += f" +{len(r['symbols'])-6}"
         syms_str = syms_str.replace("'", "&#39;").replace('"', '&quot;')
-
-        approach_td = f"<td style='{td}color:{_txt2};font-size:10px'>{r.get('best_approach','')}</td>" if is_mc else ""
-
-        html += f"""<tr style='background:{bg}' title='{syms_str}'>
-            <td style='{td}color:{_mut}'>{rank}</td>
-            <td style='{td}color:{gc};font-weight:{fw}'>{r['group']}</td>
-            <td style='{td}text-align:right;color:{_txt2}'>{r['n_assets']}</td>
-            {approach_td}
-            <td style='{td}text-align:right'><span style='color:{win_c};font-weight:600'>{r["win_rate"]*100:.1f}%</span></td>
-            <td style='{td}text-align:right'><span style='color:{sh_c};font-weight:700'>{r["sharpe"]:.2f}</span></td>
-            <td style='{td}text-align:right;color:{_txt2}'>{r["sortino"]:.2f}</td>
-            <td style='{td}text-align:right;color:{_txt2}'>{r["mar"]:.2f}</td>
-            <td style='{td}text-align:right;color:{_txt2}'>{r["r2"]:.3f}</td>
-            <td style='{td}text-align:right'><span style='color:{tot_c};font-weight:600'>{tot_s}{r["total_ret"]*100:.1f}%</span></td>
-            <td style='{td}text-align:right;color:{_txt2}'>{r["ann_ret"]*100:.1f}%</td>
-            <td style='{td}text-align:right;color:{_txt2}'>{r["ann_vol"]*100:.1f}%</td>
-            <td style='{td}text-align:right;color:{neg_c}'>{r["max_dd"]*100:.1f}%</td>
-            <td style='{td}text-align:right'><span style='color:{ytd_c};font-weight:600'>{r.get("ytd",0)*100:.1f}%</span></td>
-            <td style='{td}text-align:right'><span style='color:{mtd_c}'>{r.get("mtd",0)*100:.1f}%</span></td>
-        </tr>"""
+        html += (f"<tr style='background:{bg}' title='{syms_str}'>"
+            f"<td style='{td}color:{_mut}'>{rank}</td>"
+            f"<td style='{td}color:{gc};font-weight:{fw}'>{r['group']}</td>"
+            f"<td style='{td}text-align:right;color:{_txt2}'>{r['n_assets']}</td>"
+            f"<td style='{td}color:{_txt2};font-size:10px'>{approach}</td>"
+            f"<td style='{td}text-align:right;color:{sc_c};font-weight:600'>{score:.1f}</td>"
+            f"<td style='{td}text-align:right'><span style='color:{win_c};font-weight:600'>{r['win_rate']*100:.1f}%</span></td>"
+            f"<td style='{td}text-align:right'><span style='color:{sh_c};font-weight:700'>{r['sharpe']:.2f}</span></td>"
+            f"<td style='{td}text-align:right;color:{_txt2}'>{r['sortino']:.2f}</td>"
+            f"<td style='{td}text-align:right;color:{_txt2}'>{r['mar']:.2f}</td>"
+            f"<td style='{td}text-align:right;color:{_txt2}'>{r['r2']:.3f}</td>"
+            f"<td style='{td}text-align:right'><span style='color:{tot_c};font-weight:600'>{tot_s}{r['total_ret']*100:.1f}%</span></td>"
+            f"<td style='{td}text-align:right;color:{_txt2}'>{r['ann_ret']*100:.1f}%</td>"
+            f"<td style='{td}text-align:right;color:{_txt2}'>{r['ann_vol']*100:.1f}%</td>"
+            f"<td style='{td}text-align:right;color:{neg_c}'>{r['max_dd']*100:.1f}%</td>"
+            f"<td style='{td}text-align:right'><span style='color:{ytd_c};font-weight:600'>{r.get('ytd',0)*100:.1f}%</span></td>"
+            f"<td style='{td}text-align:right'><span style='color:{mtd_c}'>{r.get('mtd',0)*100:.1f}%</span></td>"
+            f"</tr>")
 
     html += "</tbody></table></div>"
-    try:
-        st.markdown(html, unsafe_allow_html=True)
-    except Exception as e:
-        st.error(f"Table render error: {e}")
-        st.code(html[:500])
-
-    # Weights per group
-    _render_weights_all(sorted_results, theme, is_mc)
-
-    _render_ew_charts(sorted_results, theme, is_mobile)
+    st.markdown(html, unsafe_allow_html=True)
 
 
 # =============================================================================
