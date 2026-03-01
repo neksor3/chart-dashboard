@@ -359,94 +359,40 @@ def _render_results(results, theme, rank_by, is_mobile, is_mc=False):
     html += "</tbody></table></div>"
     st.markdown(html, unsafe_allow_html=True)
 
-    # Group drill-down selector
-    _render_drilldown(sorted_results, theme, is_mc)
+    # Simple weights dump per group
+    if is_mc:
+        _render_weights_all(sorted_results, theme)
 
     _render_ew_charts(sorted_results, theme, is_mobile)
 
 
 # =============================================================================
-# GROUP DRILL-DOWN
+# WEIGHTS PER GROUP (MC only — EW is trivially 1/n)
 # =============================================================================
 
-def _render_drilldown(sorted_results, theme, is_mc):
-    """Show weights and symbols for selected group."""
+def _render_weights_all(sorted_results, theme):
     import portfolio
-    pos_c = portfolio.C_POS; neg_c = portfolio.C_NEG
+    pos_c = portfolio.C_POS
     _bg3 = theme.get('bg3', '#0f172a'); _bdr = theme.get('border', '#1e293b')
-    _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8')
-    _mut = theme.get('muted', '#475569')
-    _lbl = f"color:#f8fafc;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
+    _txt2 = theme.get('text2', '#94a3b8')
 
-    group_names = [r['group'] for r in sorted_results]
-    if not group_names:
-        return
-
-    mode_label = 'Monte Carlo' if is_mc else 'Equal Weight'
-    _section('GROUP DETAIL', f'Select a group to view asset weights · {mode_label}')
-
-    sel_col, _ = st.columns([3, 5])
-    with sel_col:
-        st.markdown(f"<div style='{_lbl}'>GROUP</div>", unsafe_allow_html=True)
-        selected = st.selectbox("Group", group_names, key='portall_drilldown', label_visibility='collapsed')
-
-    sel_r = next((r for r in sorted_results if r['group'] == selected), None)
-    if sel_r is None:
-        return
-
-    symbols = sel_r.get('symbols', [])
-    n = len(symbols)
-    if n == 0:
-        return
-
-    # Get weights: use stored weights if available (MC mode stores optimized weights)
-    stored_weights = sel_r.get('weights', None)
-    has_mc_weights = stored_weights is not None and isinstance(stored_weights, dict) and len(stored_weights) > 0
-
-    th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
-    td = f"padding:5px 8px;border-bottom:1px solid {_bdr}22;"
-
-    # Show approach name if MC
-    approach_str = ''
-    if is_mc and sel_r.get('best_approach'):
-        approach_str = f" · Approach: {sel_r['best_approach']}"
-
-    weight_mode = 'Optimized' if (is_mc and has_mc_weights) else 'Equal Weight'
-    st.markdown(f"<div style='font-family:{FONTS};font-size:10px;color:{_mut};margin-top:4px'>"
-                f"{weight_mode}{approach_str}</div>", unsafe_allow_html=True)
-
-    html = f"""<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:6px;margin-top:8px'>
-    <table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
-        <thead style='background:{_bg3}'><tr>
-            <th style='{th}text-align:left'>ASSET</th>
-            <th style='{th}text-align:left'>SYMBOL</th>
-            <th style='{th}text-align:right'>WEIGHT</th>
-        </tr></thead><tbody>"""
-
-    if is_mc and has_mc_weights:
-        # Sort by weight descending
-        sorted_syms = sorted(stored_weights.items(), key=lambda x: x[1], reverse=True)
-        for sym, wt in sorted_syms:
-            name = SYMBOL_NAMES.get(sym, clean_symbol(sym))
-            wt_pct = wt * 100
-            wt_c = pos_c if wt_pct >= (100/n) else _txt2
-            html += f"""<tr>
-                <td style='{td}color:{_txt2}'>{name}</td>
-                <td style='{td}color:{pos_c};font-weight:600'>{sym}</td>
-                <td style='{td}text-align:right;color:{wt_c};font-weight:600'>{wt_pct:.1f}%</td>
-            </tr>"""
-    else:
-        ew_wt = 1.0 / n
-        for sym in symbols:
-            name = SYMBOL_NAMES.get(sym, clean_symbol(sym))
-            html += f"""<tr>
-                <td style='{td}color:{_txt2}'>{name}</td>
-                <td style='{td}color:{pos_c};font-weight:600'>{sym}</td>
-                <td style='{td}text-align:right;color:{_txt};font-weight:600'>{ew_wt*100:.1f}%</td>
-            </tr>"""
-
-    html += "</tbody></table></div>"
-    st.markdown(html, unsafe_allow_html=True)
+    for r in sorted_results:
+        w = r.get('weights')
+        if not w or not isinstance(w, dict):
+            continue
+        gname = r['group']
+        approach = r.get('best_approach', '')
+        sorted_w = sorted(w.items(), key=lambda x: x[1], reverse=True)
+        parts = [f"<b>{s}</b> {v*100:.1f}%" for s, v in sorted_w]
+        line = ' · '.join(parts)
+        st.markdown(
+            f"<div style='font-family:{FONTS};font-size:10px;padding:3px 8px;"
+            f"border-bottom:1px solid {_bdr}22;color:{_txt2}'>"
+            f"<span style='color:{pos_c};font-weight:700;min-width:120px;display:inline-block'>{gname}</span>"
+            f"<span style='color:{_bg3};background:{_bg3};width:4px;display:inline-block'> </span>"
+            f"<span style='color:#64748b;font-size:9px'>{approach}</span> "
+            f"&nbsp;{line}</div>",
+            unsafe_allow_html=True)
 
 
 # =============================================================================
