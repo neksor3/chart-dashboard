@@ -373,25 +373,36 @@ def _render_results(results, theme, rank_by, is_mobile, is_mc=False):
 def _render_weights_all(sorted_results, theme):
     import portfolio
     pos_c = portfolio.C_POS
-    _bg3 = theme.get('bg3', '#0f172a'); _bdr = theme.get('border', '#1e293b')
+    _bdr = theme.get('border', '#1e293b')
     _txt2 = theme.get('text2', '#94a3b8')
 
+    _section('OPTIMIZED WEIGHTS', 'Current weights per group from best approach')
+
+    has_any = False
     for r in sorted_results:
-        w = r.get('weights')
-        if not w or not isinstance(w, dict):
-            continue
-        gname = r['group']
+        gname = r.get('group', '?')
         approach = r.get('best_approach', '')
-        sorted_w = sorted(w.items(), key=lambda x: x[1], reverse=True)
-        parts = [f"<b>{s}</b> {v*100:.1f}%" for s, v in sorted_w]
-        line = ' · '.join(parts)
+        w = r.get('weights', None)
+        syms = r.get('symbols', [])
+
+        # Build weight string
+        if w and isinstance(w, dict) and len(w) > 0:
+            sorted_w = sorted(w.items(), key=lambda x: x[1], reverse=True)
+            parts = [f"<b>{s}</b> {v*100:.1f}%" for s, v in sorted_w]
+            has_any = True
+        else:
+            # Fallback: show EW
+            n = len(syms)
+            ew = 1.0 / n if n > 0 else 0
+            parts = [f"<b>{s}</b> {ew*100:.1f}%" for s in syms]
+
+        line = ' &nbsp;·&nbsp; '.join(parts)
         st.markdown(
-            f"<div style='font-family:{FONTS};font-size:10px;padding:3px 8px;"
-            f"border-bottom:1px solid {_bdr}22;color:{_txt2}'>"
-            f"<span style='color:{pos_c};font-weight:700;min-width:120px;display:inline-block'>{gname}</span>"
-            f"<span style='color:{_bg3};background:{_bg3};width:4px;display:inline-block'> </span>"
-            f"<span style='color:#64748b;font-size:9px'>{approach}</span> "
-            f"&nbsp;{line}</div>",
+            f"<div style='font-family:{FONTS};font-size:10px;padding:4px 8px;"
+            f"border-bottom:1px solid {_bdr}22;color:{_txt2};line-height:1.6'>"
+            f"<span style='color:{pos_c};font-weight:700;display:inline-block;min-width:100px'>{gname}</span>"
+            f"<span style='color:#64748b;font-size:9px;display:inline-block;min-width:80px'>{approach}</span>"
+            f"{line}</div>",
             unsafe_allow_html=True)
 
 
