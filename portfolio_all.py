@@ -399,15 +399,21 @@ def _render_drilldown(sorted_results, theme, is_mc):
     if n == 0:
         return
 
-    # Get weights: MC weights if available, else EW
-    mc_weights = sel_r.get('weights', None) if is_mc else None
+    # Get weights: use stored weights if available (MC mode stores optimized weights)
+    stored_weights = sel_r.get('weights', None)
+    has_mc_weights = stored_weights is not None and isinstance(stored_weights, dict) and len(stored_weights) > 0
 
     th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
     td = f"padding:5px 8px;border-bottom:1px solid {_bdr}22;"
 
-    approach_info = ''
+    # Show approach name if MC
+    approach_str = ''
     if is_mc and sel_r.get('best_approach'):
-        approach_info = f" · {sel_r['best_approach']}"
+        approach_str = f" · Approach: {sel_r['best_approach']}"
+
+    weight_mode = 'Optimized' if (is_mc and has_mc_weights) else 'Equal Weight'
+    st.markdown(f"<div style='font-family:{FONTS};font-size:10px;color:{_mut};margin-top:4px'>"
+                f"{weight_mode}{approach_str}</div>", unsafe_allow_html=True)
 
     html = f"""<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:6px;margin-top:8px'>
     <table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
@@ -417,13 +423,12 @@ def _render_drilldown(sorted_results, theme, is_mc):
             <th style='{th}text-align:right'>WEIGHT</th>
         </tr></thead><tbody>"""
 
-    if mc_weights and isinstance(mc_weights, dict):
+    if is_mc and has_mc_weights:
         # Sort by weight descending
-        sorted_syms = sorted(mc_weights.items(), key=lambda x: x[1], reverse=True)
+        sorted_syms = sorted(stored_weights.items(), key=lambda x: x[1], reverse=True)
         for sym, wt in sorted_syms:
             name = SYMBOL_NAMES.get(sym, clean_symbol(sym))
             wt_pct = wt * 100
-            # Color: brighter for higher weight
             wt_c = pos_c if wt_pct >= (100/n) else _txt2
             html += f"""<tr>
                 <td style='{td}color:{_txt2}'>{name}</td>
