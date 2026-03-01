@@ -363,32 +363,7 @@ def render_spreads_tab(is_mobile):
         <span style='color:{_mut};font-size:10px;margin-left:8px'>Top spread from each portfolio group · {lookback_label}</span>
     </div>""", unsafe_allow_html=True)
 
-    # Styled scan button
-    st.markdown(f"""<style>
-        div[data-testid="stButton"] > button[kind="primary"] {{
-            background: linear-gradient(135deg, {pos_c}22, {_bg3});
-            border: 1px solid {pos_c}44;
-            color: {pos_c};
-            font-family: {FONTS};
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            padding: 8px 24px;
-            border-radius: 4px;
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }}
-        div[data-testid="stButton"] > button[kind="primary"]:hover {{
-            background: linear-gradient(135deg, {pos_c}44, {_bg3});
-            border-color: {pos_c}88;
-            box-shadow: 0 0 12px {pos_c}22;
-        }}
-        div[data-testid="stButton"] > button[kind="primary"]:active {{
-            background: {pos_c}33;
-        }}
-    </style>""", unsafe_allow_html=True)
-    scan_clicked = st.button('▶  SCAN ALL GROUPS', key='spread_scan_all', type='primary')
+    scan_clicked = st.button('▶  Scan All Groups', key='spread_scan_all')
 
     if scan_clicked:
         _run_scan_all(lookback_days, lookback_label, ann_factor, theme, sort_key, is_mobile)
