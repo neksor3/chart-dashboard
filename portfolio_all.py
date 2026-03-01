@@ -335,6 +335,7 @@ def _render_results(results, theme, rank_by, is_mobile, is_mc=False):
         syms_str = ', '.join(r.get('symbols', [])[:6])
         if len(r.get('symbols', [])) > 6:
             syms_str += f' +{len(r["symbols"])-6}'
+        syms_str = syms_str.replace("'", "&#39;").replace('"', '&quot;')
 
         approach_td = f"<td style='{td}color:{_txt2};font-size:10px'>{r.get('best_approach','')}</td>" if is_mc else ""
 
