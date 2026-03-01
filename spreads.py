@@ -315,9 +315,9 @@ def render_spreads_tab(is_mobile):
     from spreads_sector import render_sector_tab
     from spreads_scan import render_scan_tab
 
-    # Green underline on active sub-tab only (not main nav)
+    # Green underline on nested sub-tabs only (inside a tab panel)
     st.markdown(f"""<style>
-        .stTabs > div[data-baseweb="tab-list"] button {{
+        .stTabs .stTabs [data-baseweb="tab-list"] button {{
             font-family: {FONTS};
             font-size: 11px;
             font-weight: 600;
@@ -326,11 +326,12 @@ def render_spreads_tab(is_mobile):
             color: #64748b;
             padding: 8px 20px;
         }}
-        .stTabs > div[data-baseweb="tab-list"] button[aria-selected="true"] {{
+        .stTabs .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {{
             color: #f8fafc;
+            border-bottom: 2px solid #4ade80 !important;
         }}
-        .stTabs > div[data-baseweb="tab-highlight"] {{
-            background-color: #4ade80;
+        .stTabs .stTabs [data-baseweb="tab-highlight"] {{
+            background-color: #4ade80 !important;
         }}
     </style>""", unsafe_allow_html=True)
 
