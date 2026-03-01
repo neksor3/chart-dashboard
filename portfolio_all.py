@@ -395,7 +395,7 @@ def _render_scan_table(sorted_results, theme, is_mc):
 def _render_weights_all(sorted_results, theme, is_mc=False):
     import portfolio
     pos_c = portfolio.C_POS; neg_c = portfolio.C_NEG
-    _bdr = theme.get('border', '#1e293b')
+    _bg3 = theme.get('bg3', '#0f172a'); _bdr = theme.get('border', '#1e293b')
     _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8')
     _mut = theme.get('muted', '#475569')
     _lbl = f"color:#f8fafc;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
@@ -438,7 +438,7 @@ def _render_weights_all(sorted_results, theme, is_mc=False):
 
     html = (f"<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:6px;margin-top:6px'>"
         f"<table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>"
-        f"<thead style='background:{theme.get(\"bg3\",\"#0f172a\")}'><tr>"
+        f"<thead style='background:{_bg3}'><tr>"
         f"<th style='{th}text-align:left'>SYMBOL</th>"
         f"<th style='{th}text-align:right'>WEIGHT</th>"
         f"<th style='{th}text-align:left'>BAR</th>"
