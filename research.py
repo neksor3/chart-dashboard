@@ -124,7 +124,7 @@ def render():
                     </div>
                 </div>
                 <div style="flex-shrink:0;text-align:right;padding-left:16px">
-                    <span style="font-size:8.5px;color:{mut}">{a['rt']} · {a['date']}</span>
+                    <span style="font-size:8.5px;color:{acc}">{a['rt']} · {a['date']}</span>
                 </div>
             </div>
         </a>"""
