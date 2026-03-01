@@ -105,26 +105,27 @@ def render():
         rows += f"""
         <a href="{a['url']}" target="_blank" class="row">
             <div style="
-                display:flex;align-items:center;gap:0;
+                display:flex;align-items:center;gap:12px;
                 border-left:3px solid {ac};
                 background:{rbg};
-                padding:10px 16px;
+                padding:8px 16px;
                 border-bottom:1px solid {bdr}15;
             ">
+                <div style="flex-shrink:0;width:90px">
+                    <div style="font-size:9px;color:{acc}">{a['date']}</div>
+                    <div style="font-size:8px;color:{mut};margin-top:1px">{a['rt']}</div>
+                </div>
                 <div style="flex:1;min-width:0">
-                    <div style="font-size:12.5px;font-weight:600;color:{txt};
+                    <div style="font-size:12px;font-weight:600;color:{txt};
                                 line-height:1.3;white-space:nowrap;overflow:hidden;
                                 text-overflow:ellipsis">
                         {a['title']}
                     </div>
-                    <div style="font-size:10.5px;color:{ac};line-height:1.4;
+                    <div style="font-size:10px;color:#60a5fa;line-height:1.4;
                                 margin-top:2px;white-space:nowrap;overflow:hidden;
                                 text-overflow:ellipsis">
                         {a['sub']}
                     </div>
-                </div>
-                <div style="flex-shrink:0;text-align:right;padding-left:16px">
-                    <span style="font-size:8.5px;color:{acc}">{a['rt']} · {a['date']}</span>
                 </div>
             </div>
         </a>"""
