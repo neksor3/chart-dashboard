@@ -350,11 +350,135 @@ def _render_results(results, theme, rank_by, is_mobile, is_mc=False):
     html += "</tbody></table></div>"
     st.markdown(html, unsafe_allow_html=True)
 
+    # Group drill-down selector
+    _render_drilldown(sorted_results, theme, is_mc)
+
     _render_ew_charts(sorted_results, theme, is_mobile)
 
 
 # =============================================================================
-# EQUITY CHARTS — batches of 6
+# GROUP DRILL-DOWN
+# =============================================================================
+
+def _render_drilldown(sorted_results, theme, is_mc):
+    """Show weights and symbols for selected group."""
+    import portfolio
+    pos_c = portfolio.C_POS; neg_c = portfolio.C_NEG
+    _bg3 = theme.get('bg3', '#0f172a'); _bdr = theme.get('border', '#1e293b')
+    _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8')
+    _mut = theme.get('muted', '#475569')
+    _lbl = f"color:#f8fafc;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
+
+    group_names = [r['group'] for r in sorted_results]
+    if not group_names:
+        return
+
+    sel_col, _ = st.columns([3, 5])
+    with sel_col:
+        st.markdown(f"<div style='{_lbl};margin-top:12px'>VIEW GROUP</div>", unsafe_allow_html=True)
+        selected = st.selectbox("Group", group_names, key='portall_drilldown', label_visibility='collapsed')
+
+    sel_r = next((r for r in sorted_results if r['group'] == selected), None)
+    if sel_r is None:
+        return
+
+    symbols = sel_r.get('symbols', [])
+    n = len(symbols)
+    if n == 0:
+        return
+
+    # EW weights or show symbols
+    th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
+    td = f"padding:5px 8px;border-bottom:1px solid {_bdr}22;"
+    ew_wt = 1.0 / n
+
+    html = f"""<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:6px;margin-top:8px'>
+    <table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
+        <thead style='background:{_bg3}'><tr>
+            <th style='{th}text-align:left'>SYMBOL</th>
+            <th style='{th}text-align:left'>NAME</th>
+            <th style='{th}text-align:right'>WEIGHT</th>
+        </tr></thead><tbody>"""
+
+    for sym in symbols:
+        name = SYMBOL_NAMES.get(sym, clean_symbol(sym))
+        html += f"""<tr>
+            <td style='{td}color:{pos_c};font-weight:600'>{sym}</td>
+            <td style='{td}color:{_txt2}'>{name}</td>
+            <td style='{td}text-align:right;color:{_txt};font-weight:600'>{ew_wt*100:.1f}%</td>
+        </tr>"""
+
+    html += "</tbody></table></div>"
+    st.markdown(html, unsafe_allow_html=True)
+
+    # Portfolio drill-down
+    _render_drilldown(sorted_results, theme, is_mc)
+
+
+# =============================================================================
+# PORTFOLIO DRILL-DOWN
+# =============================================================================
+
+def _render_drilldown(sorted_results, theme, is_mc):
+    import portfolio
+    pos_c = portfolio.C_POS; neg_c = portfolio.C_NEG
+    _bg3 = theme.get('bg3', '#0f172a'); _bdr = theme.get('border', '#1e293b')
+    _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8')
+    _mut = theme.get('muted', '#475569')
+    _lbl = f"color:#f8fafc;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
+
+    group_names = [r['group'] for r in sorted_results]
+    if not group_names:
+        return
+
+    _section('GROUP DETAIL', 'Select a group to view asset weights')
+
+    sel_col, _ = st.columns([3, 5])
+    with sel_col:
+        st.markdown(f"<div style='{_lbl};margin-top:4px'>GROUP</div>", unsafe_allow_html=True)
+        selected = st.selectbox("Group", group_names,
+                                 key='portall_drilldown', label_visibility='collapsed')
+
+    # Find the selected result
+    sel_r = next((r for r in sorted_results if r['group'] == selected), None)
+    if sel_r is None:
+        return
+
+    symbols = sel_r.get('symbols', [])
+    n_assets = len(symbols)
+
+    if n_assets == 0:
+        return
+
+    # Build weights table
+    th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
+    td = f"padding:5px 8px;border-bottom:1px solid {_bdr}22;"
+
+    # EW weights
+    ew_wt = 1.0 / n_assets
+
+    html = f"""<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:6px;margin-top:8px;max-width:500px'>
+    <table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
+        <thead style='background:{_bg3}'><tr>
+            <th style='{th}text-align:left'>ASSET</th>
+            <th style='{th}text-align:left'>SYMBOL</th>
+            <th style='{th}text-align:right'>WEIGHT</th>
+        </tr></thead><tbody>"""
+
+    for sym in symbols:
+        name = SYMBOL_NAMES.get(sym, clean_symbol(sym))
+        html += f"""<tr>
+            <td style='{td}color:{_txt};font-weight:600'>{name}</td>
+            <td style='{td}color:{_txt2}'>{sym}</td>
+            <td style='{td}text-align:right;color:{pos_c};font-weight:600'>{ew_wt*100:.1f}%</td>
+        </tr>"""
+
+    html += "</tbody></table></div>"
+    st.markdown(html, unsafe_allow_html=True)
+
+
+# =============================================================================
+# EQUITY CHARTS — batches of 6 with end value labels
 # =============================================================================
 
 def _render_ew_charts(sorted_results, theme, is_mobile):
@@ -385,6 +509,7 @@ def _render_ew_charts(sorted_results, theme, is_mobile):
         for i, (gname, ew_ret) in enumerate(batch):
             row = i // n_cols + 1; col = i % n_cols + 1
             cum = (1 + ew_ret).cumprod() * 100
+            end_val = float(cum.iloc[-1])
 
             fig.add_trace(go.Scatter(
                 x=cum.index, y=cum.values,
@@ -392,7 +517,17 @@ def _render_ew_charts(sorted_results, theme, is_mobile):
                 showlegend=False, hovertemplate='%{y:.1f}<extra></extra>'), row=row, col=col)
             fig.add_hline(y=100, line=dict(color=_grd, width=0.8, dash='dot'), row=row, col=col)
 
+            # End value label
             axis_idx = (row - 1) * n_cols + col
+            end_c = '#f8fafc' if end_val >= 100 else portfolio.C_NEG
+            fig.add_annotation(
+                text=f"<b>{end_val:.0f}</b>", x=0.98, y=0.95,
+                xref=f"x{'' if axis_idx == 1 else axis_idx} domain",
+                yref=f"y{'' if axis_idx == 1 else axis_idx} domain",
+                showarrow=False, font=dict(size=11, color=end_c, family=FONTS),
+                xanchor='right', yanchor='top')
+
+            # Rank badge
             global_rank = batch_start + i + 1
             fig.add_annotation(
                 text=f"<b>{global_rank}</b>", x=0.02, y=0.95,
