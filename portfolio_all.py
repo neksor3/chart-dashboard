@@ -137,6 +137,12 @@ def _run_mc_scan(period_days, rebal_months, txn_cost, score_type, n_sims,
             m['symbols'] = grid['symbols']
             m['best_approach'] = best_name
             m['ew_returns'] = best['wf']['oos_returns']
+            # Store current weights from best approach
+            curr_w = best['wf'].get('current_weights', None)
+            if curr_w is not None:
+                m['weights'] = {s: float(w) for s, w in zip(grid['symbols'], curr_w)}
+            else:
+                m['weights'] = {s: 1.0/len(grid['symbols']) for s in grid['symbols']}
             all_results.append(m)
         except Exception as e:
             logger.warning(f"MC scan error for {gname}: {e}")
@@ -252,6 +258,7 @@ def render_all_tab(is_mobile):
                 st.warning('No valid groups found'); return
             st.session_state.portall_results = results
             st.session_state.portall_rank_key = rank_display
+            st.session_state.portall_is_mc = True
             _render_results(results, theme, rank_display, is_mobile, is_mc=True)
         else:
             # EW mode: rank by the objective dropdown
@@ -263,11 +270,13 @@ def render_all_tab(is_mobile):
                 st.warning('No valid groups found'); return
             st.session_state.portall_results = results
             st.session_state.portall_rank_key = rank_display
+            st.session_state.portall_is_mc = False
             _render_results(results, theme, rank_display, is_mobile, is_mc=False)
     elif 'portall_results' in st.session_state:
         rank_key = st.session_state.get('portall_rank_key', 'Win Rate')
+        stored_mc = st.session_state.get('portall_is_mc', False)
         _render_results(st.session_state.portall_results, theme, rank_key, is_mobile,
-                       is_mc=is_mc)
+                       is_mc=stored_mc)
 
 
 # =============================================================================
@@ -373,9 +382,12 @@ def _render_drilldown(sorted_results, theme, is_mc):
     if not group_names:
         return
 
+    mode_label = 'Monte Carlo' if is_mc else 'Equal Weight'
+    _section('GROUP DETAIL', f'Select a group to view asset weights · {mode_label}')
+
     sel_col, _ = st.columns([3, 5])
     with sel_col:
-        st.markdown(f"<div style='{_lbl};margin-top:12px'>VIEW GROUP</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='{_lbl}'>GROUP</div>", unsafe_allow_html=True)
         selected = st.selectbox("Group", group_names, key='portall_drilldown', label_visibility='collapsed')
 
     sel_r = next((r for r in sorted_results if r['group'] == selected), None)
@@ -387,26 +399,46 @@ def _render_drilldown(sorted_results, theme, is_mc):
     if n == 0:
         return
 
-    # EW weights or show symbols
+    # Get weights: MC weights if available, else EW
+    mc_weights = sel_r.get('weights', None) if is_mc else None
+
     th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.06em;"
     td = f"padding:5px 8px;border-bottom:1px solid {_bdr}22;"
-    ew_wt = 1.0 / n
+
+    approach_info = ''
+    if is_mc and sel_r.get('best_approach'):
+        approach_info = f" · {sel_r['best_approach']}"
 
     html = f"""<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:6px;margin-top:8px'>
     <table style='border-collapse:collapse;font-family:{FONTS};font-size:11px;width:100%;line-height:1.3'>
         <thead style='background:{_bg3}'><tr>
+            <th style='{th}text-align:left'>ASSET</th>
             <th style='{th}text-align:left'>SYMBOL</th>
-            <th style='{th}text-align:left'>NAME</th>
             <th style='{th}text-align:right'>WEIGHT</th>
         </tr></thead><tbody>"""
 
-    for sym in symbols:
-        name = SYMBOL_NAMES.get(sym, clean_symbol(sym))
-        html += f"""<tr>
-            <td style='{td}color:{pos_c};font-weight:600'>{sym}</td>
-            <td style='{td}color:{_txt2}'>{name}</td>
-            <td style='{td}text-align:right;color:{_txt};font-weight:600'>{ew_wt*100:.1f}%</td>
-        </tr>"""
+    if mc_weights and isinstance(mc_weights, dict):
+        # Sort by weight descending
+        sorted_syms = sorted(mc_weights.items(), key=lambda x: x[1], reverse=True)
+        for sym, wt in sorted_syms:
+            name = SYMBOL_NAMES.get(sym, clean_symbol(sym))
+            wt_pct = wt * 100
+            # Color: brighter for higher weight
+            wt_c = pos_c if wt_pct >= (100/n) else _txt2
+            html += f"""<tr>
+                <td style='{td}color:{_txt2}'>{name}</td>
+                <td style='{td}color:{pos_c};font-weight:600'>{sym}</td>
+                <td style='{td}text-align:right;color:{wt_c};font-weight:600'>{wt_pct:.1f}%</td>
+            </tr>"""
+    else:
+        ew_wt = 1.0 / n
+        for sym in symbols:
+            name = SYMBOL_NAMES.get(sym, clean_symbol(sym))
+            html += f"""<tr>
+                <td style='{td}color:{_txt2}'>{name}</td>
+                <td style='{td}color:{pos_c};font-weight:600'>{sym}</td>
+                <td style='{td}text-align:right;color:{_txt};font-weight:600'>{ew_wt*100:.1f}%</td>
+            </tr>"""
 
     html += "</tbody></table></div>"
     st.markdown(html, unsafe_allow_html=True)
