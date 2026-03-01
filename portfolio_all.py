@@ -166,78 +166,57 @@ def render_all_tab(is_mobile):
                              key='portall_mode', label_visibility='collapsed')
 
     is_mc = mode == 'Monte Carlo'
+    _dis = not is_mc  # disabled for EW-only fields
 
     # Row 1: Objective, Rebalance, Period, Direction, Sims
-    if is_mc:
-        c1, c2, c3, c4, c5 = st.columns(5)
-        with c1:
-            st.markdown(f"<div style='{_lbl}'>OBJECTIVE</div>", unsafe_allow_html=True)
-            score = st.selectbox("Objective", ['Win Rate', 'Composite', 'Sharpe', 'Sortino', 'MAR', 'R²', 'Total Return'],
-                                  key='portall_score', label_visibility='collapsed')
-        with c2:
-            st.markdown(f"<div style='{_lbl}'>REBALANCE</div>", unsafe_allow_html=True)
-            rebal_label = st.selectbox("Rebalance", list(REBAL_OPTIONS.keys()),
-                                        index=2, key='portall_rebal', label_visibility='collapsed')
-        with c3:
-            st.markdown(f"<div style='{_lbl}'>PERIOD</div>", unsafe_allow_html=True)
-            period_label = st.selectbox("Period", list(PERIOD_OPTIONS.keys()),
-                                         index=3, key='portall_period', label_visibility='collapsed')
-        with c4:
-            st.markdown(f"<div style='{_lbl}'>DIRECTION</div>", unsafe_allow_html=True)
-            direction = st.selectbox("Direction", ['Long Only', 'Long/Short'],
-                                      key='portall_direction', label_visibility='collapsed')
-        with c5:
-            st.markdown(f"<div style='{_lbl}'>SIMS</div>", unsafe_allow_html=True)
-            if 'portall_sims' not in st.session_state: st.session_state['portall_sims'] = '5000'
-            sims_str = st.text_input("Sims", key='portall_sims', label_visibility='collapsed')
-    else:
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.markdown(f"<div style='{_lbl}'>REBALANCE</div>", unsafe_allow_html=True)
-            rebal_label = st.selectbox("Rebalance", list(REBAL_OPTIONS.keys()),
-                                        index=2, key='portall_rebal', label_visibility='collapsed')
-        with c2:
-            st.markdown(f"<div style='{_lbl}'>PERIOD</div>", unsafe_allow_html=True)
-            period_label = st.selectbox("Period", list(PERIOD_OPTIONS.keys()),
-                                         index=3, key='portall_period', label_visibility='collapsed')
-        with c3:
-            st.markdown(f"<div style='{_lbl}'>RANK BY</div>", unsafe_allow_html=True)
-            rank_by = st.selectbox("Rank", list(SCAN_SORT_KEYS.keys()), index=0,
-                                    key='portall_rank', label_visibility='collapsed')
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        st.markdown(f"<div style='{_lbl}'>OBJECTIVE</div>", unsafe_allow_html=True)
+        score = st.selectbox("Objective", ['Win Rate', 'Composite', 'Sharpe', 'Sortino', 'MAR', 'R²', 'Total Return'],
+                              key='portall_score', label_visibility='collapsed', disabled=_dis)
+    with c2:
+        st.markdown(f"<div style='{_lbl}'>REBALANCE</div>", unsafe_allow_html=True)
+        rebal_label = st.selectbox("Rebalance", list(REBAL_OPTIONS.keys()),
+                                    index=2, key='portall_rebal', label_visibility='collapsed')
+    with c3:
+        st.markdown(f"<div style='{_lbl}'>PERIOD</div>", unsafe_allow_html=True)
+        period_label = st.selectbox("Period", list(PERIOD_OPTIONS.keys()),
+                                     index=3, key='portall_period', label_visibility='collapsed')
+    with c4:
+        st.markdown(f"<div style='{_lbl}'>DIRECTION</div>", unsafe_allow_html=True)
+        direction = st.selectbox("Direction", ['Long Only', 'Long/Short'],
+                                  key='portall_direction', label_visibility='collapsed', disabled=_dis)
+    with c5:
+        st.markdown(f"<div style='{_lbl}'>SIMS</div>", unsafe_allow_html=True)
+        if 'portall_sims' not in st.session_state: st.session_state['portall_sims'] = '5000'
+        sims_str = st.text_input("Sims", key='portall_sims', label_visibility='collapsed', disabled=_dis)
 
     # Row 2: Constraints
-    if is_mc:
-        _defaults = {'portall_maxwt': '50', 'portall_minwt': '0', 'portall_cost': '0.10',
-                     'portall_maxvol': '', 'portall_minret': ''}
-        for k, v in _defaults.items():
-            if k not in st.session_state: st.session_state[k] = v
-        for k, v in [('portall_maxwt','50'),('portall_minwt','0'),('portall_cost','0.10')]:
-            if not st.session_state.get(k): st.session_state[k] = v
+    _defaults = {'portall_maxwt': '50', 'portall_minwt': '0', 'portall_cost': '0.10',
+                 'portall_maxvol': '', 'portall_minret': ''}
+    for k, v in _defaults.items():
+        if k not in st.session_state: st.session_state[k] = v
+    for k, v in [('portall_maxwt','50'),('portall_minwt','0'),('portall_cost','0.10')]:
+        if not st.session_state.get(k): st.session_state[k] = v
 
-        c6, c7, c8, c9, c10 = st.columns(5)
-        with c6:
-            st.markdown(f"<div style='{_lbl}'>MAX WT %</div>", unsafe_allow_html=True)
-            max_wt_str = st.text_input("Max Wt", key='portall_maxwt', label_visibility='collapsed')
-        with c7:
-            st.markdown(f"<div style='{_lbl}'>MIN WT %</div>", unsafe_allow_html=True)
-            min_wt_str = st.text_input("Min Wt", key='portall_minwt', label_visibility='collapsed')
-        with c8:
-            st.markdown(f"<div style='{_lbl}'>MAX VOL %</div>", unsafe_allow_html=True)
-            max_vol_str = st.text_input("Max Vol", key='portall_maxvol', label_visibility='collapsed',
-                                         placeholder='e.g. 15')
-        with c9:
-            st.markdown(f"<div style='{_lbl}'>MIN RET %</div>", unsafe_allow_html=True)
-            min_ret_str = st.text_input("Min Ret", key='portall_minret', label_visibility='collapsed',
-                                         placeholder='e.g. 5')
-        with c10:
-            st.markdown(f"<div style='{_lbl}'>COST %</div>", unsafe_allow_html=True)
-            cost_str = st.text_input("Cost", key='portall_cost', label_visibility='collapsed')
-    else:
-        c6, c7 = st.columns([1, 7])
-        with c6:
-            st.markdown(f"<div style='{_lbl}'>COST %</div>", unsafe_allow_html=True)
-            if 'portall_cost' not in st.session_state: st.session_state['portall_cost'] = '0.10'
-            cost_str = st.text_input("Cost", key='portall_cost', label_visibility='collapsed')
+    c6, c7, c8, c9, c10 = st.columns(5)
+    with c6:
+        st.markdown(f"<div style='{_lbl}'>MAX WT %</div>", unsafe_allow_html=True)
+        max_wt_str = st.text_input("Max Wt", key='portall_maxwt', label_visibility='collapsed', disabled=_dis)
+    with c7:
+        st.markdown(f"<div style='{_lbl}'>MIN WT %</div>", unsafe_allow_html=True)
+        min_wt_str = st.text_input("Min Wt", key='portall_minwt', label_visibility='collapsed', disabled=_dis)
+    with c8:
+        st.markdown(f"<div style='{_lbl}'>MAX VOL %</div>", unsafe_allow_html=True)
+        max_vol_str = st.text_input("Max Vol", key='portall_maxvol', label_visibility='collapsed',
+                                     placeholder='e.g. 15', disabled=_dis)
+    with c9:
+        st.markdown(f"<div style='{_lbl}'>MIN RET %</div>", unsafe_allow_html=True)
+        min_ret_str = st.text_input("Min Ret", key='portall_minret', label_visibility='collapsed',
+                                     placeholder='e.g. 5', disabled=_dis)
+    with c10:
+        st.markdown(f"<div style='{_lbl}'>COST %</div>", unsafe_allow_html=True)
+        cost_str = st.text_input("Cost", key='portall_cost', label_visibility='collapsed')
 
     # Scan button
     scan_clicked = st.button('▶  Scan All', key='portall_scan', type='primary')
@@ -250,8 +229,7 @@ def render_all_tab(is_mobile):
 
     if scan_clicked:
         if is_mc:
-            try: score_type = score
-            except: score_type = 'Win Rate'
+            score_type = score
             try: max_wt = max(10, min(100, float(max_wt_str))) / 100.0
             except (ValueError, TypeError): max_wt = 0.50
             try: min_wt = max(0, min(50, float(min_wt_str))) / 100.0
@@ -276,14 +254,16 @@ def render_all_tab(is_mobile):
             st.session_state.portall_rank_key = rank_display
             _render_results(results, theme, rank_display, is_mobile, is_mc=True)
         else:
-            rank_by_ew = rank_by
+            # EW mode: rank by the objective dropdown
+            rank_by_ew = SCORE_TO_RANK.get(score, 'win_rate')
+            rank_display = next((k for k, v in SCAN_SORT_KEYS.items() if v[0] == rank_by_ew), 'Win Rate')
             progress = st.progress(0, text='Scanning groups...')
-            results = _run_ew_scan(period_days, rebal, txn_cost, rank_by_ew, progress)
+            results = _run_ew_scan(period_days, rebal, txn_cost, rank_display, progress)
             if not results:
                 st.warning('No valid groups found'); return
             st.session_state.portall_results = results
-            st.session_state.portall_rank_key = rank_by_ew
-            _render_results(results, theme, rank_by_ew, is_mobile, is_mc=False)
+            st.session_state.portall_rank_key = rank_display
+            _render_results(results, theme, rank_display, is_mobile, is_mc=False)
     elif 'portall_results' in st.session_state:
         rank_key = st.session_state.get('portall_rank_key', 'Win Rate')
         _render_results(st.session_state.portall_results, theme, rank_key, is_mobile,
