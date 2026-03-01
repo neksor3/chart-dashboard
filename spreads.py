@@ -318,7 +318,6 @@ def render_spreads_tab(is_mobile):
     pos_c = theme['pos']
     _lbl = f"color:#e2e8f0;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
     _bg3 = theme.get('bg3', '#0f172a'); _mut = theme.get('muted', '#475569'); _txt2 = theme.get('text2', '#94a3b8')
-    _hdr_c = '#64748b'  # slate blue for section headers
     ann_factor = 252
 
     # =================================================================
@@ -358,9 +357,9 @@ def render_spreads_tab(is_mobile):
     # =================================================================
     # SCAN ALL GROUPS
     # =================================================================
-    st.markdown(f"""<div style='margin-top:12px;padding:8px 12px;background:linear-gradient(90deg,{_hdr_c}18,{_bg3});
-        border-left:2px solid {_hdr_c};font-family:{FONTS};border-radius:4px'>
-        <span style='color:{_hdr_c};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>SCAN ALL GROUPS</span>
+    st.markdown(f"""<div style='margin-top:12px;padding:8px 12px;background:{_bg3};
+        border-left:2px solid {pos_c};font-family:{FONTS};border-radius:4px 4px 0 0'>
+        <span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>SCAN ALL GROUPS</span>
         <span style='color:{_mut};font-size:10px;margin-left:8px'>Top spread from each portfolio group · {lookback_label}</span>
     </div>""", unsafe_allow_html=True)
 
@@ -375,9 +374,9 @@ def render_spreads_tab(is_mobile):
     # =================================================================
     # GROUP DRILL-DOWN
     # =================================================================
-    st.markdown(f"""<div style='margin-top:24px;padding:8px 12px;background:linear-gradient(90deg,{_hdr_c}18,{_bg3});
-        border-left:2px solid {_hdr_c};font-family:{FONTS};border-radius:4px'>
-        <span style='color:{_hdr_c};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>GROUP DRILL-DOWN</span>
+    st.markdown(f"""<div style='margin-top:24px;padding:8px 12px;background:{_bg3};
+        border-left:2px solid {pos_c};font-family:{FONTS};border-radius:4px 4px 0 0'>
+        <span style='color:#f8fafc;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase'>GROUP DRILL-DOWN</span>
         <span style='color:{_mut};font-size:10px;margin-left:8px'>{spread_sector} · All pairs</span>
     </div>""", unsafe_allow_html=True)
 
