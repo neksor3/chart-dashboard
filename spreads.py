@@ -363,7 +363,7 @@ def render_spreads_tab(is_mobile):
         <span style='color:{_mut};font-size:10px;margin-left:8px'>Top spread from each portfolio group · {lookback_label}</span>
     </div>""", unsafe_allow_html=True)
 
-    scan_clicked = st.button('▶  Scan All Groups', key='spread_scan_all')
+    scan_clicked = st.button('▶  Scan All Groups', key='spread_scan_all', type='primary')
 
     if scan_clicked:
         _run_scan_all(lookback_days, lookback_label, ann_factor, theme, sort_key, is_mobile)
