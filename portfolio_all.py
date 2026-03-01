@@ -358,11 +358,14 @@ def _render_results(results, theme, rank_by, is_mobile, is_mc=False):
         </tr>"""
 
     html += "</tbody></table></div>"
-    st.markdown(html, unsafe_allow_html=True)
+    try:
+        st.markdown(html, unsafe_allow_html=True)
+    except Exception as e:
+        st.error(f"Table render error: {e}")
+        st.code(html[:500])
 
-    # Simple weights dump per group
-    if is_mc:
-        _render_weights_all(sorted_results, theme)
+    # Weights per group
+    _render_weights_all(sorted_results, theme, is_mc)
 
     _render_ew_charts(sorted_results, theme, is_mobile)
 
@@ -371,30 +374,30 @@ def _render_results(results, theme, rank_by, is_mobile, is_mc=False):
 # WEIGHTS PER GROUP (MC only — EW is trivially 1/n)
 # =============================================================================
 
-def _render_weights_all(sorted_results, theme):
+def _render_weights_all(sorted_results, theme, is_mc=False):
     import portfolio
     pos_c = portfolio.C_POS
     _bdr = theme.get('border', '#1e293b')
     _txt2 = theme.get('text2', '#94a3b8')
 
-    _section('OPTIMIZED WEIGHTS', 'Current weights per group from best approach')
+    label = 'OPTIMIZED WEIGHTS' if is_mc else 'EQUAL WEIGHTS'
+    sub = 'Current weights per group from best approach' if is_mc else 'Equal weight (1/n) per group'
+    _section(label, sub)
 
-    has_any = False
     for r in sorted_results:
         gname = r.get('group', '?')
-        approach = r.get('best_approach', '')
-        w = r.get('weights', None)
+        approach = r.get('best_approach', '') if is_mc else ''
         syms = r.get('symbols', [])
+        n = len(syms)
+        if n == 0:
+            continue
 
-        # Build weight string
-        if w and isinstance(w, dict) and len(w) > 0:
+        w = r.get('weights', None)
+        if is_mc and w and isinstance(w, dict) and len(w) > 0:
             sorted_w = sorted(w.items(), key=lambda x: x[1], reverse=True)
             parts = [f"<b>{s}</b> {v*100:.1f}%" for s, v in sorted_w]
-            has_any = True
         else:
-            # Fallback: show EW
-            n = len(syms)
-            ew = 1.0 / n if n > 0 else 0
+            ew = 1.0 / n
             parts = [f"<b>{s}</b> {ew*100:.1f}%" for s in syms]
 
         line = ' &nbsp;·&nbsp; '.join(parts)
