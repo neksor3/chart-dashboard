@@ -23,6 +23,7 @@ FUTURES_GROUPS = OrderedDict([
     ('Macro',     ['DBC', 'USO', 'GLD', 'SLV', 'CPER', 'BIL', 'HYG', 'LQD', 'TLT', 'BND', 'EMB', 'EEM', 'SPY', 'BTC-USD', 'ETH-USD']),
     ('Core 5',    ['IAU', 'VOO', 'VTI', 'SHV', 'BTC-USD']),
     ('Exchanges', ['ICE', 'NDAQ', 'CME', 'CBOE', 'X.TO', 'LSEG.L', 'DB1.DE', 'ENX.PA', '8697.T', '0388.HK', 'ASX.AX', 'S68.SI']),
+    ('Shipping',  ['BOAT', 'SEA', 'ZIM', 'MATX', 'DAC', 'CMRE', 'FRO', 'STNG', 'INSW', 'TK', 'GOGL', 'SBLK', 'GNK', 'GSL', 'AMKBY']),
 ])
 
 SYMBOL_NAMES = {
@@ -54,6 +55,11 @@ SYMBOL_NAMES = {
     'ENX.PA': 'Euronext', '8697.T': 'JPX', '0388.HK': 'HKEX', 'ASX.AX': 'ASX Ltd',
     'IAU': 'iShares Gold', 'VOO': 'Vanguard S&P 500', 'VTI': 'Vanguard Total Mkt',
     'SHV': 'Short Treasury', 'BTC-USD': 'Bitcoin',
+    'BOAT': 'Global Shipping ETF', 'SEA': 'Sea to Sky Cargo', 'ZIM': 'ZIM Shipping',
+    'MATX': 'Matson', 'DAC': 'Danaos', 'CMRE': 'Costamare', 'FRO': 'Frontline',
+    'STNG': 'Scorpio Tankers', 'INSW': 'Intl Seaways', 'TK': 'Teekay',
+    'GOGL': 'Golden Ocean', 'SBLK': 'Star Bulk', 'GNK': 'Genco Shipping',
+    'GSL': 'Global Ship Lease', 'AMKBY': 'Maersk',
 }
 
 # =============================================================================
