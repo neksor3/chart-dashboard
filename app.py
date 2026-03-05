@@ -91,6 +91,7 @@ def main():
     from news import render_news_tab
     from research import render as render_research_tab
     from options import render_options_tab
+    from rates import render_rates_tab
 
     # Init session state
     if 'sector' not in st.session_state: st.session_state.sector = 'Futures'
@@ -146,7 +147,7 @@ def main():
     """, unsafe_allow_html=True)
 
     # Tabs
-    tab_pulse, tab_news, tab_portfolio, tab_spreads, tab_charts, tab_options, tab_research = st.tabs(["PULSE", "NEWS", "PORTFOLIO", "SPREADS", "CHARTS", "OPTIONS", "RESEARCH"])
+    tab_pulse, tab_news, tab_portfolio, tab_spreads, tab_charts, tab_options, tab_rates, tab_research = st.tabs(["PULSE", "NEWS", "PORTFOLIO", "SPREADS", "CHARTS", "OPTIONS", "RATES", "RESEARCH"])
 
     with tab_pulse:
         render_pulse_tab(is_mobile)
@@ -165,6 +166,9 @@ def main():
 
     with tab_options:
         render_options_tab(is_mobile)
+
+    with tab_rates:
+        render_rates_tab(is_mobile)
 
     with tab_research:
         render_research_tab()
