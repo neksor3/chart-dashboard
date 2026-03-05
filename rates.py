@@ -324,8 +324,7 @@ def _render_us_table(us, theme):
 
 
 def _render_sg_curve_chart(sg, theme):
-    """SG SGS yield curve — today + 1M/3M/1Y ago in green gradient."""
-    pos_c = theme['pos']
+    """SG SGS yield curve — today (amber) + 1M/3M/1Y ago (green dotted gradient)."""
     _pbg = theme.get('plot_bg', '#0f1117'); _grd = theme.get('grid', '#1a1f2e')
 
     if not sg:
@@ -337,11 +336,10 @@ def _render_sg_curve_chart(sg, theme):
         ('1 Month',  30),
     ]
 
-    # Green gradient: oldest = darkest, newest = brightest
     comp_styles = [
-        {'color': '#14532d', 'width': 1.5},   # 1Y — darkest
-        {'color': '#16a34a', 'width': 1.5},   # 3M — mid
-        {'color': '#4ade80', 'width': 1.5},   # 1M — lighter
+        {'color': '#14532d', 'width': 1.3},
+        {'color': '#16a34a', 'width': 1.3},
+        {'color': '#4ade80', 'width': 1.3},
     ]
 
     fig = go.Figure()
@@ -350,18 +348,27 @@ def _render_sg_curve_chart(sg, theme):
     comps = _get_comparison_curves(sg, compare_days)
     for i, (label, row) in enumerate(comps.items()):
         style = comp_styles[i % len(comp_styles)]
-        fig.add_trace(go.Scatter(x=sg_x, y=row['yields'], mode='lines+markers',
+        fig.add_trace(go.Scatter(x=sg_x, y=row['yields'], mode='lines',
             name=f"{label} ({_fmt_date(row['date'])})",
-            line=dict(color=style['color'], width=style['width']),
-            marker=dict(size=3, color=style['color']),
+            line=dict(color=style['color'], width=style['width'], dash='dot'),
             hovertemplate='%{y:.2f}%<extra>' + label + '</extra>'))
 
     fig.add_trace(go.Scatter(x=sg_x, y=sg['yields'], mode='lines+markers',
         name=f"Today ({_fmt_date(sg['date'])})",
-        line=dict(color='#86efac', width=3),
-        marker=dict(size=6, color='#86efac'),
+        line=dict(color='#f59e0b', width=3),
+        marker=dict(size=6, color='#f59e0b'),
         hovertemplate='%{text}<br>%{y:.2f}%<extra>Today</extra>',
         text=sg['tenors']))
+
+    # Tenor labels: 2Y (idx 2), 10Y (idx 4)
+    tenor_labels = {2: '2Y', 4: '10Y'}
+    for idx, label in tenor_labels.items():
+        if idx < len(sg['yields']) and sg['yields'][idx] is not None:
+            fig.add_annotation(x=sg_x[idx], y=sg['yields'][idx],
+                text=f"<b>{label}</b> {sg['yields'][idx]:.2f}%",
+                showarrow=True, arrowhead=0, arrowcolor='#f59e0b40', ax=0, ay=-25,
+                font=dict(size=10, color='#f59e0b', family=FONTS),
+                bgcolor='#0f111780', borderpad=2)
 
     fig.update_layout(template='plotly_dark', height=450,
         margin=dict(l=40, r=20, t=30, b=40), plot_bgcolor=_pbg, paper_bgcolor=_pbg,
