@@ -105,8 +105,13 @@ SGS_RESOURCE = '5f2b18a8-0883-4769-a635-879c63d3caac'
 def _fetch_sg_curve():
     """Fetch SGS benchmark yields from MAS API — enough history for 1Y comparison."""
     try:
-        url = (f'https://eservices.mas.gov.sg/api/action/datastore/search.json'
-               f'?resource_id={SGS_RESOURCE}&limit=400&sort=end_of_day%20desc')
+        import urllib.parse
+        params = urllib.parse.urlencode({
+            'resource_id': SGS_RESOURCE,
+            'limit': 400,
+            'sort': 'end_of_day desc'
+        })
+        url = f'https://eservices.mas.gov.sg/api/action/datastore/search.json?{params}'
         req = urllib.request.Request(url, headers={'User-Agent': _UA})
         resp = urllib.request.urlopen(req, timeout=15)
         data = json.loads(resp.read())
@@ -146,8 +151,13 @@ def _fetch_sg_curve():
 def _fetch_sora():
     """Fetch latest SORA from MAS API."""
     try:
-        url = (f'https://eservices.mas.gov.sg/api/action/datastore/search.json'
-               f'?resource_id={SORA_RESOURCE}&limit=5&sort=end_of_day%20desc')
+        import urllib.parse
+        params = urllib.parse.urlencode({
+            'resource_id': SORA_RESOURCE,
+            'limit': 5,
+            'sort': 'end_of_day desc'
+        })
+        url = f'https://eservices.mas.gov.sg/api/action/datastore/search.json?{params}'
         req = urllib.request.Request(url, headers={'User-Agent': _UA})
         resp = urllib.request.urlopen(req, timeout=15)
         data = json.loads(resp.read())
