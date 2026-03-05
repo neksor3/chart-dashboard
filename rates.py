@@ -35,68 +35,51 @@ US_XML_FIELDS = ['d:BC_1MONTH', 'd:BC_2MONTH', 'd:BC_3MONTH', 'd:BC_4MONTH',
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def _fetch_us_curve():
-    """Fetch latest US Treasury par yield curve from Treasury.gov XML feed."""
+    """Fetch US Treasury par yield curves — current year + previous year for comparisons."""
     try:
-        year = datetime.now().year
-        url = (f'https://home.treasury.gov/resource-center/data-chart-center/interest-rates/'
-               f'pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value={year}')
-        req = urllib.request.Request(url, headers={'User-Agent': _UA})
-        resp = urllib.request.urlopen(req, timeout=15)
-        raw = resp.read()
+        now = datetime.now()
+        all_rows = []
+        for yr in [now.year - 1, now.year]:
+            url = (f'https://home.treasury.gov/resource-center/data-chart-center/interest-rates/'
+                   f'pages/xml?data=daily_treasury_yield_curve&field_tdr_date_value={yr}')
+            req = urllib.request.Request(url, headers={'User-Agent': _UA})
+            resp = urllib.request.urlopen(req, timeout=15)
+            raw = resp.read()
 
-        ns = {
-            'a': 'http://www.w3.org/2005/Atom',
-            'm': 'http://schemas.microsoft.com/ado/2007/08/dataservices/metadata',
-            'd': 'http://schemas.microsoft.com/ado/2007/08/dataservices',
-        }
-        root = ET.fromstring(raw)
-        entries = root.findall('.//a:entry', ns)
-        if not entries:
+            ns = {
+                'a': 'http://www.w3.org/2005/Atom',
+                'm': 'http://schemas.microsoft.com/ado/2007/08/dataservices/metadata',
+                'd': 'http://schemas.microsoft.com/ado/2007/08/dataservices',
+            }
+            root = ET.fromstring(raw)
+            entries = root.findall('.//a:entry', ns)
+            for entry in entries:
+                props = entry.find('.//m:properties', ns)
+                if props is None:
+                    continue
+                date_el = props.find('d:NEW_DATE', ns)
+                if date_el is None:
+                    continue
+                date_str = date_el.text[:10] if date_el.text else ''
+                yields = []
+                for field in US_XML_FIELDS:
+                    el = props.find(field, ns)
+                    val = float(el.text) if el is not None and el.text else None
+                    yields.append(val)
+                all_rows.append({'date': date_str, 'yields': yields})
+
+        if not all_rows:
             return None, None
 
-        # Get last few entries (most recent dates)
-        rows = []
-        for entry in entries[-30:]:  # last 30 trading days
-            props = entry.find('.//m:properties', ns)
-            if props is None:
-                continue
-            date_el = props.find('d:NEW_DATE', ns)
-            if date_el is None:
-                continue
-            date_str = date_el.text[:10] if date_el.text else ''
-            yields = []
-            for field in US_XML_FIELDS:
-                el = props.find(field, ns)
-                val = float(el.text) if el is not None and el.text else None
-                yields.append(val)
-            rows.append({'date': date_str, 'yields': yields})
-
-        if not rows:
-            return None, None
-
-        # Latest curve
-        latest = rows[-1]
-        latest_date = latest['date']
-        latest_yields = latest['yields']
-
-        # Previous day for comparison
-        prev_yields = rows[-2]['yields'] if len(rows) >= 2 else None
-
-        # Historical for 2s10s
-        hist_2s10s = []
-        for r in rows:
-            y2 = r['yields'][6]   # 2 Yr index
-            y10 = r['yields'][10]  # 10 Yr index
-            if y2 is not None and y10 is not None:
-                hist_2s10s.append({'date': r['date'], 'spread': y10 - y2})
+        all_rows.sort(key=lambda x: x['date'])
+        latest = all_rows[-1]
 
         return {
-            'date': latest_date,
+            'date': latest['date'],
             'tenors': US_TENORS,
             'months': US_TENOR_MONTHS,
-            'yields': latest_yields,
-            'prev_yields': prev_yields,
-            'hist_2s10s': hist_2s10s,
+            'yields': latest['yields'],
+            'all_rows': all_rows,
         }, None
     except Exception as e:
         logger.warning(f"US curve fetch error: {e}")
@@ -121,10 +104,10 @@ SGS_RESOURCE = '5f2b18a8-0883-4769-a635-879c63d3caac'
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def _fetch_sg_curve():
-    """Fetch latest SGS benchmark yields from MAS API."""
+    """Fetch SGS benchmark yields from MAS API — enough history for 1Y comparison."""
     try:
         url = (f'https://eservices.mas.gov.sg/api/action/datastore/search.json'
-               f'?resource_id={SGS_RESOURCE}&limit=30&sort=end_of_day desc')
+               f'?resource_id={SGS_RESOURCE}&limit=400&sort=end_of_day desc')
         req = urllib.request.Request(url, headers={'User-Agent': _UA})
         resp = urllib.request.urlopen(req, timeout=15)
         data = json.loads(resp.read())
@@ -133,49 +116,27 @@ def _fetch_sg_curve():
         if not records:
             return None, None
 
-        latest = records[0]
-        latest_date = latest.get('end_of_day', '')
-
-        yields = []
-        for f in SG_FIELDS:
-            val = latest.get(f)
-            try:
-                yields.append(float(val) if val else None)
-            except (ValueError, TypeError):
-                yields.append(None)
-
-        prev_yields = None
-        if len(records) >= 2:
-            prev = records[1]
-            prev_yields = []
-            for f in SG_FIELDS:
-                val = prev.get(f)
-                try:
-                    prev_yields.append(float(val) if val else None)
-                except (ValueError, TypeError):
-                    prev_yields.append(None)
-
-        # Historical 2s10s
-        hist_2s10s = []
+        all_rows = []
         for r in records:
-            y2 = r.get('sgs_2y_bid_yield')
-            y10 = r.get('sgs_10y_bid_yield')
-            try:
-                if y2 and y10:
-                    hist_2s10s.append({
-                        'date': r.get('end_of_day', ''),
-                        'spread': float(y10) - float(y2)
-                    })
-            except (ValueError, TypeError):
-                pass
+            date_str = r.get('end_of_day', '')
+            yields = []
+            for f in SG_FIELDS:
+                val = r.get(f)
+                try:
+                    yields.append(float(val) if val else None)
+                except (ValueError, TypeError):
+                    yields.append(None)
+            all_rows.append({'date': date_str, 'yields': yields})
+
+        all_rows.sort(key=lambda x: x['date'])
+        latest = all_rows[-1]
 
         return {
-            'date': latest_date,
+            'date': latest['date'],
             'tenors': SG_TENORS,
             'months': SG_TENOR_MONTHS,
-            'yields': yields,
-            'prev_yields': prev_yields,
-            'hist_2s10s': list(reversed(hist_2s10s)),
+            'yields': latest['yields'],
+            'all_rows': all_rows,
         }, None
     except Exception as e:
         logger.warning(f"SG curve fetch error: {e}")
@@ -207,46 +168,107 @@ def _fetch_sora():
 
 
 # =============================================================================
+# COMPARISON HELPERS
+# =============================================================================
+
+COMPARE_OPTIONS = {
+    'None': 0,
+    '1 Week': 7,
+    '1 Month': 30,
+    '3 Months': 91,
+    '6 Months': 182,
+    '1 Year': 365,
+}
+
+def _find_curve_near_date(all_rows, target_date_str):
+    """Find the row closest to (but not after) target date."""
+    if not all_rows:
+        return None
+    best = None
+    for r in all_rows:
+        if r['date'] <= target_date_str:
+            best = r
+    return best
+
+
+def _get_comparison_curves(data, compare_days_list):
+    """Return dict of {label: {date, yields}} for each comparison period."""
+    if not data or 'all_rows' not in data:
+        return {}
+    now_str = data['date']
+    try:
+        now_dt = datetime.strptime(now_str[:10], '%Y-%m-%d')
+    except Exception:
+        return {}
+
+    comps = {}
+    for label, days in compare_days_list:
+        if days == 0:
+            continue
+        target_dt = now_dt - timedelta(days=days)
+        target_str = target_dt.strftime('%Y-%m-%d')
+        row = _find_curve_near_date(data['all_rows'], target_str)
+        if row:
+            comps[label] = row
+    return comps
+
+
+# =============================================================================
 # RENDER
 # =============================================================================
 
-def _render_curve_chart(us, sg, theme):
-    """Overlay US and SG yield curves."""
+def _render_curve_chart(us, sg, theme, compare_labels):
+    """Overlay US and SG yield curves with historical comparisons."""
     pos_c = theme['pos']; neg_c = theme['neg']
     _pbg = theme.get('plot_bg', '#0f1117'); _grd = theme.get('grid', '#1a1f2e')
 
+    # Comparison color palette (muted versions)
+    comp_colors_us = ['#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a']
+    comp_colors_sg = ['#22c55e', '#16a34a', '#15803d', '#166534', '#14532d']
+
     fig = go.Figure()
 
-    # US curve
+    # Build comparison period list from labels
+    compare_days = [(lbl, COMPARE_OPTIONS[lbl]) for lbl in compare_labels if COMPARE_OPTIONS.get(lbl, 0) > 0]
+
+    # US curves
     if us:
         us_x = [m / 12 for m in us['months']]
-        us_y = [y for y in us['yields']]
-        fig.add_trace(go.Scatter(x=us_x, y=us_y, mode='lines+markers',
-            name=f"US Treasury ({us['date']})", line=dict(color='#60a5fa', width=2.5),
+
+        # Historical comparison curves
+        us_comps = _get_comparison_curves(us, compare_days)
+        for i, (label, row) in enumerate(us_comps.items()):
+            cc = comp_colors_us[i % len(comp_colors_us)]
+            fig.add_trace(go.Scatter(x=us_x, y=row['yields'], mode='lines',
+                name=f"US {label} ({row['date']})", line=dict(color=cc, width=1.2, dash='dot'),
+                opacity=0.6, hovertemplate='%{y:.2f}%<extra>US ' + label + '</extra>'))
+
+        # Current curve on top
+        fig.add_trace(go.Scatter(x=us_x, y=us['yields'], mode='lines+markers',
+            name=f"US Today ({us['date']})", line=dict(color='#60a5fa', width=3),
             marker=dict(size=6), hovertemplate='%{text}<br>%{y:.2f}%<extra>US</extra>',
             text=us['tenors']))
-        # Previous day
-        if us.get('prev_yields'):
-            fig.add_trace(go.Scatter(x=us_x, y=us['prev_yields'], mode='lines',
-                name='US (prev day)', line=dict(color='#60a5fa', width=1, dash='dot'),
-                hovertemplate='%{y:.2f}%<extra>US prev</extra>'))
 
-    # SG curve
+    # SG curves
     if sg:
         sg_x = [m / 12 for m in sg['months']]
-        sg_y = [y for y in sg['yields']]
-        fig.add_trace(go.Scatter(x=sg_x, y=sg_y, mode='lines+markers',
-            name=f"SG SGS ({sg['date']})", line=dict(color=pos_c, width=2.5),
+
+        sg_comps = _get_comparison_curves(sg, compare_days)
+        for i, (label, row) in enumerate(sg_comps.items()):
+            cc = comp_colors_sg[i % len(comp_colors_sg)]
+            fig.add_trace(go.Scatter(x=sg_x, y=row['yields'], mode='lines',
+                name=f"SG {label} ({row['date']})", line=dict(color=cc, width=1.2, dash='dot'),
+                opacity=0.6, hovertemplate='%{y:.2f}%<extra>SG ' + label + '</extra>'))
+
+        fig.add_trace(go.Scatter(x=sg_x, y=sg['yields'], mode='lines+markers',
+            name=f"SG Today ({sg['date']})", line=dict(color=pos_c, width=3),
             marker=dict(size=6), hovertemplate='%{text}<br>%{y:.2f}%<extra>SG</extra>',
             text=sg['tenors']))
-        if sg.get('prev_yields'):
-            fig.add_trace(go.Scatter(x=sg_x, y=sg['prev_yields'], mode='lines',
-                name='SG (prev day)', line=dict(color=pos_c, width=1, dash='dot'),
-                hovertemplate='%{y:.2f}%<extra>SG prev</extra>'))
 
-    fig.update_layout(template='plotly_dark', height=380,
+    fig.update_layout(template='plotly_dark', height=420,
         margin=dict(l=40, r=20, t=30, b=40), plot_bgcolor=_pbg, paper_bgcolor=_pbg,
-        showlegend=True, legend=dict(x=0.01, y=0.99, font=dict(size=10, family=FONTS)),
+        showlegend=True, legend=dict(x=0.01, y=0.99, font=dict(size=9, family=FONTS),
+                                     bgcolor='rgba(0,0,0,0.5)'),
         hovermode='x unified', font=dict(family=FONTS),
         xaxis_title='Maturity (Years)', yaxis_title='Yield %')
     fig.update_xaxes(gridcolor=_grd, tickfont=dict(color='#888', size=9, family=FONTS),
@@ -263,7 +285,6 @@ def _render_spread_chart(us, sg, theme):
     fig = make_subplots(rows=1, cols=2, subplot_titles=['US – SG Spread by Tenor', '2s10s Spread'],
                         horizontal_spacing=0.08)
 
-    # Spread by tenor (matching tenors only)
     if us and sg:
         common = [(ut, um, uy, st_, sm, sy)
                   for ut, um, uy in zip(us['tenors'], us['months'], us['yields'])
@@ -278,21 +299,16 @@ def _render_spread_chart(us, sg, theme):
                 showlegend=False), row=1, col=1)
             fig.add_hline(y=0, line=dict(color='#ffffff', width=0.5), row=1, col=1)
 
-    # 2s10s
     if us:
         us_2y = us['yields'][6]; us_10y = us['yields'][10]
         if us_2y is not None and us_10y is not None:
-            us_2s10s = us_10y - us_2y
-            fig.add_trace(go.Bar(x=['US 2s10s'], y=[us_2s10s],
-                marker_color='#60a5fa', name='US',
-                hovertemplate='%{y:.2f}%<extra></extra>'), row=1, col=2)
+            fig.add_trace(go.Bar(x=['US 2s10s'], y=[us_10y - us_2y],
+                marker_color='#60a5fa', name='US'), row=1, col=2)
     if sg:
         sg_2y = sg['yields'][2]; sg_10y = sg['yields'][4]
         if sg_2y is not None and sg_10y is not None:
-            sg_2s10s = sg_10y - sg_2y
-            fig.add_trace(go.Bar(x=['SG 2s10s'], y=[sg_2s10s],
-                marker_color=pos_c, name='SG',
-                hovertemplate='%{y:.2f}%<extra></extra>'), row=1, col=2)
+            fig.add_trace(go.Bar(x=['SG 2s10s'], y=[sg_10y - sg_2y],
+                marker_color=pos_c, name='SG'), row=1, col=2)
     fig.add_hline(y=0, line=dict(color='#ffffff', width=0.5), row=1, col=2)
 
     fig.update_layout(template='plotly_dark', height=300,
@@ -316,10 +332,17 @@ def _render_rates_table(us, sg, sora, theme):
     th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;"
     td = f"padding:4px 8px;border-bottom:1px solid {_bdr}22;font-size:11px;"
 
-    # Build matching tenor rows
+    # Get prev day yields from all_rows
+    us_prev = None
+    if us and 'all_rows' in us and len(us['all_rows']) >= 2:
+        us_prev = us['all_rows'][-2]['yields']
+    sg_prev = None
+    if sg and 'all_rows' in sg and len(sg['all_rows']) >= 2:
+        sg_prev = sg['all_rows'][-2]['yields']
+
     all_months = sorted(set((us['months'] if us else []) + (sg['months'] if sg else [])))
-    us_map = dict(zip(us['months'], zip(us['tenors'], us['yields'], us.get('prev_yields') or [None]*20))) if us else {}
-    sg_map = dict(zip(sg['months'], zip(sg['tenors'], sg['yields'], sg.get('prev_yields') or [None]*20))) if sg else {}
+    us_map = dict(zip(us['months'], zip(us['tenors'], us['yields'], us_prev or [None]*20))) if us else {}
+    sg_map = dict(zip(sg['months'], zip(sg['tenors'], sg['yields'], sg_prev or [None]*20))) if sg else {}
 
     html = f"""<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:4px'>
     <table style='border-collapse:collapse;font-family:{FONTS};width:100%;line-height:1.3'>
@@ -401,6 +424,14 @@ def render_rates_tab(is_mobile):
     _mut = t.get('muted', '#475569')
     _lbl = f"color:#f8fafc;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
+    # Controls
+    c1, c2 = st.columns([3, 5])
+    with c1:
+        st.markdown(f"<div style='{_lbl}'>COMPARE TO</div>", unsafe_allow_html=True)
+        compare_labels = st.multiselect("Compare", list(COMPARE_OPTIONS.keys())[1:],
+                                         default=['1 Month', '1 Year'],
+                                         key='rates_compare', label_visibility='collapsed')
+
     with st.spinner('Fetching rates...'):
         us, us_err = _fetch_us_curve()
         sg, sg_err = _fetch_sg_curve()
@@ -442,7 +473,7 @@ def render_rates_tab(is_mobile):
 
     # Layout
     if is_mobile:
-        _render_curve_chart(us, sg, t)
+        _render_curve_chart(us, sg, t, compare_labels)
         _render_spread_chart(us, sg, t)
         _render_rates_table(us, sg, sora, t)
     else:
@@ -450,7 +481,7 @@ def render_rates_tab(is_mobile):
         with left:
             tab_curve, tab_spread = st.tabs(['YIELD CURVES', 'SPREADS'])
             with tab_curve:
-                _render_curve_chart(us, sg, t)
+                _render_curve_chart(us, sg, t, compare_labels)
             with tab_spread:
                 _render_spread_chart(us, sg, t)
         with right:
