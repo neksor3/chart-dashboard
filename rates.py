@@ -288,35 +288,48 @@ def _render_curve_chart(us, theme):
 
 
 def _render_us_table(us, theme):
-    """US rates table with prev day delta."""
+    """US rates table with 3M and 1Y deltas."""
     _bg3 = theme.get('bg3', '#0f172a'); _bdr = theme.get('border', '#1e293b')
-    _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8')
+    _txt = theme.get('text', '#e2e8f0')
     pos_c = theme['pos']; neg_c = theme['neg']
 
     th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;"
     td = f"padding:4px 8px;border-bottom:1px solid {_bdr}22;font-size:11px;"
 
-    prev = us['all_rows'][-2]['yields'] if len(us['all_rows']) >= 2 else [None] * len(us['yields'])
+    # Get 3M and 1Y ago yields
+    comps = _get_comparison_curves(us, [('3M', 91), ('1Y', 365)])
+    comp_3m = comps.get('3M', {}).get('yields', [None] * len(us['yields']))
+    comp_1y = comps.get('1Y', {}).get('yields', [None] * len(us['yields']))
 
     html = f"""<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:4px'>
     <table style='border-collapse:collapse;font-family:{FONTS};width:100%;line-height:1.3'>
     <thead style='background:{_bg3}'><tr>
         <th style='{th}text-align:left'>TENOR</th>
-        <th style='{th}text-align:right;color:#4ade80'>YIELD</th>
-        <th style='{th}text-align:right'>Δ 1D</th>
+        <th style='{th}text-align:right;color:{pos_c}'>YIELD</th>
+        <th style='{th}text-align:right'>Δ 3M</th>
+        <th style='{th}text-align:right'>Δ 1Y</th>
     </tr></thead><tbody>"""
 
     for i, (tenor, y) in enumerate(zip(us['tenors'], us['yields'])):
         y_str = f'{y:.2f}%' if y is not None else '—'
-        d_str = ''
-        if y is not None and prev[i] is not None:
-            d = y - prev[i]
+
+        d3_str = ''
+        if y is not None and i < len(comp_3m) and comp_3m[i] is not None:
+            d = y - comp_3m[i]
             c = pos_c if d <= 0 else neg_c
-            d_str = f"<span style='color:{c}'>{d:+.2f}</span>"
+            d3_str = f"<span style='color:{c}'>{d:+.2f}</span>"
+
+        d1y_str = ''
+        if y is not None and i < len(comp_1y) and comp_1y[i] is not None:
+            d = y - comp_1y[i]
+            c = pos_c if d <= 0 else neg_c
+            d1y_str = f"<span style='color:{c}'>{d:+.2f}</span>"
+
         html += f"""<tr>
             <td style='{td}color:{_txt};font-weight:600'>{tenor}</td>
-            <td style='{td}text-align:right;color:#4ade80'>{y_str}</td>
-            <td style='{td}text-align:right'>{d_str}</td>
+            <td style='{td}text-align:right;color:{pos_c}'>{y_str}</td>
+            <td style='{td}text-align:right'>{d3_str}</td>
+            <td style='{td}text-align:right'>{d1y_str}</td>
         </tr>"""
 
     html += "</tbody></table></div>"
@@ -383,7 +396,7 @@ def _render_sg_curve_chart(sg, theme):
 
 
 def _render_sg_table(sg, sora, theme):
-    """SG rates table with prev day delta + SORA."""
+    """SG rates table with 3M and 1Y deltas + SORA."""
     pos_c = theme['pos']; neg_c = theme['neg']
     _bg3 = theme.get('bg3', '#0f172a'); _bdr = theme.get('border', '#1e293b')
     _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8')
@@ -391,27 +404,39 @@ def _render_sg_table(sg, sora, theme):
     th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;"
     td = f"padding:4px 8px;border-bottom:1px solid {_bdr}22;font-size:11px;"
 
-    prev = sg['all_rows'][-2]['yields'] if len(sg['all_rows']) >= 2 else [None] * len(sg['yields'])
+    comps = _get_comparison_curves(sg, [('3M', 91), ('1Y', 365)])
+    comp_3m = comps.get('3M', {}).get('yields', [None] * len(sg['yields']))
+    comp_1y = comps.get('1Y', {}).get('yields', [None] * len(sg['yields']))
 
     html = f"""<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:4px'>
     <table style='border-collapse:collapse;font-family:{FONTS};width:100%;line-height:1.3'>
     <thead style='background:{_bg3}'><tr>
         <th style='{th}text-align:left'>TENOR</th>
         <th style='{th}text-align:right;color:{pos_c}'>YIELD</th>
-        <th style='{th}text-align:right'>Δ 1D</th>
+        <th style='{th}text-align:right'>Δ 3M</th>
+        <th style='{th}text-align:right'>Δ 1Y</th>
     </tr></thead><tbody>"""
 
     for i, (tenor, y) in enumerate(zip(sg['tenors'], sg['yields'])):
         y_str = f'{y:.2f}%' if y is not None else '—'
-        d_str = ''
-        if y is not None and prev[i] is not None:
-            d = y - prev[i]
+
+        d3_str = ''
+        if y is not None and i < len(comp_3m) and comp_3m[i] is not None:
+            d = y - comp_3m[i]
             c = pos_c if d <= 0 else neg_c
-            d_str = f"<span style='color:{c}'>{d:+.2f}</span>"
+            d3_str = f"<span style='color:{c}'>{d:+.2f}</span>"
+
+        d1y_str = ''
+        if y is not None and i < len(comp_1y) and comp_1y[i] is not None:
+            d = y - comp_1y[i]
+            c = pos_c if d <= 0 else neg_c
+            d1y_str = f"<span style='color:{c}'>{d:+.2f}</span>"
+
         html += f"""<tr>
             <td style='{td}color:{_txt};font-weight:600'>{tenor}</td>
             <td style='{td}text-align:right;color:{pos_c}'>{y_str}</td>
-            <td style='{td}text-align:right'>{d_str}</td>
+            <td style='{td}text-align:right'>{d3_str}</td>
+            <td style='{td}text-align:right'>{d1y_str}</td>
         </tr>"""
 
     html += "</tbody></table></div>"
@@ -420,7 +445,7 @@ def _render_sg_table(sg, sora, theme):
     if sora:
         html += (f"<div style='margin-top:6px;padding:5px 10px;background:{_bg3};border-radius:4px;"
                  f"font-family:{FONTS};font-size:10px;color:{_txt2}'>"
-                 f"SORA ({sora['date']}): "
+                 f"SORA ({_fmt_date(sora['date'])}): "
                  f"O/N <b style='color:{pos_c}'>{sora.get('sora','—')}%</b> · "
                  f"1M <b style='color:{pos_c}'>{sora.get('comp_1m','—')}%</b> · "
                  f"3M <b style='color:{pos_c}'>{sora.get('comp_3m','—')}%</b> · "
