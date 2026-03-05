@@ -24,6 +24,7 @@ FUTURES_GROUPS = OrderedDict([
     ('Core 5',    ['IAU', 'VOO', 'VTI', 'SHV', 'BTC-USD']),
     ('Exchanges', ['ICE', 'NDAQ', 'CME', 'CBOE', 'X.TO', 'LSEG.L', 'DB1.DE', 'ENX.PA', '8697.T', '0388.HK', 'ASX.AX', 'S68.SI']),
     ('Shipping',  ['BOAT', 'SEA', 'ZIM', 'MATX', 'DAC', 'CMRE', 'FRO', 'STNG', 'INSW', 'TK', 'GOGL', 'SBLK', 'GNK', 'GSL', 'AMKBY']),
+    ('Strategy',  ['MSTR', 'STRK', 'STRF', 'STRC', 'STRD', 'MSTU', 'MSTX', 'MSTZ', 'MSTY']),
 ])
 
 SYMBOL_NAMES = {
@@ -60,6 +61,10 @@ SYMBOL_NAMES = {
     'STNG': 'Scorpio Tankers', 'INSW': 'Intl Seaways', 'TK': 'Teekay',
     'GOGL': 'Golden Ocean', 'SBLK': 'Star Bulk', 'GNK': 'Genco Shipping',
     'GSL': 'Global Ship Lease', 'AMKBY': 'Maersk',
+    'MSTR': 'Strategy', 'STRK': 'Strike Pref', 'STRF': 'Strife Pref',
+    'STRC': 'Stretch Pref', 'STRD': 'Stride Pref',
+    'MSTU': '2x Long MSTR', 'MSTX': '2x Long MSTR', 'MSTZ': '2x Inv MSTR',
+    'MSTY': 'MSTR Options Income',
 }
 
 # =============================================================================
