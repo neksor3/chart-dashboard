@@ -385,6 +385,109 @@ def run_walkforward_grid(symbols, score_type='Win Rate', rebal_months=3, n_portf
             'score_type': score_type, 'rebal_months': rebal_months, 'txn_cost': txn_cost}
 
 # =============================================================================
+# FULL SAMPLE (IN-SAMPLE) OPTIMIZATION
+# =============================================================================
+
+def run_fullsample(symbols, score_type='Win Rate', n_portfolios=10000,
+                   fetch_days=1800, max_weight=0.50, min_weight=0.0,
+                   txn_cost=0.001, allow_short=False, progress_bar=None,
+                   max_vol=None, min_ann_ret=None, rebal_months=3):
+    """Run MC optimization on full dataset — no walk-forward split.
+    Tests all PORTFOLIO_APPROACHES lookback windows that fit in the data,
+    returns weights + in-sample backtest for each."""
+    data, valid = fetch_symbol_history(tuple(symbols), days=fetch_days)
+    if data is None or len(valid) < 2: return None
+    returns = data.pct_change().dropna(); n_assets = len(valid)
+
+    # Equal weight benchmark
+    eq_w = np.ones(n_assets) / n_assets
+    ret_arr = returns.values; n_days = len(ret_arr)
+    eq_daily = np.zeros(n_days); curr_w = eq_w.copy()
+    dates = returns.index
+
+    # Build rebalance set for EW
+    if rebal_months == 0:
+        eq_rebal_set = set(); seen_weeks = set()
+        for d in dates:
+            yw = (d.year, d.isocalendar()[1])
+            if yw not in seen_weeks: seen_weeks.add(yw); eq_rebal_set.add(d)
+    else:
+        if rebal_months == 1: rebal_month_set = set(range(1, 13))
+        elif rebal_months == 3: rebal_month_set = {1, 4, 7, 10}
+        elif rebal_months == 6: rebal_month_set = {1, 7}
+        else: rebal_month_set = {1}
+        eq_rebal_set = set(); seen = set()
+        for d in dates:
+            ym = (d.year, d.month)
+            if ym not in seen and d.month in rebal_month_set: seen.add(ym); eq_rebal_set.add(d)
+
+    for t in range(n_days):
+        eq_daily[t] = curr_w @ ret_arr[t]
+        grown = curr_w * (1 + ret_arr[t]); curr_w = grown / grown.sum()
+        if t + 1 < n_days and dates[t + 1] in eq_rebal_set:
+            turnover = np.sum(np.abs(eq_w - curr_w)) / 2.0
+            eq_daily[t] -= turnover * txn_cost; curr_w = eq_w.copy()
+    eq_ret = pd.Series(eq_daily, index=returns.index)
+    eq_metrics = _calc_oos_metrics(eq_ret)
+
+    results = OrderedDict()
+    window_cache = {}
+    approach_list = list(PORTFOLIO_APPROACHES.items())
+
+    for i, (name, approach) in enumerate(approach_list):
+        if progress_bar:
+            progress_bar.progress((i + 1) / len(approach_list), text=f'Full sample: {name}')
+        try:
+            min_data_needed = max(approach['windows'].values())
+            if len(returns) < min_data_needed:
+                continue
+
+            # Optimize on ALL data
+            opt_w = _optimize_at_rebalance(returns, approach, score_type, n_portfolios,
+                                           max_weight, min_weight, allow_short,
+                                           max_vol=max_vol, min_ann_ret=min_ann_ret,
+                                           window_cache=window_cache)
+            if opt_w is None:
+                continue
+
+            # In-sample backtest with these fixed weights (rebalanced per schedule)
+            is_daily = np.zeros(n_days); curr_opt = opt_w.copy()
+            for t in range(n_days):
+                is_daily[t] = curr_opt @ ret_arr[t]
+                grown = curr_opt * (1 + ret_arr[t]); curr_opt = grown / grown.sum()
+                if t + 1 < n_days and dates[t + 1] in eq_rebal_set:
+                    turnover = np.sum(np.abs(opt_w - curr_opt)) / 2.0
+                    is_daily[t] -= turnover * txn_cost; curr_opt = opt_w.copy()
+
+            is_ret = pd.Series(is_daily, index=returns.index)
+            metrics = _calc_oos_metrics(is_ret)
+            if metrics is None:
+                continue
+            metrics['n_rebalances'] = sum(1 for d in eq_rebal_set if d in set(dates))
+
+            results[name] = {
+                'wf': {
+                    'oos_returns': is_ret,
+                    'current_weights': opt_w,
+                    'weight_history': [{'date': dates[0], 'weights': opt_w.copy(),
+                                        'oos_start': dates[0], 'oos_end': dates[-1],
+                                        'oos_days': n_days}],
+                    'last_rebalance': dates[0],
+                },
+                'metrics': metrics,
+                'eq_returns': eq_ret,
+                'eq_metrics': eq_metrics,
+                'eq_n_rebals': len(eq_rebal_set),
+            }
+        except Exception as e:
+            logger.warning(f"Full sample failed for {name}: {e}")
+
+    if not results: return None
+    return {'results': results, 'symbols': valid, 'returns': returns,
+            'eq_returns': eq_ret, 'eq_rebal_set': eq_rebal_set,
+            'score_type': score_type, 'rebal_months': rebal_months, 'txn_cost': txn_cost}
+
+# =============================================================================
 # DISPLAY: RANKING TABLE
 # =============================================================================
 
@@ -581,14 +684,17 @@ def render_oos_chart(grid, approach_name):
         name='EW Drawdown', showlegend=False, hovertemplate='EW DD: %{y:.1f}%<extra></extra>'), row=2, col=1)
 
     # Title — use preset name instead of symbols
-    params = st.session_state.get('port_params', {})
+    params = st.session_state.get('port_params', st.session_state.get('port_fs_params', {}))
     title_name = params.get('preset_name', 'Portfolio').upper()
+    is_fullsample = 'port_fs_result' in st.session_state and st.session_state.get('port_mode') == 'MC (Full Sample)'
+    mode_tag = 'FULL SAMPLE (IN-SAMPLE)' if is_fullsample else 'OOS WALK-FORWARD'
+    tag_color = '#60a5fa' if is_fullsample else C_GOLD
     fig.update_layout(template='plotly_dark', height=400, margin=dict(l=55, r=55, t=35, b=25),
         plot_bgcolor='#121212', paper_bgcolor='#121212', showlegend=True,
         legend=dict(x=0.01, y=0.88, bgcolor='rgba(0,0,0,0)',
                     font=dict(size=12, color='#ffffff', family=FONTS), borderwidth=0),
         hovermode='x unified', font=dict(family=FONTS))
-    fig.add_annotation(text=f"<b>{title_name}</b>  <span style='font-size:10px;color:{C_GOLD}'>OOS WALK-FORWARD</span>",
+    fig.add_annotation(text=f"<b>{title_name}</b>  <span style='font-size:10px;color:{tag_color}'>{mode_tag}</span>",
         x=0.01, y=0.99, xref='paper', yref='paper', showarrow=False,
         font=dict(size=14, color='#ffffff', family=FONTS), xanchor='left', yanchor='top')
     # White axes

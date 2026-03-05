@@ -8,7 +8,8 @@ from portfolio import (C_POS, C_NEG, C_MUTE, C_BG, C_TXT, C_TXT2, C_GOLD, C_EW,
                        C_BORDER,
                        REBAL_OPTIONS, PERIOD_OPTIONS, SCORE_TO_RANK,
                        fetch_symbol_history, _calc_oos_metrics,
-                       run_walkforward_grid, render_ranking_table,
+                       run_walkforward_grid, run_fullsample,
+                       render_ranking_table,
                        render_weights_table, render_oos_chart,
                        render_monthly_table, _section)
 
@@ -50,7 +51,7 @@ def render_single_tab(is_mobile):
     m0, p1, p2 = st.columns([1, 1, 4])
     with m0:
         st.markdown(f"<div style='{_lbl}'>MODE</div>", unsafe_allow_html=True)
-        mode = st.selectbox("Mode", ['Monte Carlo', 'Equal Weight'],
+        mode = st.selectbox("Mode", ['MC (Walk-Forward)', 'MC (Full Sample)', 'Equal Weight'],
                              key='port_mode', label_visibility='collapsed')
     with p1:
         st.markdown(f"<div style='{_lbl}'>PORTFOLIO</div>", unsafe_allow_html=True)
@@ -62,8 +63,9 @@ def render_single_tab(is_mobile):
         sym_input = st.text_input("Symbols", key='port_sym_input', label_visibility='collapsed',
                                    placeholder='AAPL, MSFT, GOOG, ...')
 
-    is_mc = mode == 'Monte Carlo'
-    _dis = not is_mc
+    is_mc = mode == 'MC (Walk-Forward)'
+    is_fs = mode == 'MC (Full Sample)'
+    _dis = not (is_mc or is_fs)
 
     # Row 1: Objective, Rebalance, Period, Direction, Sims
     c1, c2, c3, c4, c5 = st.columns(5)
@@ -117,14 +119,29 @@ def render_single_tab(is_mobile):
         cost_str = st.text_input("Cost", key='port_cost', label_visibility='collapsed')
 
     # Run button
-    btn_label = '▶  Optimize' if is_mc else '▶  Run EW'
+    if is_mc:
+        btn_label = '▶  Optimize (WF)'
+    elif is_fs:
+        btn_label = '▶  Optimize (Full)'
+    else:
+        btn_label = '▶  Run EW'
     run_clicked = st.button(btn_label, key='port_run', type='primary')
 
     # Determine session key based on mode to avoid cross-contamination
-    result_key = 'port_grid' if is_mc else 'port_ew_result'
+    if is_mc:
+        result_key = 'port_grid'
+    elif is_fs:
+        result_key = 'port_fs_result'
+    else:
+        result_key = 'port_ew_result'
 
     if not run_clicked and result_key not in st.session_state:
-        hint = 'walk-forward optimization' if is_mc else 'equal-weight backtest'
+        if is_mc:
+            hint = 'walk-forward optimization'
+        elif is_fs:
+            hint = 'full-sample optimization (in-sample)'
+        else:
+            hint = 'equal-weight backtest'
         st.markdown(f"<div style='padding:20px;color:{C_MUTE};font-size:11px;font-family:{FONTS}'>Configure parameters and click to start {hint}</div>", unsafe_allow_html=True)
         return
 
@@ -145,12 +162,18 @@ def render_single_tab(is_mobile):
             _run_mc(symbols, score, rebal_label, rebal, period_label, fetch_days,
                     direction, sims_str, max_wt_str, min_wt_str, max_vol_str, min_ret_str,
                     txn_cost)
+        elif is_fs:
+            _run_fs(symbols, score, rebal_label, rebal, period_label, fetch_days,
+                    direction, sims_str, max_wt_str, min_wt_str, max_vol_str, min_ret_str,
+                    txn_cost)
         else:
             _run_ew(symbols, rebal, fetch_days, txn_cost, rebal_label, period_label)
 
     # Display results
     if is_mc:
         _display_mc(is_mobile, _lbl)
+    elif is_fs:
+        _display_fs(is_mobile, _lbl)
     else:
         _display_ew(is_mobile, theme)
 
@@ -261,6 +284,115 @@ def _display_mc(is_mobile, _lbl):
     render_monthly_table(swf['oos_returns'])
 
     _section('CURRENT / NEXT WEIGHTS', f'{selected_approach} · optimized on all data through today · trade these')
+    render_weights_table(grid, selected_approach)
+
+
+# =============================================================================
+# FULL SAMPLE RUN + DISPLAY
+# =============================================================================
+
+def _run_fs(symbols, score, rebal_label, rebal, period_label, fetch_days,
+            direction, sims_str, max_wt_str, min_wt_str, max_vol_str, min_ret_str,
+            txn_cost):
+    import portfolio
+    try: max_wt = max(10, min(100, float(max_wt_str))) / 100.0
+    except (ValueError, TypeError): max_wt = 0.50
+    try: min_wt = max(0, min(50, float(min_wt_str))) / 100.0
+    except (ValueError, TypeError): min_wt = 0.0
+    try: n_sims = max(1000, min(100000, int(sims_str)))
+    except (ValueError, TypeError): n_sims = 10000
+    try: max_vol = float(max_vol_str) / 100.0 if max_vol_str.strip() else None
+    except (ValueError, TypeError): max_vol = None
+    try: min_ann_ret = float(min_ret_str) / 100.0 if min_ret_str.strip() else None
+    except (ValueError, TypeError): min_ann_ret = None
+
+    allow_short = direction == 'Long/Short'
+    n_syms = len(symbols)
+    if min_wt > 0 and min_wt * n_syms > 1.0: min_wt = round(1.0 / n_syms, 4)
+    if min_wt >= max_wt: min_wt = 0.0
+
+    progress = st.progress(0, text='Starting full-sample optimization...')
+    grid = run_fullsample(symbols, score_type=score, n_portfolios=n_sims,
+                          fetch_days=fetch_days, max_weight=max_wt, min_weight=min_wt,
+                          txn_cost=txn_cost, allow_short=allow_short,
+                          progress_bar=progress,
+                          max_vol=max_vol, min_ann_ret=min_ann_ret,
+                          rebal_months=rebal)
+    progress.empty()
+
+    if not grid or not grid['results']:
+        st.warning('Need ≥2 assets with sufficient history for full-sample optimization'); return
+
+    st.session_state.port_fs_result = grid
+    preset_name = st.session_state.get('port_preset_name', 'Custom')
+    if preset_name == 'Custom' or not preset_name:
+        sym_set = set(symbols)
+        for pname, psyms in FUTURES_GROUPS.items():
+            if set(psyms) == sym_set:
+                preset_name = pname; break
+        else:
+            preset_name = 'Portfolio'
+    st.session_state.port_fs_params = {
+        'score': score, 'rebal_label': st.session_state.get('port_rebal', 'Quarterly'),
+        'period_label': st.session_state.get('port_period', '5 Years'),
+        'direction': 'L/S' if allow_short else 'Long',
+        'min_wt': min_wt, 'max_wt': max_wt, 'n_sims': n_sims, 'txn_cost': txn_cost,
+        'max_vol': max_vol, 'min_ann_ret': min_ann_ret,
+        'preset_name': preset_name,
+    }
+    if 'port_fs_view_approach' in st.session_state:
+        del st.session_state.port_fs_view_approach
+
+
+def _display_fs(is_mobile, _lbl):
+    import portfolio
+    if 'port_fs_result' not in st.session_state: return
+    grid = st.session_state.port_fs_result
+    params = st.session_state.port_fs_params
+    rank_metric = SCORE_TO_RANK.get(params['score'], 'win_rate')
+    n_app = len(grid['results'])
+
+    constraints_str = ''
+    if params.get('max_vol'): constraints_str += f" · max vol {params['max_vol']*100:.0f}%"
+    if params.get('min_ann_ret'): constraints_str += f" · min ret {params['min_ann_ret']*100:.0f}%"
+    _section('APPROACH RANKING (IN-SAMPLE)',
+             f"{n_app} lookbacks · {params['rebal_label']} · {params['period_label']} · "
+             f"{params['direction']} · wt {params['min_wt']*100:.0f}–{params['max_wt']*100:.0f}% · "
+             f"cost {params['txn_cost']*100:.2f}% · {params['n_sims']:,} sims · max {params['score']}{constraints_str} · FULL SAMPLE")
+    result = render_ranking_table(grid, rank_metric)
+    best_name, sorted_names = result
+    if not best_name or not sorted_names: return
+
+    cur = st.session_state.get('port_fs_view_approach')
+    if cur not in sorted_names:
+        st.session_state.port_fs_view_approach = sorted_names[0]
+    sel_col, _ = st.columns([3, 5])
+    with sel_col:
+        st.markdown(f"<div style='{_lbl};margin-top:8px'>VIEW APPROACH</div>", unsafe_allow_html=True)
+        selected_approach = st.selectbox("Approach", sorted_names,
+                                          key='port_fs_view_approach', label_visibility='collapsed')
+
+    sel = grid['results'][selected_approach]; sm = sel['metrics']; swf = sel['wf']
+    is_best = selected_approach == best_name
+    star = f"<span style='color:{C_GOLD}'>★</span> " if is_best else ""
+
+    st.markdown(f"""<div style='margin-top:12px;padding:5px 10px;background:{C_BG};font-family:{FONTS};border-radius:4px;
+        font-size:10px;color:{C_TXT2};display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px'>
+        <span>{star}<b style='color:{C_TXT}'>{selected_approach}</b>
+        &nbsp;·&nbsp;{sm['n_days']} days · {sm['oos_years']}y · IN-SAMPLE</span>
+        <span>Win% <b style='color:{portfolio.C_POS}'>{sm["win_rate"]*100:.1f}%</b>
+        &nbsp;Sharpe <b style='color:{portfolio.C_POS}'>{sm["sharpe"]:.2f}</b>
+        &nbsp;Sortino <b style='color:{portfolio.C_POS}'>{sm["sortino"]:.2f}</b>
+        &nbsp;MAR <b style='color:{portfolio.C_POS}'>{sm["mar"]:.2f}</b></span>
+    </div>""", unsafe_allow_html=True)
+
+    _section('IN-SAMPLE EQUITY CURVE', f'{selected_approach} · {params["rebal_label"]} · full sample (not OOS)')
+    render_oos_chart(grid, selected_approach)
+
+    _section('MONTHLY RETURNS (IN-SAMPLE)', f'{selected_approach} · full sample')
+    render_monthly_table(swf['oos_returns'])
+
+    _section('OPTIMIZED WEIGHTS', f'{selected_approach} · trade these')
     render_weights_table(grid, selected_approach)
 
 
