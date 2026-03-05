@@ -8,7 +8,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import urllib.request
 import json
 import xml.etree.ElementTree as ET
@@ -217,199 +216,192 @@ def _get_comparison_curves(data, compare_days_list):
 # RENDER
 # =============================================================================
 
-def _render_curve_chart(us, sg, theme, compare_labels):
-    """Overlay US and SG yield curves with historical comparisons."""
-    pos_c = theme['pos']; neg_c = theme['neg']
+def _render_curve_chart(us, theme):
+    """US yield curve with all historical comparisons."""
     _pbg = theme.get('plot_bg', '#0f1117'); _grd = theme.get('grid', '#1a1f2e')
 
-    # Comparison color palette (muted versions)
-    comp_colors_us = ['#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a']
-    comp_colors_sg = ['#22c55e', '#16a34a', '#15803d', '#166534', '#14532d']
+    if not us:
+        return
+
+    # All comparison periods
+    compare_days = [
+        ('1 Week', 7),
+        ('1 Month', 30),
+        ('3 Months', 91),
+        ('6 Months', 182),
+        ('1 Year', 365),
+    ]
+
+    # Distinct colors for each historical curve — bright enough to see
+    comp_styles = [
+        {'color': '#94a3b8', 'dash': 'dot',     'width': 1.5},   # 1W — grey
+        {'color': '#f59e0b', 'dash': 'dash',    'width': 1.5},   # 1M — amber
+        {'color': '#a78bfa', 'dash': 'dashdot', 'width': 1.5},   # 3M — purple
+        {'color': '#f472b6', 'dash': 'dot',     'width': 1.5},   # 6M — pink
+        {'color': '#ef4444', 'dash': 'dash',    'width': 1.5},   # 1Y — red
+    ]
 
     fig = go.Figure()
+    us_x = [m / 12 for m in us['months']]
 
-    # Build comparison period list from labels
-    compare_days = [(lbl, COMPARE_OPTIONS[lbl]) for lbl in compare_labels if COMPARE_OPTIONS.get(lbl, 0) > 0]
+    # Historical curves first (behind current)
+    comps = _get_comparison_curves(us, compare_days)
+    for i, (label, row) in enumerate(comps.items()):
+        style = comp_styles[i % len(comp_styles)]
+        fig.add_trace(go.Scatter(x=us_x, y=row['yields'], mode='lines+markers',
+            name=f"{label} ({row['date']})", line=dict(color=style['color'], width=style['width'], dash=style['dash']),
+            marker=dict(size=3, color=style['color']),
+            hovertemplate='%{y:.2f}%<extra>' + label + '</extra>'))
 
-    # US curves
-    if us:
-        us_x = [m / 12 for m in us['months']]
+    # Current curve on top — thick, bright
+    fig.add_trace(go.Scatter(x=us_x, y=us['yields'], mode='lines+markers',
+        name=f"Today ({us['date']})", line=dict(color='#60a5fa', width=3.5),
+        marker=dict(size=7, color='#60a5fa'),
+        hovertemplate='%{text}<br>%{y:.2f}%<extra>Today</extra>',
+        text=us['tenors']))
 
-        # Historical comparison curves
-        us_comps = _get_comparison_curves(us, compare_days)
-        for i, (label, row) in enumerate(us_comps.items()):
-            cc = comp_colors_us[i % len(comp_colors_us)]
-            fig.add_trace(go.Scatter(x=us_x, y=row['yields'], mode='lines',
-                name=f"US {label} ({row['date']})", line=dict(color=cc, width=1.2, dash='dot'),
-                opacity=0.6, hovertemplate='%{y:.2f}%<extra>US ' + label + '</extra>'))
-
-        # Current curve on top
-        fig.add_trace(go.Scatter(x=us_x, y=us['yields'], mode='lines+markers',
-            name=f"US Today ({us['date']})", line=dict(color='#60a5fa', width=3),
-            marker=dict(size=6), hovertemplate='%{text}<br>%{y:.2f}%<extra>US</extra>',
-            text=us['tenors']))
-
-    # SG curves
-    if sg:
-        sg_x = [m / 12 for m in sg['months']]
-
-        sg_comps = _get_comparison_curves(sg, compare_days)
-        for i, (label, row) in enumerate(sg_comps.items()):
-            cc = comp_colors_sg[i % len(comp_colors_sg)]
-            fig.add_trace(go.Scatter(x=sg_x, y=row['yields'], mode='lines',
-                name=f"SG {label} ({row['date']})", line=dict(color=cc, width=1.2, dash='dot'),
-                opacity=0.6, hovertemplate='%{y:.2f}%<extra>SG ' + label + '</extra>'))
-
-        fig.add_trace(go.Scatter(x=sg_x, y=sg['yields'], mode='lines+markers',
-            name=f"SG Today ({sg['date']})", line=dict(color=pos_c, width=3),
-            marker=dict(size=6), hovertemplate='%{text}<br>%{y:.2f}%<extra>SG</extra>',
-            text=sg['tenors']))
-
-    fig.update_layout(template='plotly_dark', height=420,
+    fig.update_layout(template='plotly_dark', height=450,
         margin=dict(l=40, r=20, t=30, b=40), plot_bgcolor=_pbg, paper_bgcolor=_pbg,
-        showlegend=True, legend=dict(x=0.01, y=0.99, font=dict(size=9, family=FONTS),
-                                     bgcolor='rgba(0,0,0,0.5)'),
+        showlegend=True, legend=dict(x=0.01, y=0.99, font=dict(size=10, family=FONTS),
+                                     bgcolor='rgba(15,17,23,0.85)'),
         hovermode='x unified', font=dict(family=FONTS),
         xaxis_title='Maturity (Years)', yaxis_title='Yield %')
     fig.update_xaxes(gridcolor=_grd, tickfont=dict(color='#888', size=9, family=FONTS),
-                     tickvals=[0.25, 0.5, 1, 2, 3, 5, 7, 10, 15, 20, 30])
+                     tickvals=[0.08, 0.17, 0.25, 0.33, 0.5, 1, 2, 3, 5, 7, 10, 20, 30],
+                     ticktext=['1M', '2M', '3M', '4M', '6M', '1Y', '2Y', '3Y', '5Y', '7Y', '10Y', '20Y', '30Y'])
     fig.update_yaxes(gridcolor=_grd, tickfont=dict(color='#888', size=9, family=FONTS), side='right')
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
 
-def _render_spread_chart(us, sg, theme):
-    """US-SG spread at matching tenors + 2s10s for both."""
-    pos_c = theme['pos']; neg_c = theme['neg']
-    _pbg = theme.get('plot_bg', '#0f1117'); _grd = theme.get('grid', '#1a1f2e')
-
-    fig = make_subplots(rows=1, cols=2, subplot_titles=['US – SG Spread by Tenor', '2s10s Spread'],
-                        horizontal_spacing=0.08)
-
-    if us and sg:
-        common = [(ut, um, uy, st_, sm, sy)
-                  for ut, um, uy in zip(us['tenors'], us['months'], us['yields'])
-                  for st_, sm, sy in zip(sg['tenors'], sg['months'], sg['yields'])
-                  if um == sm and uy is not None and sy is not None]
-        if common:
-            labels = [c[0] for c in common]
-            spreads = [c[2] - c[5] for c in common]
-            colors = ['#60a5fa' if s >= 0 else neg_c for s in spreads]
-            fig.add_trace(go.Bar(x=labels, y=spreads, marker_color=colors,
-                hovertemplate='%{x}: %{y:.2f}%<extra>US-SG</extra>',
-                showlegend=False), row=1, col=1)
-            fig.add_hline(y=0, line=dict(color='#ffffff', width=0.5), row=1, col=1)
-
-    if us:
-        us_2y = us['yields'][6]; us_10y = us['yields'][10]
-        if us_2y is not None and us_10y is not None:
-            fig.add_trace(go.Bar(x=['US 2s10s'], y=[us_10y - us_2y],
-                marker_color='#60a5fa', name='US'), row=1, col=2)
-    if sg:
-        sg_2y = sg['yields'][2]; sg_10y = sg['yields'][4]
-        if sg_2y is not None and sg_10y is not None:
-            fig.add_trace(go.Bar(x=['SG 2s10s'], y=[sg_10y - sg_2y],
-                marker_color=pos_c, name='SG'), row=1, col=2)
-    fig.add_hline(y=0, line=dict(color='#ffffff', width=0.5), row=1, col=2)
-
-    fig.update_layout(template='plotly_dark', height=300,
-        margin=dict(l=40, r=20, t=35, b=30), plot_bgcolor=_pbg, paper_bgcolor=_pbg,
-        showlegend=True, legend=dict(x=0.85, y=0.99, font=dict(size=10, family=FONTS)),
-        font=dict(family=FONTS))
-    fig.update_xaxes(gridcolor=_grd, tickfont=dict(color='#888', size=9, family=FONTS))
-    fig.update_yaxes(gridcolor=_grd, tickfont=dict(color='#888', size=9, family=FONTS), side='right')
-    for ann in fig['layout']['annotations']:
-        ann['font'] = dict(size=10, family=FONTS, color='#94a3b8')
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-
-
-def _render_rates_table(us, sg, sora, theme):
-    """Compact table showing key rates side by side."""
-    pos_c = theme['pos']; neg_c = theme['neg']
+def _render_us_table(us, theme):
+    """US rates table with prev day delta."""
     _bg3 = theme.get('bg3', '#0f172a'); _bdr = theme.get('border', '#1e293b')
     _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8')
-    _mut = theme.get('muted', '#475569')
+    pos_c = theme['pos']; neg_c = theme['neg']
 
     th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;"
     td = f"padding:4px 8px;border-bottom:1px solid {_bdr}22;font-size:11px;"
 
-    # Get prev day yields from all_rows
-    us_prev = None
-    if us and 'all_rows' in us and len(us['all_rows']) >= 2:
-        us_prev = us['all_rows'][-2]['yields']
-    sg_prev = None
-    if sg and 'all_rows' in sg and len(sg['all_rows']) >= 2:
-        sg_prev = sg['all_rows'][-2]['yields']
-
-    all_months = sorted(set((us['months'] if us else []) + (sg['months'] if sg else [])))
-    us_map = dict(zip(us['months'], zip(us['tenors'], us['yields'], us_prev or [None]*20))) if us else {}
-    sg_map = dict(zip(sg['months'], zip(sg['tenors'], sg['yields'], sg_prev or [None]*20))) if sg else {}
+    prev = us['all_rows'][-2]['yields'] if len(us['all_rows']) >= 2 else [None] * len(us['yields'])
 
     html = f"""<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:4px'>
     <table style='border-collapse:collapse;font-family:{FONTS};width:100%;line-height:1.3'>
     <thead style='background:{_bg3}'><tr>
         <th style='{th}text-align:left'>TENOR</th>
-        <th style='{th}text-align:right;color:#60a5fa'>US YIELD</th>
-        <th style='{th}text-align:right;color:#60a5fa'>Δ</th>
-        <th style='{th}text-align:right;color:{pos_c}'>SG YIELD</th>
-        <th style='{th}text-align:right;color:{pos_c}'>Δ</th>
-        <th style='{th}text-align:right'>SPREAD</th>
+        <th style='{th}text-align:right;color:#60a5fa'>YIELD</th>
+        <th style='{th}text-align:right'>Δ 1D</th>
     </tr></thead><tbody>"""
 
-    for m in all_months:
-        us_entry = us_map.get(m)
-        sg_entry = sg_map.get(m)
-        tenor = (us_entry[0] if us_entry else sg_entry[0]) if (us_entry or sg_entry) else f'{m}m'
-
-        us_y = us_entry[1] if us_entry else None
-        us_prev = us_entry[2] if us_entry else None
-        sg_y = sg_entry[1] if sg_entry else None
-        sg_prev = sg_entry[2] if sg_entry else None
-
-        us_str = f'{us_y:.2f}%' if us_y is not None else '—'
-        sg_str = f'{sg_y:.2f}%' if sg_y is not None else '—'
-
-        us_d = ''
-        if us_y is not None and us_prev is not None:
-            d = us_y - us_prev
+    for i, (tenor, y) in enumerate(zip(us['tenors'], us['yields'])):
+        y_str = f'{y:.2f}%' if y is not None else '—'
+        d_str = ''
+        if y is not None and prev[i] is not None:
+            d = y - prev[i]
             c = pos_c if d <= 0 else neg_c
-            us_d = f"<span style='color:{c}'>{d:+.2f}</span>"
-
-        sg_d = ''
-        if sg_y is not None and sg_prev is not None:
-            d = sg_y - sg_prev
-            c = pos_c if d <= 0 else neg_c
-            sg_d = f"<span style='color:{c}'>{d:+.2f}</span>"
-
-        spread_str = '—'
-        if us_y is not None and sg_y is not None:
-            sp = us_y - sg_y
-            sp_c = '#60a5fa' if sp >= 0 else neg_c
-            spread_str = f"<span style='color:{sp_c}'>{sp:+.2f}</span>"
-
+            d_str = f"<span style='color:{c}'>{d:+.2f}</span>"
         html += f"""<tr>
             <td style='{td}color:{_txt};font-weight:600'>{tenor}</td>
-            <td style='{td}text-align:right;color:#60a5fa'>{us_str}</td>
-            <td style='{td}text-align:right'>{us_d}</td>
-            <td style='{td}text-align:right;color:{pos_c}'>{sg_str}</td>
-            <td style='{td}text-align:right'>{sg_d}</td>
-            <td style='{td}text-align:right;font-weight:600'>{spread_str}</td>
+            <td style='{td}text-align:right;color:#60a5fa'>{y_str}</td>
+            <td style='{td}text-align:right'>{d_str}</td>
+        </tr>"""
+
+    html += "</tbody></table></div>"
+    st.markdown(html, unsafe_allow_html=True)
+
+
+def _render_sg_curve_chart(sg, theme):
+    """SG SGS yield curve with historical comparisons."""
+    pos_c = theme['pos']
+    _pbg = theme.get('plot_bg', '#0f1117'); _grd = theme.get('grid', '#1a1f2e')
+
+    if not sg:
+        return
+
+    compare_days = [
+        ('1 Week', 7), ('1 Month', 30), ('3 Months', 91),
+        ('6 Months', 182), ('1 Year', 365),
+    ]
+    comp_styles = [
+        {'color': '#94a3b8', 'dash': 'dot',     'width': 1.5},
+        {'color': '#f59e0b', 'dash': 'dash',    'width': 1.5},
+        {'color': '#a78bfa', 'dash': 'dashdot', 'width': 1.5},
+        {'color': '#f472b6', 'dash': 'dot',     'width': 1.5},
+        {'color': '#ef4444', 'dash': 'dash',    'width': 1.5},
+    ]
+
+    fig = go.Figure()
+    sg_x = [m / 12 for m in sg['months']]
+
+    comps = _get_comparison_curves(sg, compare_days)
+    for i, (label, row) in enumerate(comps.items()):
+        style = comp_styles[i % len(comp_styles)]
+        fig.add_trace(go.Scatter(x=sg_x, y=row['yields'], mode='lines+markers',
+            name=f"{label} ({row['date']})", line=dict(color=style['color'], width=style['width'], dash=style['dash']),
+            marker=dict(size=3, color=style['color']),
+            hovertemplate='%{y:.2f}%<extra>' + label + '</extra>'))
+
+    fig.add_trace(go.Scatter(x=sg_x, y=sg['yields'], mode='lines+markers',
+        name=f"Today ({sg['date']})", line=dict(color=pos_c, width=3.5),
+        marker=dict(size=7, color=pos_c),
+        hovertemplate='%{text}<br>%{y:.2f}%<extra>Today</extra>',
+        text=sg['tenors']))
+
+    fig.update_layout(template='plotly_dark', height=450,
+        margin=dict(l=40, r=20, t=30, b=40), plot_bgcolor=_pbg, paper_bgcolor=_pbg,
+        showlegend=True, legend=dict(x=0.01, y=0.99, font=dict(size=10, family=FONTS),
+                                     bgcolor='rgba(15,17,23,0.85)'),
+        hovermode='x unified', font=dict(family=FONTS),
+        xaxis_title='Maturity (Years)', yaxis_title='Yield %')
+    fig.update_xaxes(gridcolor=_grd, tickfont=dict(color='#888', size=9, family=FONTS),
+                     tickvals=[0.5, 1, 2, 5, 10, 15, 20, 30],
+                     ticktext=['6M', '1Y', '2Y', '5Y', '10Y', '15Y', '20Y', '30Y'])
+    fig.update_yaxes(gridcolor=_grd, tickfont=dict(color='#888', size=9, family=FONTS), side='right')
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+
+
+def _render_sg_table(sg, sora, theme):
+    """SG rates table with prev day delta + SORA."""
+    pos_c = theme['pos']; neg_c = theme['neg']
+    _bg3 = theme.get('bg3', '#0f172a'); _bdr = theme.get('border', '#1e293b')
+    _txt = theme.get('text', '#e2e8f0'); _txt2 = theme.get('text2', '#94a3b8')
+
+    th = f"padding:4px 8px;border-bottom:1px solid {_bdr};color:#f8fafc;font-weight:600;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;"
+    td = f"padding:4px 8px;border-bottom:1px solid {_bdr}22;font-size:11px;"
+
+    prev = sg['all_rows'][-2]['yields'] if len(sg['all_rows']) >= 2 else [None] * len(sg['yields'])
+
+    html = f"""<div style='overflow-x:auto;border:1px solid {_bdr};border-radius:4px'>
+    <table style='border-collapse:collapse;font-family:{FONTS};width:100%;line-height:1.3'>
+    <thead style='background:{_bg3}'><tr>
+        <th style='{th}text-align:left'>TENOR</th>
+        <th style='{th}text-align:right;color:{pos_c}'>YIELD</th>
+        <th style='{th}text-align:right'>Δ 1D</th>
+    </tr></thead><tbody>"""
+
+    for i, (tenor, y) in enumerate(zip(sg['tenors'], sg['yields'])):
+        y_str = f'{y:.2f}%' if y is not None else '—'
+        d_str = ''
+        if y is not None and prev[i] is not None:
+            d = y - prev[i]
+            c = pos_c if d <= 0 else neg_c
+            d_str = f"<span style='color:{c}'>{d:+.2f}</span>"
+        html += f"""<tr>
+            <td style='{td}color:{_txt};font-weight:600'>{tenor}</td>
+            <td style='{td}text-align:right;color:{pos_c}'>{y_str}</td>
+            <td style='{td}text-align:right'>{d_str}</td>
         </tr>"""
 
     html += "</tbody></table></div>"
 
-    # SORA row below table
+    # SORA below
     if sora:
-        sora_val = sora.get('sora', '—')
-        c1m = sora.get('comp_1m', '—')
-        c3m = sora.get('comp_3m', '—')
-        c6m = sora.get('comp_6m', '—')
         html += (f"<div style='margin-top:6px;padding:5px 10px;background:{_bg3};border-radius:4px;"
                  f"font-family:{FONTS};font-size:10px;color:{_txt2}'>"
                  f"SORA ({sora['date']}): "
-                 f"O/N <b style='color:{pos_c}'>{sora_val}%</b> · "
-                 f"1M <b style='color:{pos_c}'>{c1m}%</b> · "
-                 f"3M <b style='color:{pos_c}'>{c3m}%</b> · "
-                 f"6M <b style='color:{pos_c}'>{c6m}%</b>"
+                 f"O/N <b style='color:{pos_c}'>{sora.get('sora','—')}%</b> · "
+                 f"1M <b style='color:{pos_c}'>{sora.get('comp_1m','—')}%</b> · "
+                 f"3M <b style='color:{pos_c}'>{sora.get('comp_3m','—')}%</b> · "
+                 f"6M <b style='color:{pos_c}'>{sora.get('comp_6m','—')}%</b>"
                  f"</div>")
 
     st.markdown(html, unsafe_allow_html=True)
@@ -424,66 +416,76 @@ def render_rates_tab(is_mobile):
     _mut = t.get('muted', '#475569')
     _lbl = f"color:#f8fafc;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;font-family:{FONTS}"
 
-    # Controls
-    c1, c2 = st.columns([3, 5])
-    with c1:
-        st.markdown(f"<div style='{_lbl}'>COMPARE TO</div>", unsafe_allow_html=True)
-        compare_labels = st.multiselect("Compare", list(COMPARE_OPTIONS.keys())[1:],
-                                         default=['1 Month', '1 Year'],
-                                         key='rates_compare', label_visibility='collapsed')
-
     with st.spinner('Fetching rates...'):
         us, us_err = _fetch_us_curve()
         sg, sg_err = _fetch_sg_curve()
         sora = _fetch_sora()
 
-    if not us and not sg:
-        st.warning('Could not fetch rate data')
-        return
+    # Sub-tabs: US | SG
+    tab_us, tab_sg = st.tabs(['US RATES', 'SG RATES'])
 
-    # Summary bar
-    us_10y = us['yields'][10] if us and us['yields'][10] else None
-    sg_10y = sg['yields'][4] if sg and sg['yields'][4] else None
-    us_2y = us['yields'][6] if us and us['yields'][6] else None
-    sg_2y = sg['yields'][2] if sg and sg['yields'][2] else None
+    with tab_us:
+        if not us:
+            st.warning('Could not fetch US rate data')
+        else:
+            # Summary bar
+            us_10y = us['yields'][10] if us['yields'][10] else None
+            us_2y = us['yields'][6] if us['yields'][6] else None
+            _bg3 = t.get('bg3', '#0f172a'); _txt2 = t.get('text2', '#94a3b8')
+            parts = [f"US Treasury {us['date']}"]
+            if us_10y:
+                parts.append(f"10Y <b style='color:#60a5fa'>{us_10y:.2f}%</b>")
+            if us_2y:
+                parts.append(f"2Y <b style='color:#60a5fa'>{us_2y:.2f}%</b>")
+            if us_2y and us_10y:
+                s = us_10y - us_2y
+                c = t['pos'] if s >= 0 else t['neg']
+                parts.append(f"2s10s <b style='color:{c}'>{s*100:+.0f}bp</b>")
+            st.markdown(f"""<div style='padding:5px 10px;background:{_bg3};font-family:{FONTS};
+                font-size:10px;color:{_txt2};border-radius:4px;margin-bottom:6px'>
+                {' &nbsp;·&nbsp; '.join(parts)}</div>""", unsafe_allow_html=True)
 
-    parts = []
-    if us:
-        parts.append(f"US curve {us['date']}")
-    if sg:
-        parts.append(f"SG curve {sg['date']}")
-    if us_10y:
-        parts.append(f"US 10Y <b style='color:#60a5fa'>{us_10y:.2f}%</b>")
-    if sg_10y:
-        parts.append(f"SG 10Y <b style='color:{t['pos']}'>{sg_10y:.2f}%</b>")
-    if us_2y and us_10y:
-        us_2s10s = us_10y - us_2y
-        c = t['pos'] if us_2s10s >= 0 else t['neg']
-        parts.append(f"US 2s10s <b style='color:{c}'>{us_2s10s:+.0f}bp</b>")
-    if sg_2y and sg_10y:
-        sg_2s10s = sg_10y - sg_2y
-        c = t['pos'] if sg_2s10s >= 0 else t['neg']
-        parts.append(f"SG 2s10s <b style='color:{c}'>{sg_2s10s:+.0f}bp</b>")
+            if is_mobile:
+                _render_curve_chart(us, t)
+                _render_us_table(us, t)
+            else:
+                left, right = st.columns([6, 4])
+                with left:
+                    _render_curve_chart(us, t)
+                with right:
+                    st.markdown(f"<div style='{_lbl};margin-bottom:4px'>RATES TABLE</div>", unsafe_allow_html=True)
+                    _render_us_table(us, t)
 
-    _bg3 = t.get('bg3', '#0f172a')
-    _txt2 = t.get('text2', '#94a3b8')
-    st.markdown(f"""<div style='padding:5px 10px;background:{_bg3};font-family:{FONTS};
-        font-size:10px;color:{_txt2};border-radius:4px;margin-bottom:6px'>
-        {' &nbsp;·&nbsp; '.join(parts)}</div>""", unsafe_allow_html=True)
+    with tab_sg:
+        if not sg:
+            st.warning('Could not fetch SG rate data')
+        else:
+            _bg3 = t.get('bg3', '#0f172a'); _txt2 = t.get('text2', '#94a3b8')
+            pos_c = t['pos']
+            sg_10y = sg['yields'][4] if sg['yields'][4] else None
+            sg_2y = sg['yields'][2] if sg['yields'][2] else None
+            parts = [f"SGS Benchmarks {sg['date']}"]
+            if sg_10y:
+                parts.append(f"10Y <b style='color:{pos_c}'>{sg_10y:.2f}%</b>")
+            if sg_2y:
+                parts.append(f"2Y <b style='color:{pos_c}'>{sg_2y:.2f}%</b>")
+            if sg_2y and sg_10y:
+                s = sg_10y - sg_2y
+                c = t['pos'] if s >= 0 else t['neg']
+                parts.append(f"2s10s <b style='color:{c}'>{s*100:+.0f}bp</b>")
+            if sora:
+                parts.append(f"SORA <b style='color:{pos_c}'>{sora.get('sora','—')}%</b>")
+            st.markdown(f"""<div style='padding:5px 10px;background:{_bg3};font-family:{FONTS};
+                font-size:10px;color:{_txt2};border-radius:4px;margin-bottom:6px'>
+                {' &nbsp;·&nbsp; '.join(parts)}</div>""", unsafe_allow_html=True)
 
-    # Layout
-    if is_mobile:
-        _render_curve_chart(us, sg, t, compare_labels)
-        _render_spread_chart(us, sg, t)
-        _render_rates_table(us, sg, sora, t)
-    else:
-        left, right = st.columns([6, 4])
-        with left:
-            tab_curve, tab_spread = st.tabs(['YIELD CURVES', 'SPREADS'])
-            with tab_curve:
-                _render_curve_chart(us, sg, t, compare_labels)
-            with tab_spread:
-                _render_spread_chart(us, sg, t)
-        with right:
-            st.markdown(f"<div style='{_lbl};margin-bottom:4px'>RATES TABLE</div>", unsafe_allow_html=True)
-            _render_rates_table(us, sg, sora, t)
+            if is_mobile:
+                _render_sg_curve_chart(sg, t)
+                _render_sg_table(sg, sora, t)
+            else:
+                left, right = st.columns([6, 4])
+                with left:
+                    _render_sg_curve_chart(sg, t)
+                with right:
+                    st.markdown(f"<div style='{_lbl};margin-bottom:4px'>RATES TABLE</div>", unsafe_allow_html=True)
+                    _render_sg_table(sg, sora, t)
