@@ -86,7 +86,7 @@ def _fetch_us_curve():
 
 
 # =============================================================================
-# SG SGS YIELD CURVE (MAS API)
+# SG SGS YIELD CURVE (MAS API primary, yfinance fallback)
 # =============================================================================
 
 SG_TENORS = ['6 Mo', '1 Yr', '2 Yr', '5 Yr', '10 Yr', '15 Yr', '20 Yr', '30 Yr']
@@ -100,51 +100,123 @@ SORA_RESOURCE = '9a0bf149-308c-4bd2-832d-76c8e6cb47ed'
 # SGS benchmark yields resource
 SGS_RESOURCE = '5f2b18a8-0883-4769-a635-879c63d3caac'
 
+# Yahoo Finance tickers for SG bonds (fallback)
+SG_YF_TICKERS = {
+    '6 Mo': 'SG6MT=RR',
+    '1 Yr': 'SG1YT=RR',
+    '2 Yr': 'SG2YT=RR',
+    '5 Yr': 'SG5YT=RR',
+    '10 Yr': 'SG10YT=RR',
+    '15 Yr': 'SG15YT=RR',
+    '20 Yr': 'SG20YT=RR',
+    '30 Yr': 'SG30YT=RR',
+}
+
+
+def _fetch_sg_mas():
+    """Try MAS API first."""
+    import urllib.parse
+    params = urllib.parse.urlencode({
+        'resource_id': SGS_RESOURCE,
+        'limit': 400,
+        'sort': 'end_of_day desc'
+    })
+    url = f'https://eservices.mas.gov.sg/api/action/datastore/search.json?{params}'
+    req = urllib.request.Request(url, headers={'User-Agent': _UA})
+    resp = urllib.request.urlopen(req, timeout=15)
+    data = json.loads(resp.read())
+
+    records = data.get('result', {}).get('records', [])
+    if not records:
+        return None
+
+    all_rows = []
+    for r in records:
+        date_str = r.get('end_of_day', '')
+        yields = []
+        for f in SG_FIELDS:
+            val = r.get(f)
+            try:
+                yields.append(float(val) if val else None)
+            except (ValueError, TypeError):
+                yields.append(None)
+        all_rows.append({'date': date_str, 'yields': yields})
+
+    all_rows.sort(key=lambda x: x['date'])
+    latest = all_rows[-1]
+
+    return {
+        'date': latest['date'],
+        'tenors': SG_TENORS,
+        'months': SG_TENOR_MONTHS,
+        'yields': latest['yields'],
+        'all_rows': all_rows,
+    }
+
+
+def _fetch_sg_yfinance():
+    """Fallback: use yfinance for SG bond yields with ~2Y history."""
+    import yfinance as yf
+
+    tickers_str = ' '.join(SG_YF_TICKERS.values())
+    data = yf.download(tickers_str, period='2y', interval='1d', progress=False, threads=True)
+
+    if data.empty:
+        return None
+
+    close = data['Close'] if 'Close' in data.columns else data
+    # Build all_rows from the DataFrame
+    all_rows = []
+    for date_idx in close.index:
+        date_str = date_idx.strftime('%Y-%m-%d')
+        yields = []
+        for tenor in SG_TENORS:
+            ticker = SG_YF_TICKERS.get(tenor)
+            try:
+                val = float(close.loc[date_idx, ticker])
+                yields.append(val if not np.isnan(val) else None)
+            except Exception:
+                yields.append(None)
+        # Only include rows where at least some data exists
+        if any(y is not None for y in yields):
+            all_rows.append({'date': date_str, 'yields': yields})
+
+    if not all_rows:
+        return None
+
+    all_rows.sort(key=lambda x: x['date'])
+    latest = all_rows[-1]
+
+    return {
+        'date': latest['date'],
+        'tenors': SG_TENORS,
+        'months': SG_TENOR_MONTHS,
+        'yields': latest['yields'],
+        'all_rows': all_rows,
+    }
+
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def _fetch_sg_curve():
-    """Fetch SGS benchmark yields from MAS API — enough history for 1Y comparison."""
+    """Fetch SGS yields — try MAS API first, fall back to yfinance."""
+    # Try MAS API
     try:
-        import urllib.parse
-        params = urllib.parse.urlencode({
-            'resource_id': SGS_RESOURCE,
-            'limit': 400,
-            'sort': 'end_of_day desc'
-        })
-        url = f'https://eservices.mas.gov.sg/api/action/datastore/search.json?{params}'
-        req = urllib.request.Request(url, headers={'User-Agent': _UA})
-        resp = urllib.request.urlopen(req, timeout=15)
-        data = json.loads(resp.read())
-
-        records = data.get('result', {}).get('records', [])
-        if not records:
-            return None, None
-
-        all_rows = []
-        for r in records:
-            date_str = r.get('end_of_day', '')
-            yields = []
-            for f in SG_FIELDS:
-                val = r.get(f)
-                try:
-                    yields.append(float(val) if val else None)
-                except (ValueError, TypeError):
-                    yields.append(None)
-            all_rows.append({'date': date_str, 'yields': yields})
-
-        all_rows.sort(key=lambda x: x['date'])
-        latest = all_rows[-1]
-
-        return {
-            'date': latest['date'],
-            'tenors': SG_TENORS,
-            'months': SG_TENOR_MONTHS,
-            'yields': latest['yields'],
-            'all_rows': all_rows,
-        }, None
+        result = _fetch_sg_mas()
+        if result:
+            return result, None
     except Exception as e:
-        logger.warning(f"SG curve fetch error: {e}")
-        return None, str(e)
+        logger.warning(f"MAS API error: {e}")
+
+    # Fallback to yfinance
+    try:
+        result = _fetch_sg_yfinance()
+        if result:
+            logger.info("SG rates loaded via yfinance fallback")
+            return result, None
+    except Exception as e:
+        logger.warning(f"yfinance SG fallback error: {e}")
+
+    return None, "Both MAS API and yfinance failed"
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
