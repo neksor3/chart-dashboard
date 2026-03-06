@@ -495,23 +495,33 @@ def _render_heatmap_grid(data):
     sectors_html = ''
     active_sectors = 0
     for sector, syms in HEATMAP_SECTORS.items():
-        cells = ''
-        has_data = False
+        # Collect all symbols with data for this sector
+        sector_items = []
         for sym in syms:
             d = data.get(sym)
-            if not d:
-                continue
-            has_data = True
-            change = d['change']
+            if d:
+                sector_items.append((sym, d['change']))
+
+        if not sector_items:
+            continue
+
+        # Pick top 2 gainers + top 2 losers — always 4 cells, always meaningful
+        sector_items.sort(key=lambda x: x[1], reverse=True)
+        if len(sector_items) <= 4:
+            display = sector_items
+        else:
+            display = sector_items[:2] + sector_items[-2:]
+
+        cells = ''
+        for sym, change in display:
             name = clean_symbol(sym)
             bg, intensity = _bg(change, pos_c, neg_c)
-            # Dynamic text: use high-contrast on strong backgrounds
             if intensity > 3:
                 name_c = '#ffffff' if not is_light else '#1e293b'
-                val_c = '#ffffff' if not is_light else '#1e293b'
+                val_c  = '#ffffff' if not is_light else '#1e293b'
             else:
                 name_c = s['hm_txt']
-                val_c = pos_c if change >= 0 else neg_c
+                val_c  = pos_c if change >= 0 else neg_c
             sign = '+' if change >= 0 else ''
             cell_border = 'rgba(0,0,0,0.06)' if is_light else 'rgba(255,255,255,0.04)'
             cells += (
@@ -522,15 +532,15 @@ def _render_heatmap_grid(data):
                 f"font-variant-numeric:tabular-nums'>{sign}{change:.2f}%</div>"
                 f"</div>"
             )
-        if has_data:
-            active_sectors += 1
-            sectors_html += (
-                f"<div style='margin-bottom:6px'>"
-                f"<div style='color:#f8fafc;font-size:8px;font-weight:600;letter-spacing:0.1em;"
-                f"text-transform:uppercase;margin-bottom:4px;padding-left:2px'>{sector}</div>"
-                f"<div style='display:flex;gap:4px;flex-wrap:wrap'>{cells}</div>"
-                f"</div>"
-            )
+
+        active_sectors += 1
+        sectors_html += (
+            f"<div style='margin-bottom:6px'>"
+            f"<div style='color:#f8fafc;font-size:8px;font-weight:600;letter-spacing:0.1em;"
+            f"text-transform:uppercase;margin-bottom:4px;padding-left:2px'>{sector}</div>"
+            f"<div style='display:flex;gap:4px;flex-wrap:wrap'>{cells}</div>"
+            f"</div>"
+        )
 
     html = (
         f"<div style='padding:10px 12px;background:{s['bg2']};border:1px solid {s['border']};border-radius:6px'>"
@@ -792,6 +802,7 @@ def _render_breakout_tables(breakout_data):
         "</div>"
     )
     _wrap(combined, total_height)
+    return total_height
 
 
 # ── MAIN ─────────────────────────────────────────────────────────────────────
