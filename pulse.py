@@ -828,10 +828,14 @@ def render_pulse_tab(is_mobile):
         st.info('Markets data loading — try refreshing.')
         return
 
+    _G = "<div style='margin-top:-10px'></div>"
     _render_market_status_bar()
+    st.markdown(_G, unsafe_allow_html=True)
     _render_hero_row(data)
+    st.markdown(_G, unsafe_allow_html=True)
     if spark_data:
         _render_sparkline_row(spark_data, data)
+        st.markdown(_G, unsafe_allow_html=True)
 
     if is_mobile:
         _render_movers(data)
