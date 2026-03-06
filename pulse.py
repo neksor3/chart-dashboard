@@ -8,7 +8,7 @@ import pytz
 import logging
 from streamlit.components.v1 import html as st_html
 
-from config import FUTURES_GROUPS, THEMES, SYMBOL_NAMES, FONTS, clean_symbol, HEATMAP_SECTORS
+from config import FUTURES_GROUPS, THEMES, SYMBOL_NAMES, FONTS, clean_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ def _s():
         )
 
 
-def _wrap(body, height=200):
+def _wrap(body, height):
     s = _s()
     page = (
         "<!DOCTYPE html><html><head><meta charset='utf-8'>"
@@ -65,7 +65,6 @@ def _wrap(body, height=200):
     st_html(page, height=height)
 
 
-
 # ── DATA ─────────────────────────────────────────────────────────────────────
 
 HERO_SYMBOLS = OrderedDict([
@@ -79,6 +78,17 @@ HERO_SYMBOLS = OrderedDict([
     ('^STI',     {'label': 'STI',      'fmt': ',.0f'}),
 ])
 
+HEATMAP_SECTORS = OrderedDict([
+    ('Indices',   ['ES=F', 'NQ=F', 'YM=F', 'RTY=F', 'NKD=F']),
+    ('Crypto',    ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD']),
+    ('Energy',    ['CL=F', 'NG=F', 'RB=F', 'HO=F']),
+    ('Metals',    ['GC=F', 'SI=F', 'PL=F', 'HG=F']),
+    ('Grains',    ['ZC=F', 'ZS=F', 'ZW=F', 'ZM=F']),
+    ('Softs',     ['SB=F', 'KC=F', 'CC=F', 'CT=F']),
+    ('Rates',     ['ZB=F', 'ZN=F', 'ZF=F', 'ZT=F']),
+    ('FX',        ['6E=F', '6J=F', '6B=F', '6A=F']),
+    ('Singapore', ['ES3.SI', 'S68.SI']),
+])
 
 SPARKLINE_SYMBOLS = ['ES=F', 'BTC-USD', 'GC=F', 'CL=F', 'USDSGD=X', '^STI']
 
@@ -138,13 +148,20 @@ def _fetch_sparklines():
 # ── BREAKOUT SCANNER ─────────────────────────────────────────────────────────
 
 # Symbols shown in the breakout panel — curated cross-asset watchlist
-# Breakout scanner uses the full HEATMAP universe — single source of truth
-# Flat ordered dict: sym -> short label, deduped, preserving sector order
-BREAKOUT_SYMBOLS = OrderedDict()
-for _syms in HEATMAP_SECTORS.values():
-    for _sym in _syms:
-        if _sym not in BREAKOUT_SYMBOLS:
-            BREAKOUT_SYMBOLS[_sym] = clean_symbol(_sym)
+BREAKOUT_SYMBOLS = OrderedDict([
+    ('ES=F',    'S&P'),
+    ('NQ=F',    'NQ'),
+    ('GC=F',    'Gold'),
+    ('CL=F',    'Crude'),
+    ('ZW=F',    'Wheat'),
+    ('NG=F',    'NatGas'),
+    ('BTC-USD', 'BTC'),
+    ('ZN=F',    '10Y'),
+    ('6J=F',    'JPY'),
+    ('USDSGD=X','SGDUSD'),
+    ('^STI',    'STI'),
+    ('ZC=F',    'Corn'),
+])
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -495,23 +512,15 @@ def _render_heatmap_grid(data):
     sectors_html = ''
     active_sectors = 0
     for sector, syms in HEATMAP_SECTORS.items():
-        # Collect all symbols with data for this sector
         sector_items = []
         for sym in syms:
             d = data.get(sym)
             if d:
                 sector_items.append((sym, d['change']))
-
         if not sector_items:
             continue
-
-        # Pick top 2 gainers + top 2 losers — always 4 cells, always meaningful
         sector_items.sort(key=lambda x: x[1], reverse=True)
-        if len(sector_items) <= 4:
-            display = sector_items
-        else:
-            display = sector_items[:2] + sector_items[-2:]
-
+        display = sector_items if len(sector_items) <= 4 else sector_items[:2] + sector_items[-2:]
         cells = ''
         for sym, change in display:
             name = clean_symbol(sym)
@@ -532,7 +541,6 @@ def _render_heatmap_grid(data):
                 f"font-variant-numeric:tabular-nums'>{sign}{change:.2f}%</div>"
                 f"</div>"
             )
-
         active_sectors += 1
         sectors_html += (
             f"<div style='margin-bottom:6px'>"
@@ -551,7 +559,7 @@ def _render_heatmap_grid(data):
         f"</div>"
         f"{sectors_html}</div>"
     )
-    _wrap(html, 58 * active_sectors + 50)
+    _wrap(html, 46 * active_sectors + 50)
 
 
 def _render_movers(data):
@@ -606,12 +614,12 @@ def _render_movers(data):
         f"<span style='color:{neg_c};font-size:12px'>&#9660;</span> TOP LOSERS</div>"
         f"{lose_html}</div></div>"
     )
-    _wrap(html, 28 * n_rows + 60)
+    _wrap(html, 28 * n_rows + 50)
 
 
 
-def _render_pulse_news():
-    """News panel — scrollable, auto-heights via _wrap."""
+def _render_pulse_news(iframe_height=600):
+    """News panel — stretches to match left column height."""
     from news import fetch_rss_feed
     t = get_theme(); s = _s()
     pos_c = t['pos']
@@ -635,12 +643,14 @@ def _render_pulse_news():
     rows = ''
     for i, item in enumerate(all_items):
         bg = s['bg2'] if i % 2 == 0 else s['row_alt']
+        src_col = item['source']
+        dt_col  = item['date']
         rows += (
             "<div style='padding:4px 10px;background:" + bg + ";border-bottom:1px solid " + s['border'] + "18;"
             "display:flex;align-items:baseline;gap:6px;font-family:" + FONTS + ";white-space:nowrap;overflow:hidden'>"
             "<span style='flex-shrink:0;width:115px;display:flex;gap:5px;align-items:baseline'>"
-            "<span style='color:" + pos_c + ";font-weight:600;font-size:9px'>" + item['source'] + "</span>"
-            "<span style='color:" + s['muted'] + ";font-size:9px'>" + item['date'] + "</span></span>"
+            "<span style='color:" + pos_c + ";font-weight:600;font-size:9px'>" + src_col + "</span>"
+            "<span style='color:" + s['muted'] + ";font-size:9px'>" + dt_col + "</span></span>"
             "<a href='" + item['url'] + "' target='_blank' style='color:" + s['link'] + ";text-decoration:none;"
             "font-size:10.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis'>" + item['title'] + "</a>"
             "</div>"
@@ -648,15 +658,16 @@ def _render_pulse_news():
 
     html = (
         "<div style='background:" + s['bg2'] + ";border:1px solid " + s['border'] + ";border-radius:6px;"
-        "overflow:hidden;font-family:" + FONTS + "'>"
+        "overflow:hidden;font-family:" + FONTS + ";height:" + str(iframe_height) + "px;"
+        "display:flex;flex-direction:column'>"
         "<div style='padding:6px 10px;display:flex;justify-content:space-between;align-items:center;"
-        "border-bottom:1px solid " + s['border'] + "'>"
+        "border-bottom:1px solid " + s['border'] + ";flex-shrink:0'>"
         "<span style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.1em'>LATEST</span>"
-        "<span style='color:" + s['muted'] + ";font-size:9px'>" + str(len(all_items)) + "</span></div>"
-        "<div>" + rows + "</div>"
+        "<span style='color:" + s['muted'] + ";font-size:9px;font-weight:500'>" + str(len(all_items)) + "</span></div>"
+        "<div style='overflow-y:auto;flex:1'>" + rows + "</div>"
         "</div>"
     )
-    _wrap(html, 22 * len(all_items) + 34)
+    _wrap(html, iframe_height)
 
 
 # ── BREAKOUT TABLES (week + month) ───────────────────────────────────────────
@@ -705,16 +716,16 @@ def _render_breakout_tables(breakout_data):
             if res is None:
                 continue
             status = res['status']
+            prev_range = max(res['prev_high'] - res['prev_low'], 1e-9)
             rev = res['reversal']
 
             if status == 'above_high':
-                # % above prev high relative to prev high price — comparable across assets
-                pct = (res['curr_price'] - res['prev_high']) / res['prev_high'] * 100
+                pct = (res['curr_price'] - res['prev_high']) / prev_range * 100
                 above_list.append((label, pct, rev))
             elif status == 'below_low':
-                # % below prev low relative to prev low price
-                pct = (res['prev_low'] - res['curr_price']) / res['prev_low'] * 100
+                pct = (res['prev_low'] - res['curr_price']) / prev_range * 100
                 below_list.append((label, pct, rev))
+            # inside range → not shown
 
         above_list.sort(key=lambda x: x[1], reverse=True)
         below_list.sort(key=lambda x: x[1], reverse=True)
@@ -817,31 +828,30 @@ def render_pulse_tab(is_mobile):
         st.info('Markets data loading — try refreshing.')
         return
 
-    GAP = "<div style='margin-top:-16px'></div>"
-
     _render_market_status_bar()
-    st.markdown(GAP, unsafe_allow_html=True)
     _render_hero_row(data)
-    st.markdown(GAP, unsafe_allow_html=True)
     if spark_data:
         _render_sparkline_row(spark_data, data)
-        st.markdown(GAP, unsafe_allow_html=True)
 
     if is_mobile:
         _render_movers(data)
-        st.markdown(GAP, unsafe_allow_html=True)
         _render_breakout_tables(breakout_data)
-        st.markdown(GAP, unsafe_allow_html=True)
-        _render_pulse_news()
-        st.markdown(GAP, unsafe_allow_html=True)
+        _render_pulse_news(iframe_height=400)
         _render_heatmap_grid(data)
     else:
+        # Left column: movers + week breakouts + month breakouts (3 stacked tables)
+        # Right column: news stretching full height of left column
         col_left, col_right = st.columns([55, 45])
+
         with col_left:
+            # Render movers — fixed height ~190px
             _render_movers(data)
-            st.markdown(GAP, unsafe_allow_html=True)
-            _render_breakout_tables(breakout_data)
+            # Render breakout tables — returns total height used
+            bo_height = _render_breakout_tables(breakout_data)
+
         with col_right:
-            _render_pulse_news()
-        st.markdown(GAP, unsafe_allow_html=True)
+            # News panel height = movers(~190) + gap(8) + breakout tables + buffer
+            news_height = 190 + 8 + bo_height
+            _render_pulse_news(iframe_height=news_height)
+
         _render_heatmap_grid(data)
