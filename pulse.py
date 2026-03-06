@@ -45,8 +45,19 @@ def _s():
         )
 
 
-def _wrap(body, height):
+def _wrap(body, height=None):
+    """
+    Render body in a self-sizing iframe.
+    Uses ResizeObserver to report actual content height to Streamlit,
+    eliminating all hardcoded heights. `height` is the initial estimate
+    (avoids flash of collapsed iframe on first render).
+    """
     s = _s()
+    # Unique ID so multiple iframes on page don't conflict
+    import random
+    uid = f"sw{random.randint(10000,99999)}"
+    initial_h = height or 200
+
     page = (
         "<!DOCTYPE html><html><head><meta charset='utf-8'>"
         "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap' rel='stylesheet'>"
@@ -59,10 +70,23 @@ def _wrap(body, height):
         f"::-webkit-scrollbar-track {{ background:{s['bg2']}; }}"
         f"::-webkit-scrollbar-thumb {{ background:{s['border']}; border-radius:2px; }}"
         "</style></head><body>"
-        f"{body}"
+        f"<div id='{uid}'>{body}</div>"
+        "<script>"
+        f"(function(){{"
+        f"  var el = document.getElementById('{uid}');"
+        f"  function report(){{"
+        f"    var h = el.getBoundingClientRect().height;"
+        f"    window.parent.postMessage({{type:'streamlit:setFrameHeight', height: Math.ceil(h)+8}}, '*');"
+        f"  }}"
+        f"  var ro = new ResizeObserver(report);"
+        f"  ro.observe(el);"
+        f"  report();"
+        f"}})();"
+        "</script>"
         "</body></html>"
     )
-    st_html(page, height=height)
+    st_html(page, height=initial_h)
+
 
 
 # ── DATA ─────────────────────────────────────────────────────────────────────
@@ -400,7 +424,7 @@ def _render_market_status_bar():
         f"<span style='color:{s['border']};font-size:10px;align-self:center'>│</span>"
         f"{hols}</div>"
     )
-    _wrap(html, 36)
+    _wrap(html)
 
 
 def _render_hero_row(data):
@@ -448,7 +472,7 @@ def _render_hero_row(data):
             f"</div></div>"
         )
     html = f"<div style='display:flex;gap:6px;flex-wrap:wrap'>{cards}</div>"
-    _wrap(html, 88)
+    _wrap(html)
 
 
 def _render_sparkline_row(spark_data, pulse_data):
@@ -476,7 +500,7 @@ def _render_sparkline_row(spark_data, pulse_data):
             f"</div>"
         )
     html = f"<div style='display:flex;gap:5px;flex-wrap:wrap'>{cards}</div>"
-    _wrap(html, 58)
+    _wrap(html)
 
 def _render_heatmap_grid(data):
     t = get_theme()
@@ -540,7 +564,7 @@ def _render_heatmap_grid(data):
         f"</div>"
         f"{sectors_html}</div>"
     )
-    _wrap(html, 46 * active_sectors + 50)
+    _wrap(html)
 
 
 def _render_movers(data):
@@ -595,12 +619,12 @@ def _render_movers(data):
         f"<span style='color:{neg_c};font-size:12px'>&#9660;</span> TOP LOSERS</div>"
         f"{lose_html}</div></div>"
     )
-    _wrap(html, 28 * n_rows + 50)
+    _wrap(html)
 
 
 
-def _render_pulse_news(iframe_height=600):
-    """News panel — stretches to match left column height."""
+def _render_pulse_news():
+    """News panel — scrollable, auto-heights via _wrap."""
     from news import fetch_rss_feed
     t = get_theme(); s = _s()
     pos_c = t['pos']
@@ -624,14 +648,12 @@ def _render_pulse_news(iframe_height=600):
     rows = ''
     for i, item in enumerate(all_items):
         bg = s['bg2'] if i % 2 == 0 else s['row_alt']
-        src_col = item['source']
-        dt_col  = item['date']
         rows += (
             "<div style='padding:4px 10px;background:" + bg + ";border-bottom:1px solid " + s['border'] + "18;"
             "display:flex;align-items:baseline;gap:6px;font-family:" + FONTS + ";white-space:nowrap;overflow:hidden'>"
             "<span style='flex-shrink:0;width:115px;display:flex;gap:5px;align-items:baseline'>"
-            "<span style='color:" + pos_c + ";font-weight:600;font-size:9px'>" + src_col + "</span>"
-            "<span style='color:" + s['muted'] + ";font-size:9px'>" + dt_col + "</span></span>"
+            "<span style='color:" + pos_c + ";font-weight:600;font-size:9px'>" + item['source'] + "</span>"
+            "<span style='color:" + s['muted'] + ";font-size:9px'>" + item['date'] + "</span></span>"
             "<a href='" + item['url'] + "' target='_blank' style='color:" + s['link'] + ";text-decoration:none;"
             "font-size:10.5px;font-weight:500;overflow:hidden;text-overflow:ellipsis'>" + item['title'] + "</a>"
             "</div>"
@@ -639,16 +661,15 @@ def _render_pulse_news(iframe_height=600):
 
     html = (
         "<div style='background:" + s['bg2'] + ";border:1px solid " + s['border'] + ";border-radius:6px;"
-        "overflow:hidden;font-family:" + FONTS + ";height:" + str(iframe_height) + "px;"
-        "display:flex;flex-direction:column'>"
+        "overflow:hidden;font-family:" + FONTS + "'>"
         "<div style='padding:6px 10px;display:flex;justify-content:space-between;align-items:center;"
-        "border-bottom:1px solid " + s['border'] + ";flex-shrink:0'>"
+        "border-bottom:1px solid " + s['border'] + "'>"
         "<span style='color:#f8fafc;font-size:9px;font-weight:600;letter-spacing:0.1em'>LATEST</span>"
-        "<span style='color:" + s['muted'] + ";font-size:9px;font-weight:500'>" + str(len(all_items)) + "</span></div>"
-        "<div style='overflow-y:auto;flex:1'>" + rows + "</div>"
+        "<span style='color:" + s['muted'] + ";font-size:9px'>" + str(len(all_items)) + "</span></div>"
+        "<div>" + rows + "</div>"
         "</div>"
     )
-    _wrap(html, iframe_height)
+    _wrap(html)
 
 
 # ── BREAKOUT TABLES (week + month) ───────────────────────────────────────────
@@ -793,8 +814,7 @@ def _render_breakout_tables(breakout_data):
         + week_html + month_html +
         "</div>"
     )
-    _wrap(combined, total_height)
-    return total_height
+    _wrap(combined)
 
 
 # ── MAIN ─────────────────────────────────────────────────────────────────────
@@ -817,22 +837,13 @@ def render_pulse_tab(is_mobile):
     if is_mobile:
         _render_movers(data)
         _render_breakout_tables(breakout_data)
-        _render_pulse_news(iframe_height=400)
+        _render_pulse_news()
         _render_heatmap_grid(data)
     else:
-        # Left column: movers + week breakouts + month breakouts (3 stacked tables)
-        # Right column: news stretching full height of left column
         col_left, col_right = st.columns([55, 45])
-
         with col_left:
-            # Render movers — fixed height ~190px
             _render_movers(data)
-            # Render breakout tables — returns total height used
-            bo_height = _render_breakout_tables(breakout_data)
-
+            _render_breakout_tables(breakout_data)
         with col_right:
-            # News panel height = movers(~190) + gap(8) + breakout tables + buffer
-            news_height = 190 + 8 + bo_height
-            _render_pulse_news(iframe_height=news_height)
-
+            _render_pulse_news()
         _render_heatmap_grid(data)
