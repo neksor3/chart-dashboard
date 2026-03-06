@@ -817,21 +817,31 @@ def render_pulse_tab(is_mobile):
         st.info('Markets data loading — try refreshing.')
         return
 
+    GAP = "<div style='margin-top:-16px'></div>"
+
     _render_market_status_bar()
+    st.markdown(GAP, unsafe_allow_html=True)
     _render_hero_row(data)
+    st.markdown(GAP, unsafe_allow_html=True)
     if spark_data:
         _render_sparkline_row(spark_data, data)
+        st.markdown(GAP, unsafe_allow_html=True)
 
     if is_mobile:
         _render_movers(data)
+        st.markdown(GAP, unsafe_allow_html=True)
         _render_breakout_tables(breakout_data)
+        st.markdown(GAP, unsafe_allow_html=True)
         _render_pulse_news()
+        st.markdown(GAP, unsafe_allow_html=True)
         _render_heatmap_grid(data)
     else:
         col_left, col_right = st.columns([55, 45])
         with col_left:
             _render_movers(data)
+            st.markdown(GAP, unsafe_allow_html=True)
             _render_breakout_tables(breakout_data)
         with col_right:
             _render_pulse_news()
+        st.markdown(GAP, unsafe_allow_html=True)
         _render_heatmap_grid(data)

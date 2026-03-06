@@ -48,8 +48,8 @@ def _inject_theme_css():
     .stSelectbox > div > div {{ background-color: {sel_bg}; color: {sel_c}; font-family: 'Inter', sans-serif; border: 1px solid {sel_bdr}; }}
     .stTextInput > div > div > input {{ font-family: 'Inter', sans-serif; }}
     div[data-testid="stHorizontalBlock"] {{ gap: 0.3rem; }}
-    .element-container:has(iframe) {{ margin: 0 !important; padding: 0 !important; line-height: 0; }}
-    iframe {{ display: block; }}
+    .element-container {{ margin-bottom: 0 !important; }}
+    iframe {{ display: block; margin: 0 !important; }}
     iframe {{ display: block; }}
     [data-testid="stCustomComponentV1"] {{ margin-bottom: -6px !important; line-height: 0; }}
     .element-container:has(iframe) {{ margin-bottom: 0 !important; padding-bottom: 0 !important; }}
