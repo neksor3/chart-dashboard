@@ -133,7 +133,9 @@ THEMES = {
 # =============================================================================
 
 def clean_symbol(sym):
-    return sym.replace('=F', '').replace('=X', '').replace('.SI', '').replace('^', '')
+    return (sym.replace('=F', '').replace('=X', '').replace('.SI', '')
+               .replace('^', '').replace('-USD', '').replace('-GBP', '')
+               .replace('-EUR', ''))
 
 def sym_name(sym):
     """Friendly name: SYMBOL_NAMES lookup with clean_symbol fallback."""

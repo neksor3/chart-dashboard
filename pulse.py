@@ -8,7 +8,7 @@ import pytz
 import logging
 from streamlit.components.v1 import html as st_html
 
-from config import FUTURES_GROUPS, THEMES, SYMBOL_NAMES, FONTS, clean_symbol, HEATMAP_SECTORS, sym_short
+from config import FUTURES_GROUPS, THEMES, SYMBOL_NAMES, FONTS, clean_symbol, HEATMAP_SECTORS
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +143,7 @@ BREAKOUT_SYMBOLS = OrderedDict()
 for _syms in HEATMAP_SECTORS.values():
     for _sym in _syms:
         if _sym not in BREAKOUT_SYMBOLS:
-            BREAKOUT_SYMBOLS[_sym] = sym_short(_sym)
+            BREAKOUT_SYMBOLS[_sym] = clean_symbol(_sym)
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -502,7 +502,7 @@ def _render_heatmap_grid(data):
                 continue
             has_data = True
             change = d['change']
-            name = sym_short(sym)
+            name = clean_symbol(sym)
             bg, intensity = _bg(change, pos_c, neg_c)
             # Dynamic text: use high-contrast on strong backgrounds
             if intensity > 3:
