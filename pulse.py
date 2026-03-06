@@ -45,19 +45,8 @@ def _s():
         )
 
 
-def _wrap(body, height=None):
-    """
-    Render body in a self-sizing iframe.
-    Uses ResizeObserver to report actual content height to Streamlit,
-    eliminating all hardcoded heights. `height` is the initial estimate
-    (avoids flash of collapsed iframe on first render).
-    """
+def _wrap(body, height=200):
     s = _s()
-    # Unique ID so multiple iframes on page don't conflict
-    import random
-    uid = f"sw{random.randint(10000,99999)}"
-    initial_h = height or 200
-
     page = (
         "<!DOCTYPE html><html><head><meta charset='utf-8'>"
         "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap' rel='stylesheet'>"
@@ -70,22 +59,10 @@ def _wrap(body, height=None):
         f"::-webkit-scrollbar-track {{ background:{s['bg2']}; }}"
         f"::-webkit-scrollbar-thumb {{ background:{s['border']}; border-radius:2px; }}"
         "</style></head><body>"
-        f"<div id='{uid}'>{body}</div>"
-        "<script>"
-        f"(function(){{"
-        f"  var el = document.getElementById('{uid}');"
-        f"  function report(){{"
-        f"    var h = el.getBoundingClientRect().height;"
-        f"    window.parent.postMessage({{type:'streamlit:setFrameHeight', height: Math.ceil(h)+8}}, '*');"
-        f"  }}"
-        f"  var ro = new ResizeObserver(report);"
-        f"  ro.observe(el);"
-        f"  report();"
-        f"}})();"
-        "</script>"
+        f"{body}"
         "</body></html>"
     )
-    st_html(page, height=initial_h)
+    st_html(page, height=height)
 
 
 
@@ -424,7 +401,7 @@ def _render_market_status_bar():
         f"<span style='color:{s['border']};font-size:10px;align-self:center'>│</span>"
         f"{hols}</div>"
     )
-    _wrap(html)
+    _wrap(html, 36)
 
 
 def _render_hero_row(data):
@@ -472,7 +449,7 @@ def _render_hero_row(data):
             f"</div></div>"
         )
     html = f"<div style='display:flex;gap:6px;flex-wrap:wrap'>{cards}</div>"
-    _wrap(html)
+    _wrap(html, 100)
 
 
 def _render_sparkline_row(spark_data, pulse_data):
@@ -500,7 +477,7 @@ def _render_sparkline_row(spark_data, pulse_data):
             f"</div>"
         )
     html = f"<div style='display:flex;gap:5px;flex-wrap:wrap'>{cards}</div>"
-    _wrap(html)
+    _wrap(html, 70)
 
 def _render_heatmap_grid(data):
     t = get_theme()
@@ -564,7 +541,7 @@ def _render_heatmap_grid(data):
         f"</div>"
         f"{sectors_html}</div>"
     )
-    _wrap(html)
+    _wrap(html, 58 * active_sectors + 50)
 
 
 def _render_movers(data):
@@ -619,7 +596,7 @@ def _render_movers(data):
         f"<span style='color:{neg_c};font-size:12px'>&#9660;</span> TOP LOSERS</div>"
         f"{lose_html}</div></div>"
     )
-    _wrap(html)
+    _wrap(html, 28 * n_rows + 60)
 
 
 
@@ -669,7 +646,7 @@ def _render_pulse_news():
         "<div>" + rows + "</div>"
         "</div>"
     )
-    _wrap(html)
+    _wrap(html, 22 * len(all_items) + 34)
 
 
 # ── BREAKOUT TABLES (week + month) ───────────────────────────────────────────
@@ -814,7 +791,7 @@ def _render_breakout_tables(breakout_data):
         + week_html + month_html +
         "</div>"
     )
-    _wrap(combined)
+    _wrap(combined, total_height)
 
 
 # ── MAIN ─────────────────────────────────────────────────────────────────────
