@@ -292,168 +292,208 @@ def _compute_breakout_status(hist, period_type):
 
 def _render_breakout_panel(breakout_data):
     """
-    Renders a compact breakout strip on the Pulse tab.
-    Each row: symbol | prev week range bar | prev month range bar
-    The range bar shows where current price sits within prev period H/L.
-    >100% = breakout above (green), <0% = breakdown below (red/amber).
+    Movers-style breakout panel.
+
+    Layout: two equal columns side by side.
+      Left  — WEEK:  above-mid list (green bars, sorted highest %R first)
+                     | divider |
+                     below-mid list (amber bars, sorted lowest %R first)
+      Right — MONTH: same structure.
+
+    Bar semantics (matching movers panel exactly):
+      - Green bar  : above prev period midpoint  (%R 50–100+)
+      - Amber bar  : below prev period midpoint  (%R 0–50-)
+      - Bar width  : proportional to distance from midpoint (not from zero)
+      - ▲ BREAK label : price > prev period high  (%R > 100)
+      - ▼ BREAK label : price < prev period low   (%R < 0)
+      - ● dot       : reversal signal (bounced off low / rejected at high)
+
+    No purple. No ambiguity.
     """
-    t = get_theme()
-    s = _s()
-    pos_c = t['pos']       # green
-    neg_c = t['neg']       # amber
+    t   = get_theme()
+    s   = _s()
+    pos_c = t['pos']    # #4ade80  green
+    neg_c = t['neg']    # #f59e0b  amber
     bdr   = s['border']
     bg2   = s['bg2']
     bg3   = s['bg3']
-    txt2  = s['text2']
     muted = s['muted']
 
-    STATUS_COLOR = {
-        'above_high': pos_c,
-        'above_mid':  t.get('zone_amid', '#86efac'),
-        'below_mid':  t.get('zone_bmid', '#fbbf24'),
-        'below_low':  neg_c,
-    }
-    STATUS_LABEL = {
-        'above_high': '▲ BREAK',
-        'above_mid':  '▲ MID',
-        'below_mid':  '▼ MID',
-        'below_low':  '▼ BREAK',
-    }
-
-    def _bar_html(res, label, bar_color):
-        """Render a mini range bar with current price marker."""
-        if res is None:
-            return f"<div style='color:{muted};font-size:9px;text-align:center'>—</div>"
-
-        pct   = res['pct_r']     # can be <0 or >100
-        status = res['status']
-        rev    = res['reversal']
-        sc     = STATUS_COLOR.get(status, muted)
-        sl     = STATUS_LABEL.get(status, '')
-
-        # Clamp marker to bar bounds for rendering, but show real value
-        marker_pct = max(0.0, min(100.0, pct))
-
-        # Breakout: bar turns accent colour and overflows indicator
-        if status == 'above_high':
-            bar_fill_color = pos_c
-            fill_pct = 100
-        elif status == 'below_low':
-            bar_fill_color = neg_c
-            fill_pct = 0
-        else:
-            bar_fill_color = bar_color
-            fill_pct = marker_pct
-
-        pct_str = f"{pct:+.0f}%" if (pct > 100 or pct < 0) else f"{pct:.0f}%"
-
-        rev_dot = ''
-        if rev == 'buy':
-            rev_dot = f"<span style='color:{pos_c};font-size:8px;margin-left:2px'>●</span>"
-        elif rev == 'sell':
-            rev_dot = f"<span style='color:{neg_c};font-size:8px;margin-left:2px'>●</span>"
-
-        return (
-            f"<div style='display:flex;flex-direction:column;gap:2px'>"
-            # Label + status + pct
-            f"<div style='display:flex;justify-content:space-between;align-items:center'>"
-            f"<span style='color:{muted};font-size:8px;font-weight:600;letter-spacing:0.06em'>{label}</span>"
-            f"<span style='color:{sc};font-size:8px;font-weight:700'>{sl}{rev_dot}</span>"
-            f"<span style='color:{sc};font-size:8px;font-weight:700;font-variant-numeric:tabular-nums'>{pct_str}</span>"
-            f"</div>"
-            # Range bar
-            f"<div style='position:relative;height:6px;background:{bdr};border-radius:3px;overflow:visible'>"
-            # Fill from left up to fill_pct
-            f"<div style='position:absolute;top:0;left:0;height:100%;width:{fill_pct:.1f}%;"
-            f"background:{bar_fill_color};border-radius:3px;opacity:0.5'></div>"
-            # Price marker
-            f"<div style='position:absolute;top:-2px;left:{marker_pct:.1f}%;transform:translateX(-50%);"
-            f"width:3px;height:10px;background:{sc};border-radius:1px'></div>"
-            f"</div>"
-            # H / L labels
-            f"<div style='display:flex;justify-content:space-between'>"
-            f"<span style='color:{muted};font-size:7px;font-variant-numeric:tabular-nums'>{res['prev_low']:,.2f}</span>"
-            f"<span style='color:{muted};font-size:7px;font-variant-numeric:tabular-nums'>{res['prev_high']:,.2f}</span>"
-            f"</div>"
-            f"</div>"
-        )
-
-    rows_html = ''
-    has_any = False
+    # ── Collect results ───────────────────────────────────────────────────────
+    week_items  = []   # list of (label, sym, res)
+    month_items = []
 
     for sym, label in BREAKOUT_SYMBOLS.items():
         hist = breakout_data.get(sym)
         if hist is None:
             continue
+        wr = _compute_breakout_status(hist, 'week')
+        mr = _compute_breakout_status(hist, 'month')
+        if wr is not None:
+            week_items.append((label, sym, wr))
+        if mr is not None:
+            month_items.append((label, sym, mr))
 
-        week_res  = _compute_breakout_status(hist, 'week')
-        month_res = _compute_breakout_status(hist, 'month')
-
-        if week_res is None and month_res is None:
-            continue
-
-        has_any = True
-        curr_price = (week_res or month_res)['curr_price']
-
-        # Format price sensibly
-        if '=X' in sym:
-            price_str = f"{curr_price:.4f}"
-        elif curr_price > 1000:
-            price_str = f"{curr_price:,.0f}"
-        else:
-            price_str = f"{curr_price:.2f}"
-
-        row_bg = bg2
-
-        week_bar  = _bar_html(week_res,  'WEEK',  '#60a5fa')
-        month_bar = _bar_html(month_res, 'MONTH', '#c084fc')
-
-        rows_html += (
-            f"<div style='display:grid;grid-template-columns:70px 1fr 1fr;"
-            f"gap:8px;align-items:center;padding:6px 10px;"
-            f"border-bottom:1px solid {bdr}18;background:{row_bg}'>"
-            # Symbol + price
-            f"<div>"
-            f"<div style='color:#f8fafc;font-size:10px;font-weight:700'>{label}</div>"
-            f"<div style='color:{txt2};font-size:8.5px;font-variant-numeric:tabular-nums'>{price_str}</div>"
-            f"</div>"
-            # Week bar
-            f"<div>{week_bar}</div>"
-            # Month bar
-            f"<div>{month_bar}</div>"
-            f"</div>"
-        )
-
-    if not has_any:
+    if not week_items and not month_items:
         html = (
             f"<div style='padding:10px 12px;background:{bg2};border:1px solid {bdr};"
             f"border-radius:6px;color:{muted};font-size:10px;font-family:{FONTS}'>"
             f"Breakout data loading…</div>"
         )
-    else:
-        html = (
-            f"<div style='background:{bg2};border:1px solid {bdr};border-radius:6px;"
-            f"overflow:hidden;font-family:{FONTS}'>"
-            # Header
-            f"<div style='display:grid;grid-template-columns:70px 1fr 1fr;"
-            f"gap:8px;padding:5px 10px;border-bottom:1px solid {bdr};"
-            f"background:{bg3}'>"
-            f"<span style='color:#f8fafc;font-size:8px;font-weight:600;"
-            f"letter-spacing:0.1em;text-transform:uppercase'>BREAKOUTS</span>"
-            f"<span style='color:{muted};font-size:8px;font-weight:600;"
-            f"letter-spacing:0.08em;text-transform:uppercase'>PREV WEEK H/L</span>"
-            f"<span style='color:{muted};font-size:8px;font-weight:600;"
-            f"letter-spacing:0.08em;text-transform:uppercase'>PREV MONTH H/L</span>"
-            f"</div>"
-            f"{rows_html}"
-            f"</div>"
+        _wrap(html, 40)
+        return
+
+    # ── Split into above/below mid, sort ─────────────────────────────────────
+    def _split_sort(items):
+        # above mid: status in (above_high, above_mid) — sort highest %R first
+        above = sorted(
+            [(l, sym, r) for l, sym, r in items if r['status'] in ('above_high', 'above_mid')],
+            key=lambda x: x[2]['pct_r'], reverse=True
+        )
+        # below mid: status in (below_mid, below_low) — sort lowest %R first (most broken down)
+        below = sorted(
+            [(l, sym, r) for l, sym, r in items if r['status'] in ('below_mid', 'below_low')],
+            key=lambda x: x[2]['pct_r'], reverse=False
+        )
+        return above, below
+
+    w_above, w_below = _split_sort(week_items)
+    m_above, m_below = _split_sort(month_items)
+
+    # ── Bar row builder (mirrors _render_movers exactly) ─────────────────────
+    def _bar_rows(items, color, is_above, max_abs_dist):
+        """
+        items      : list of (label, sym, res)
+        color      : pos_c or neg_c
+        is_above   : True = green side, False = amber side
+        max_abs_dist: max |%R - 50| across this list, for bar scaling
+        """
+        if not items:
+            return ''
+        html = ''
+        for label, sym, res in items:
+            pct_r  = res['pct_r']
+            status = res['status']
+            rev    = res['reversal']
+
+            # Distance from midpoint (50) drives bar width, capped at 85%
+            dist = abs(pct_r - 50)
+            bar_pct = max(dist / max(max_abs_dist, 1) * 85, 8)
+
+            # Label for breakouts
+            if status == 'above_high':
+                pct_label = f"▲{pct_r:+.0f}%"
+            elif status == 'below_low':
+                pct_label = f"▼{pct_r:.0f}%"
+            else:
+                pct_label = f"{pct_r:.0f}%"
+
+            rev_dot = ''
+            if rev == 'buy':
+                rev_dot = f"<span style='color:{pos_c};font-size:8px;margin-left:2px'>●</span>"
+            elif rev == 'sell':
+                rev_dot = f"<span style='color:{neg_c};font-size:8px;margin-left:2px'>●</span>"
+
+            grad_dir = '90deg' if is_above else '270deg'
+
+            html += (
+                f"<div style='display:flex;align-items:center;padding:4px 0;gap:5px'>"
+                # Symbol name
+                f"<div style='width:42px;flex-shrink:0'>"
+                f"<span style='color:#e2e8f0;font-size:10px;font-weight:600'>{label}</span>"
+                f"{rev_dot}"
+                f"</div>"
+                # Bar
+                f"<div style='flex:1;position:relative;height:18px;"
+                f"background:{bdr};border-radius:2px;overflow:hidden'>"
+                f"<div style='position:absolute;top:0;"
+                f"{'left' if is_above else 'right'}:0;"
+                f"height:100%;width:{bar_pct:.0f}%;"
+                f"background:linear-gradient({grad_dir},{color}20,{color}60);"
+                f"border-radius:2px'></div>"
+                f"<span style='position:absolute;top:50%;transform:translateY(-50%);"
+                f"{'right' if is_above else 'left'}:5px;"
+                f"color:{color};font-size:10px;font-weight:700;"
+                f"font-variant-numeric:tabular-nums'>"
+                f"{pct_label}</span>"
+                f"</div>"
+                f"</div>"
+            )
+        return html
+
+    def _period_col(above, below, period_label):
+        """Render one period column (WEEK or MONTH) with above + divider + below."""
+        # Scale bars independently per side so relative intensity is clear
+        above_dists = [abs(r['pct_r'] - 50) for _, _, r in above] or [1]
+        below_dists = [abs(r['pct_r'] - 50) for _, _, r in below] or [1]
+        max_above = max(above_dists)
+        max_below = max(below_dists)
+
+        above_html = _bar_rows(above, pos_c, True,  max_above)
+        below_html = _bar_rows(below, neg_c, False, max_below)
+
+        # Section headers
+        def _sub_hdr(label, color, count):
+            return (
+                f"<div style='display:flex;align-items:center;gap:4px;margin-bottom:4px'>"
+                f"<span style='color:{color};font-size:9px'>{'▲' if color == pos_c else '▼'}</span>"
+                f"<span style='color:#f8fafc;font-size:9px;font-weight:600;"
+                f"letter-spacing:0.1em;text-transform:uppercase'>{label}</span>"
+                f"<span style='color:{muted};font-size:8px'>({count})</span>"
+                f"</div>"
+            )
+
+        divider = (
+            f"<div style='height:1px;background:{bdr};margin:6px 0'></div>"
+            if above and below else ''
         )
 
-    row_count = sum(
-        1 for sym in BREAKOUT_SYMBOLS
-        if breakout_data.get(sym) is not None
+        n_rows = len(above) + len(below)
+
+        return (
+            f"<div style='background:{bg2};border:1px solid {bdr};"
+            f"border-radius:6px;padding:8px 10px;font-family:{FONTS}'>"
+            # Period header
+            f"<div style='color:{muted};font-size:8px;font-weight:600;"
+            f"letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;"
+            f"padding-bottom:5px;border-bottom:1px solid {bdr}'>"
+            f"PREV {period_label} H/L POSITION</div>"
+            # Above mid section
+            + (_sub_hdr('ABOVE MID', pos_c, len(above)) + above_html if above else '') +
+            divider +
+            # Below mid section
+            (_sub_hdr('BELOW MID', neg_c, len(below)) + below_html if below else '') +
+            f"</div>",
+            n_rows
+        )
+
+    week_col_html,  w_rows = _period_col(w_above, w_below, 'WEEK')
+    month_col_html, m_rows = _period_col(m_above, m_below, 'MONTH')
+
+    # Height: header(24) + sub-hdr(20) + rows(22each) + divider(13) + padding(20)
+    max_rows = max(w_rows, m_rows, 1)
+    # above + below each have a sub-header; divider if both present
+    n_above_max = max(len(w_above), len(m_above))
+    n_below_max = max(len(w_below), len(m_below))
+    has_both = (n_above_max > 0 and n_below_max > 0)
+    height = (
+        24                          # period header
+        + (20 if n_above_max else 0)  # above sub-header
+        + n_above_max * 26
+        + (13 if has_both else 0)   # divider
+        + (20 if n_below_max else 0)  # below sub-header
+        + n_below_max * 26
+        + 40                        # padding
     )
-    height = 36 + row_count * 54  # header + rows
+    height = max(height, 80)
+
+    html = (
+        f"<div style='display:grid;grid-template-columns:1fr 1fr;gap:8px;"
+        f"font-family:{FONTS}'>"
+        f"{week_col_html}"
+        f"{month_col_html}"
+        f"</div>"
+    )
     _wrap(html, height)
 
 
@@ -834,8 +874,8 @@ def _render_pulse_news():
 
 def render_pulse_tab(is_mobile):
     with st.spinner('Scanning markets...'):
-        data = _fetch_pulse_batch()
-        spark_data = _fetch_sparklines()
+        data          = _fetch_pulse_batch()
+        spark_data    = _fetch_sparklines()
         breakout_data = _fetch_breakout_data()
 
     if not data:
@@ -847,17 +887,19 @@ def render_pulse_tab(is_mobile):
     if spark_data:
         _render_sparkline_row(spark_data, data)
 
-    # Breakout panel: full-width, between sparklines and movers
-    _render_breakout_panel(breakout_data)
-
     if is_mobile:
+        _render_breakout_panel(breakout_data)
         _render_movers(data)
         _render_pulse_news()
         _render_heatmap_grid(data)
     else:
-        col_left, col_right = st.columns([45, 55])
-        with col_left:
+        # Row: movers (left) | breakout week+month (centre) | news (right)
+        col_movers, col_breakout, col_news = st.columns([22, 45, 33])
+        with col_movers:
             _render_movers(data)
-        with col_right:
+        with col_breakout:
+            _render_breakout_panel(breakout_data)
+        with col_news:
             _render_pulse_news()
+
         _render_heatmap_grid(data)
