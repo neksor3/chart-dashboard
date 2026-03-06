@@ -449,7 +449,7 @@ def _render_hero_row(data):
             f"</div></div>"
         )
     html = f"<div style='display:flex;gap:6px;flex-wrap:wrap'>{cards}</div>"
-    _wrap(html, 100)
+    _wrap(html, 88)
 
 
 def _render_sparkline_row(spark_data, pulse_data):
@@ -477,7 +477,7 @@ def _render_sparkline_row(spark_data, pulse_data):
             f"</div>"
         )
     html = f"<div style='display:flex;gap:5px;flex-wrap:wrap'>{cards}</div>"
-    _wrap(html, 70)
+    _wrap(html, 58)
 
 def _render_heatmap_grid(data):
     t = get_theme()
