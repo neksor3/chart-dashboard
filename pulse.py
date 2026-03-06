@@ -141,9 +141,9 @@ def _fetch_sparklines():
 # Flat ordered dict: sym -> short label, deduped, preserving sector order
 BREAKOUT_SYMBOLS = OrderedDict()
 for _syms in HEATMAP_SECTORS.values():
-    for _s in _syms:
-        if _s not in BREAKOUT_SYMBOLS:
-            BREAKOUT_SYMBOLS[_s] = sym_short(_s)
+    for _sym in _syms:
+        if _sym not in BREAKOUT_SYMBOLS:
+            BREAKOUT_SYMBOLS[_sym] = sym_short(_sym)
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
