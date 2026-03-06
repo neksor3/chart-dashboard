@@ -145,6 +145,318 @@ def _fetch_sparklines():
     return result
 
 
+# ── BREAKOUT SCANNER ─────────────────────────────────────────────────────────
+
+# Symbols shown in the breakout panel — curated cross-asset watchlist
+BREAKOUT_SYMBOLS = OrderedDict([
+    ('ES=F',    'S&P'),
+    ('NQ=F',    'NQ'),
+    ('GC=F',    'Gold'),
+    ('CL=F',    'Crude'),
+    ('ZW=F',    'Wheat'),
+    ('NG=F',    'NatGas'),
+    ('BTC-USD', 'BTC'),
+    ('ZN=F',    '10Y'),
+    ('6J=F',    'JPY'),
+    ('USDSGD=X','SGDUSD'),
+    ('^STI',    'STI'),
+    ('ZC=F',    'Corn'),
+])
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def _fetch_breakout_data():
+    """
+    Fetch 3 months of daily data per symbol.
+    3mo gives ~63 trading days — enough for:
+      - full previous calendar month (up to ~23 bars)
+      - full previous ISO week (up to 5 bars)
+      - current period bars
+    Returns dict: sym -> DataFrame with OHLC columns
+    """
+    syms = list(BREAKOUT_SYMBOLS.keys())
+    batch_syms = [s for s in syms if not s.startswith('^')]
+    result = {}
+
+    # Batch download for non-index symbols
+    try:
+        batch = yf.download(batch_syms, period='3mo', group_by='ticker',
+                            threads=True, progress=False)
+    except Exception as e:
+        logger.warning(f"Breakout batch download failed: {e}")
+        batch = pd.DataFrame()
+
+    for sym in syms:
+        try:
+            if sym.startswith('^'):
+                hist = yf.Ticker(sym).history(period='3mo')
+            elif batch.empty:
+                hist = yf.Ticker(sym).history(period='3mo')
+            elif len(batch_syms) == 1:
+                hist = batch.copy()
+            elif sym in batch.columns.get_level_values(0):
+                hist = batch[sym].dropna(how='all')
+            else:
+                hist = yf.Ticker(sym).history(period='3mo')
+
+            if hist.empty or len(hist) < 10:
+                continue
+            # Ensure required columns exist
+            for col in ('Open', 'High', 'Low', 'Close'):
+                if col not in hist.columns:
+                    break
+            else:
+                result[sym] = hist
+        except Exception as e:
+            logger.debug(f"[{sym}] breakout fetch error: {e}")
+
+    return result
+
+
+def _compute_breakout_status(hist, period_type):
+    """
+    Reuses charts.py _slice_period logic exactly — imported at call time
+    to avoid circular import at module load.
+
+    Returns dict with:
+      prev_high, prev_low, prev_mid, prev_close  — the reference levels
+      curr_price                                  — latest close
+      pct_r    : Williams-style %R (0=at low, 100=at high, >100=breakout above, <0=breakdown)
+      status   : 'above_high' | 'above_mid' | 'below_mid' | 'below_low'
+      reversal : 'buy' | 'sell' | ''
+      curr_high, curr_low                         — this period's high/low so far
+    """
+    from charts import _slice_period  # deferred to avoid circular import
+
+    try:
+        prev_period, current_bars = _slice_period(hist, period_type)
+        if prev_period is None or prev_period.empty:
+            return None
+
+        ph = float(prev_period['High'].max())
+        pl = float(prev_period['Low'].min())
+        pc = float(prev_period['Close'].iloc[-1])
+        pm = (ph + pl) / 2.0
+        rng = ph - pl
+
+        # Use latest close as current price
+        if current_bars is not None and not current_bars.empty:
+            curr_price = float(current_bars['Close'].iloc[-1])
+            curr_high  = float(current_bars['High'].max())
+            curr_low   = float(current_bars['Low'].min())
+        else:
+            # Period just started — no current bars yet (e.g. first bar of new week)
+            # Fall back to the very last bar in hist
+            curr_price = float(hist['Close'].iloc[-1])
+            curr_high  = curr_price
+            curr_low   = curr_price
+
+        # %R: position within prev period range
+        # >100 means above prev high (breakout), <0 means below prev low (breakdown)
+        pct_r = ((curr_price - pl) / rng * 100) if rng > 0 else 50.0
+
+        # Status — exact same 4-state logic as charts.py
+        if curr_price > ph:
+            status = 'above_high'
+        elif curr_price < pl:
+            status = 'below_low'
+        elif curr_price > pm:
+            status = 'above_mid'
+        else:
+            status = 'below_mid'
+
+        # Reversal — exact same logic as charts.py _check_reversal
+        reversal = ''
+        if current_bars is not None and not current_bars.empty:
+            if curr_high > ph and curr_price <= ph:
+                reversal = 'sell'   # rejected at high
+            elif curr_low < pl and curr_price >= pl:
+                reversal = 'buy'    # bounced off low
+
+        return {
+            'prev_high':  ph,
+            'prev_low':   pl,
+            'prev_mid':   pm,
+            'prev_close': pc,
+            'curr_price': curr_price,
+            'curr_high':  curr_high,
+            'curr_low':   curr_low,
+            'pct_r':      pct_r,
+            'status':     status,
+            'reversal':   reversal,
+        }
+    except Exception as e:
+        logger.debug(f"_compute_breakout_status ({period_type}) error: {e}")
+        return None
+
+
+def _render_breakout_panel(breakout_data):
+    """
+    Renders a compact breakout strip on the Pulse tab.
+    Each row: symbol | prev week range bar | prev month range bar
+    The range bar shows where current price sits within prev period H/L.
+    >100% = breakout above (green), <0% = breakdown below (red/amber).
+    """
+    t = get_theme()
+    s = _s()
+    pos_c = t['pos']       # green
+    neg_c = t['neg']       # amber
+    bdr   = s['border']
+    bg2   = s['bg2']
+    bg3   = s['bg3']
+    txt2  = s['text2']
+    muted = s['muted']
+
+    STATUS_COLOR = {
+        'above_high': pos_c,
+        'above_mid':  t.get('zone_amid', '#86efac'),
+        'below_mid':  t.get('zone_bmid', '#fbbf24'),
+        'below_low':  neg_c,
+    }
+    STATUS_LABEL = {
+        'above_high': '▲ BREAK',
+        'above_mid':  '▲ MID',
+        'below_mid':  '▼ MID',
+        'below_low':  '▼ BREAK',
+    }
+
+    def _bar_html(res, label, bar_color):
+        """Render a mini range bar with current price marker."""
+        if res is None:
+            return f"<div style='color:{muted};font-size:9px;text-align:center'>—</div>"
+
+        pct   = res['pct_r']     # can be <0 or >100
+        status = res['status']
+        rev    = res['reversal']
+        sc     = STATUS_COLOR.get(status, muted)
+        sl     = STATUS_LABEL.get(status, '')
+
+        # Clamp marker to bar bounds for rendering, but show real value
+        marker_pct = max(0.0, min(100.0, pct))
+
+        # Breakout: bar turns accent colour and overflows indicator
+        if status == 'above_high':
+            bar_fill_color = pos_c
+            fill_pct = 100
+        elif status == 'below_low':
+            bar_fill_color = neg_c
+            fill_pct = 0
+        else:
+            bar_fill_color = bar_color
+            fill_pct = marker_pct
+
+        pct_str = f"{pct:+.0f}%" if (pct > 100 or pct < 0) else f"{pct:.0f}%"
+
+        rev_dot = ''
+        if rev == 'buy':
+            rev_dot = f"<span style='color:{pos_c};font-size:8px;margin-left:2px'>●</span>"
+        elif rev == 'sell':
+            rev_dot = f"<span style='color:{neg_c};font-size:8px;margin-left:2px'>●</span>"
+
+        return (
+            f"<div style='display:flex;flex-direction:column;gap:2px'>"
+            # Label + status + pct
+            f"<div style='display:flex;justify-content:space-between;align-items:center'>"
+            f"<span style='color:{muted};font-size:8px;font-weight:600;letter-spacing:0.06em'>{label}</span>"
+            f"<span style='color:{sc};font-size:8px;font-weight:700'>{sl}{rev_dot}</span>"
+            f"<span style='color:{sc};font-size:8px;font-weight:700;font-variant-numeric:tabular-nums'>{pct_str}</span>"
+            f"</div>"
+            # Range bar
+            f"<div style='position:relative;height:6px;background:{bdr};border-radius:3px;overflow:visible'>"
+            # Fill from left up to fill_pct
+            f"<div style='position:absolute;top:0;left:0;height:100%;width:{fill_pct:.1f}%;"
+            f"background:{bar_fill_color};border-radius:3px;opacity:0.5'></div>"
+            # Price marker
+            f"<div style='position:absolute;top:-2px;left:{marker_pct:.1f}%;transform:translateX(-50%);"
+            f"width:3px;height:10px;background:{sc};border-radius:1px'></div>"
+            f"</div>"
+            # H / L labels
+            f"<div style='display:flex;justify-content:space-between'>"
+            f"<span style='color:{muted};font-size:7px;font-variant-numeric:tabular-nums'>{res['prev_low']:,.2f}</span>"
+            f"<span style='color:{muted};font-size:7px;font-variant-numeric:tabular-nums'>{res['prev_high']:,.2f}</span>"
+            f"</div>"
+            f"</div>"
+        )
+
+    rows_html = ''
+    has_any = False
+
+    for sym, label in BREAKOUT_SYMBOLS.items():
+        hist = breakout_data.get(sym)
+        if hist is None:
+            continue
+
+        week_res  = _compute_breakout_status(hist, 'week')
+        month_res = _compute_breakout_status(hist, 'month')
+
+        if week_res is None and month_res is None:
+            continue
+
+        has_any = True
+        curr_price = (week_res or month_res)['curr_price']
+
+        # Format price sensibly
+        if '=X' in sym:
+            price_str = f"{curr_price:.4f}"
+        elif curr_price > 1000:
+            price_str = f"{curr_price:,.0f}"
+        else:
+            price_str = f"{curr_price:.2f}"
+
+        row_bg = bg2
+
+        week_bar  = _bar_html(week_res,  'WEEK',  '#60a5fa')
+        month_bar = _bar_html(month_res, 'MONTH', '#c084fc')
+
+        rows_html += (
+            f"<div style='display:grid;grid-template-columns:70px 1fr 1fr;"
+            f"gap:8px;align-items:center;padding:6px 10px;"
+            f"border-bottom:1px solid {bdr}18;background:{row_bg}'>"
+            # Symbol + price
+            f"<div>"
+            f"<div style='color:#f8fafc;font-size:10px;font-weight:700'>{label}</div>"
+            f"<div style='color:{txt2};font-size:8.5px;font-variant-numeric:tabular-nums'>{price_str}</div>"
+            f"</div>"
+            # Week bar
+            f"<div>{week_bar}</div>"
+            # Month bar
+            f"<div>{month_bar}</div>"
+            f"</div>"
+        )
+
+    if not has_any:
+        html = (
+            f"<div style='padding:10px 12px;background:{bg2};border:1px solid {bdr};"
+            f"border-radius:6px;color:{muted};font-size:10px;font-family:{FONTS}'>"
+            f"Breakout data loading…</div>"
+        )
+    else:
+        html = (
+            f"<div style='background:{bg2};border:1px solid {bdr};border-radius:6px;"
+            f"overflow:hidden;font-family:{FONTS}'>"
+            # Header
+            f"<div style='display:grid;grid-template-columns:70px 1fr 1fr;"
+            f"gap:8px;padding:5px 10px;border-bottom:1px solid {bdr};"
+            f"background:{bg3}'>"
+            f"<span style='color:#f8fafc;font-size:8px;font-weight:600;"
+            f"letter-spacing:0.1em;text-transform:uppercase'>BREAKOUTS</span>"
+            f"<span style='color:{muted};font-size:8px;font-weight:600;"
+            f"letter-spacing:0.08em;text-transform:uppercase'>PREV WEEK H/L</span>"
+            f"<span style='color:{muted};font-size:8px;font-weight:600;"
+            f"letter-spacing:0.08em;text-transform:uppercase'>PREV MONTH H/L</span>"
+            f"</div>"
+            f"{rows_html}"
+            f"</div>"
+        )
+
+    row_count = sum(
+        1 for sym in BREAKOUT_SYMBOLS
+        if breakout_data.get(sym) is not None
+    )
+    height = 36 + row_count * 54  # header + rows
+    _wrap(html, height)
+
+
 # ── SVG SPARKLINE ────────────────────────────────────────────────────────────
 
 def _svg_sparkline(data, width=100, height=28, pos_color='#4ade80', neg_color='#f59e0b'):
@@ -524,6 +836,7 @@ def render_pulse_tab(is_mobile):
     with st.spinner('Scanning markets...'):
         data = _fetch_pulse_batch()
         spark_data = _fetch_sparklines()
+        breakout_data = _fetch_breakout_data()
 
     if not data:
         st.info('Markets data loading — try refreshing.')
@@ -534,17 +847,17 @@ def render_pulse_tab(is_mobile):
     if spark_data:
         _render_sparkline_row(spark_data, data)
 
+    # Breakout panel: full-width, between sparklines and movers
+    _render_breakout_panel(breakout_data)
+
     if is_mobile:
         _render_movers(data)
         _render_pulse_news()
         _render_heatmap_grid(data)
     else:
-        # Movers left, News right — both above fold
         col_left, col_right = st.columns([45, 55])
         with col_left:
             _render_movers(data)
         with col_right:
             _render_pulse_news()
-
-        # Heatmap full-width below fold
         _render_heatmap_grid(data)
