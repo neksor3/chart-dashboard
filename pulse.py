@@ -413,7 +413,7 @@ def _render_market_status_bar():
         f"<span style='color:{s['border']};font-size:10px;align-self:center'>│</span>"
         f"{hols}</div>"
     )
-    _wrap(html, 36)
+    _wrap(html, 28)
 
 
 def _render_hero_row(data):
@@ -461,7 +461,7 @@ def _render_hero_row(data):
             f"</div></div>"
         )
     html = f"<div style='display:flex;gap:6px;flex-wrap:wrap'>{cards}</div>"
-    _wrap(html, 88)
+    _wrap(html, 80)
 
 
 def _render_sparkline_row(spark_data, pulse_data):
@@ -489,7 +489,7 @@ def _render_sparkline_row(spark_data, pulse_data):
             f"</div>"
         )
     html = f"<div style='display:flex;gap:5px;flex-wrap:wrap'>{cards}</div>"
-    _wrap(html, 58)
+    _wrap(html, 50)
 
 def _render_heatmap_grid(data):
     t = get_theme()

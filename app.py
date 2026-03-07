@@ -121,7 +121,7 @@ def main():
             @keyframes sanpo-ripple {{ 0%,100% {{ opacity: 0.18; }} 35%,50% {{ opacity: 0.65; }} }}
             @keyframes sanpo-breathe {{ 0%,100% {{ opacity: 0.08; }} 40%,60% {{ opacity: 0.95; }} }}
         </style>
-        <div style='display:flex;align-items:center;gap:14px;padding:6px 0'>
+        <div style='display:flex;align-items:center;gap:14px;padding:8px 0 4px 0'>
             <svg width="56" height="56" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
                 <!-- Breathing rings (ripple outward from center) -->
                 <circle cx="20" cy="20" r="6"  stroke="#334155" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 0.3s"/>
