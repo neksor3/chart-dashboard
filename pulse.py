@@ -418,7 +418,7 @@ def _render_market_status_bar():
         f"<span style='color:{s['border']};font-size:10px;align-self:center'>│</span>"
         f"{hols}</div>"
     )
-    _wrap(html, 28)
+    _wrap(html, 36)
 
 
 def _render_hero_row(data):
@@ -466,7 +466,7 @@ def _render_hero_row(data):
             f"</div></div>"
         )
     html = f"<div style='display:flex;gap:6px;flex-wrap:wrap'>{cards}</div>"
-    _wrap(html, 80)
+    _wrap(html, 88)
 
 
 def _render_sparkline_row(spark_data, pulse_data):
@@ -494,7 +494,7 @@ def _render_sparkline_row(spark_data, pulse_data):
             f"</div>"
         )
     html = f"<div style='display:flex;gap:5px;flex-wrap:wrap'>{cards}</div>"
-    _wrap(html, 50)
+    _wrap(html, 58)
 
 def _render_heatmap_grid(data):
     t = get_theme()
@@ -512,7 +512,11 @@ def _render_heatmap_grid(data):
     sectors_html = ''
     active_sectors = 0
     for sector, syms in HEATMAP_SECTORS.items():
-        sector_items = [(sym, data.get(sym,{}).get('change',0)) for sym in syms if data.get(sym)]
+        sector_items = []
+        for sym in syms:
+            d = data.get(sym)
+            if d:
+                sector_items.append((sym, d['change']))
         if not sector_items:
             continue
         sector_items.sort(key=lambda x: x[1], reverse=True)
