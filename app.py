@@ -62,7 +62,7 @@ def _inject_theme_css():
     .stRadio > div > label {{ background-color: {radio_bg}; padding: 4px 12px; border-radius: 3px;
         border: 1px solid {radio_bdr}; color: {sel_c}; font-size: 12px; }}
     div[data-testid="stMarkdownContainer"] p {{ margin-bottom: 0; }}
-    .block-container {{ padding-top: 2.5rem; padding-bottom: 0rem; }}
+    .block-container {{ padding-top: 1rem; padding-bottom: 0rem; }}
     button[kind="secondary"] {{ background-color: {btn_bg}; color: {btn_c}; border: 1px solid {tab_bdr}; font-family: 'Inter', sans-serif; }}
     .stButton > button {{ font-size: 11px !important; padding: 4px 8px !important; min-height: 30px !important; font-family: 'Inter', sans-serif !important; }}
     @media (max-width: 768px) {{
@@ -121,7 +121,7 @@ def main():
             @keyframes sanpo-ripple {{ 0%,100% {{ opacity: 0.18; }} 35%,50% {{ opacity: 0.65; }} }}
             @keyframes sanpo-breathe {{ 0%,100% {{ opacity: 0.08; }} 40%,60% {{ opacity: 0.95; }} }}
         </style>
-        <div style='display:flex;align-items:center;gap:14px;padding:8px 0 4px 0'>
+        <div style='display:flex;align-items:center;gap:14px;padding:8px 0 16px 0'>
             <svg width="56" height="56" viewBox="0 0 40 40" fill="none" style="animation:sanpo-glow 3s ease-in-out infinite">
                 <!-- Breathing rings (ripple outward from center) -->
                 <circle cx="20" cy="20" r="6"  stroke="#334155" stroke-width="0.5" style="animation:sanpo-ripple 4s ease-in-out infinite 0.3s"/>
