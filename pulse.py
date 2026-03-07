@@ -8,7 +8,7 @@ import pytz
 import logging
 from streamlit.components.v1 import html as st_html
 
-from config import FUTURES_GROUPS, THEMES, SYMBOL_NAMES, FONTS, clean_symbol
+from config import FUTURES_GROUPS, THEMES, FONTS, clean_symbol
 
 logger = logging.getLogger(__name__)
 
@@ -79,15 +79,18 @@ HERO_SYMBOLS = OrderedDict([
 ])
 
 HEATMAP_SECTORS = OrderedDict([
-    ('Indices',   ['ES=F', 'NQ=F', 'YM=F', 'RTY=F', 'NKD=F']),
-    ('Crypto',    ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD']),
-    ('Energy',    ['CL=F', 'NG=F', 'RB=F', 'HO=F']),
-    ('Metals',    ['GC=F', 'SI=F', 'PL=F', 'HG=F']),
-    ('Grains',    ['ZC=F', 'ZS=F', 'ZW=F', 'ZM=F']),
-    ('Softs',     ['SB=F', 'KC=F', 'CC=F', 'CT=F']),
-    ('Rates',     ['ZB=F', 'ZN=F', 'ZF=F', 'ZT=F']),
-    ('FX',        ['6E=F', '6J=F', '6B=F', '6A=F']),
-    ('Singapore', ['ES3.SI', 'S68.SI']),
+    ('Indices',    ['ES=F', 'NQ=F', 'NKD=F', 'RTY=F']),
+    ('Crypto',     ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD']),
+    ('Energy',     ['CL=F', 'NG=F', 'RB=F', 'HO=F']),
+    ('Metals',     ['GC=F', 'SI=F', 'HG=F', 'PL=F']),
+    ('Grains',     ['ZC=F', 'ZW=F', 'ZS=F', 'ZM=F']),
+    ('Softs',      ['CC=F', 'KC=F', 'SB=F', 'CT=F']),
+    ('Rates',      ['ZB=F', 'ZN=F', 'ZF=F', 'ZT=F']),
+    ('FX',         ['6J=F', '6E=F', '6B=F', '6A=F']),
+    ('US Sectors', ['XLE', 'XLF', 'XLK', 'XLV']),
+    ('Shipping',   ['ZIM', 'SBLK', 'STNG', 'FRO']),
+    ('Strategy',   ['MSTR', 'MSTU', 'MSTY', 'MSTX']),
+    ('Singapore',  ['^STI', 'ES3.SI', 'S68.SI', 'MBH.SI']),
 ])
 
 SPARKLINE_SYMBOLS = ['ES=F', 'BTC-USD', 'GC=F', 'CL=F', 'USDSGD=X', '^STI']
@@ -148,20 +151,12 @@ def _fetch_sparklines():
 # ── BREAKOUT SCANNER ─────────────────────────────────────────────────────────
 
 # Symbols shown in the breakout panel — curated cross-asset watchlist
-BREAKOUT_SYMBOLS = OrderedDict([
-    ('ES=F',    'S&P'),
-    ('NQ=F',    'NQ'),
-    ('GC=F',    'Gold'),
-    ('CL=F',    'Crude'),
-    ('ZW=F',    'Wheat'),
-    ('NG=F',    'NatGas'),
-    ('BTC-USD', 'BTC'),
-    ('ZN=F',    '10Y'),
-    ('6J=F',    'JPY'),
-    ('USDSGD=X','SGDUSD'),
-    ('^STI',    'STI'),
-    ('ZC=F',    'Corn'),
-])
+# Derived from HEATMAP_SECTORS — single source of truth, symbols only
+BREAKOUT_SYMBOLS = OrderedDict()
+for _syms in HEATMAP_SECTORS.values():
+    for _sym in _syms:
+        if _sym not in BREAKOUT_SYMBOLS:
+            BREAKOUT_SYMBOLS[_sym] = clean_symbol(_sym)
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -556,7 +551,7 @@ def _render_heatmap_grid(data):
         f"</div>"
         f"{sectors_html}</div>"
     )
-    _wrap(html, 46 * active_sectors + 50)
+    _wrap(html, 52 * active_sectors + 50)
 
 
 def _render_movers(data):
@@ -611,7 +606,9 @@ def _render_movers(data):
         f"<span style='color:{neg_c};font-size:12px'>&#9660;</span> TOP LOSERS</div>"
         f"{lose_html}</div></div>"
     )
-    _wrap(html, 28 * n_rows + 50)
+    h = 28 * n_rows + 50
+    _wrap(html, h)
+    return h
 
 
 
@@ -690,7 +687,6 @@ def _render_breakout_tables(breakout_data):
     neg_c = t['neg']
     bdr   = s['border']
     bg2   = s['bg2']
-    bg3   = s['bg3']
     muted = s['muted']
     bar_bg = s['bar_bg']
 
@@ -698,14 +694,14 @@ def _render_breakout_tables(breakout_data):
     def _classify(period_type):
         """
         Returns (above_list, below_list) where each item is (label, pct_beyond).
-        pct_beyond = how far price has moved beyond the level as % of prev range.
-          above: (curr - prev_high) / prev_range * 100  — always >= 0
-          below: (prev_low - curr)  / prev_range * 100  — always >= 0
+        pct_beyond = how far price has moved beyond the level, as % of that level.
+          above: (curr - prev_high) / prev_high * 100  — always >= 0
+          below: (prev_low - curr)  / prev_low  * 100  — always >= 0
         Sorted descending (furthest break first). Capped at TOP_N_BREAKOUTS.
         """
         above_list = []
         below_list = []
-        for sym, label in BREAKOUT_SYMBOLS.items():
+        for sym in BREAKOUT_SYMBOLS:
             hist = breakout_data.get(sym)
             if hist is None:
                 continue
@@ -713,15 +709,17 @@ def _render_breakout_tables(breakout_data):
             if res is None:
                 continue
             status = res['status']
-            prev_range = max(res['prev_high'] - res['prev_low'], 1e-9)
             rev = res['reversal']
+            display = clean_symbol(sym)
 
             if status == 'above_high':
-                pct = (res['curr_price'] - res['prev_high']) / prev_range * 100
-                above_list.append((label, pct, rev))
+                ph = res['prev_high']
+                pct = (res['curr_price'] - ph) / ph * 100 if ph else 0
+                above_list.append((display, pct, rev))
             elif status == 'below_low':
-                pct = (res['prev_low'] - res['curr_price']) / prev_range * 100
-                below_list.append((label, pct, rev))
+                pl = res['prev_low']
+                pct = (pl - res['curr_price']) / pl * 100 if pl else 0
+                below_list.append((display, pct, rev))
             # inside range → not shown
 
         above_list.sort(key=lambda x: x[1], reverse=True)
@@ -841,14 +839,11 @@ def render_pulse_tab(is_mobile):
         col_left, col_right = st.columns([55, 45])
 
         with col_left:
-            # Render movers — fixed height ~190px
-            _render_movers(data)
-            # Render breakout tables — returns total height used
+            movers_height = _render_movers(data)
             bo_height = _render_breakout_tables(breakout_data)
 
         with col_right:
-            # News panel height = movers(~190) + gap(8) + breakout tables + buffer
-            news_height = 190 + 8 + bo_height
+            news_height = movers_height + 8 + bo_height
             _render_pulse_news(iframe_height=news_height)
 
         _render_heatmap_grid(data)

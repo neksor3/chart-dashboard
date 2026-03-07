@@ -27,49 +27,6 @@ FUTURES_GROUPS = OrderedDict([
     ('Strategy',  ['MSTR', 'STRK', 'STRF', 'STRC', 'STRD', 'MSTU', 'MSTX', 'MSTZ', 'MSTY']),
 ])
 
-# =============================================================================
-# HEATMAP SECTORS — shown in Pulse tab, max 4 per sector
-# Edit here to change what appears in the heatmap
-# =============================================================================
-
-HEATMAP_SECTORS = OrderedDict([
-    ('Indices',    ['ES=F',    'NQ=F',    'NKD=F',   'RTY=F'   ]),
-    ('Crypto',     ['BTC-USD', 'ETH-USD', 'SOL-USD', 'XRP-USD' ]),
-    ('Energy',     ['CL=F',    'NG=F',    'RB=F',    'HO=F'    ]),
-    ('Metals',     ['GC=F',    'SI=F',    'HG=F',    'PL=F'    ]),
-    ('Grains',     ['ZC=F',    'ZW=F',    'ZS=F',    'ZM=F'    ]),
-    ('Softs',      ['CC=F',    'KC=F',    'SB=F',    'CT=F'    ]),
-    ('Rates',      ['ZB=F',    'ZN=F',    'ZF=F',    'ZT=F'    ]),
-    ('FX',         ['6J=F',    '6E=F',    '6B=F',    '6A=F'    ]),
-    ('US Sectors', ['XLE',     'XLF',     'XLK',     'XLV'     ]),
-    ('Shipping',   ['ZIM',     'GOGL',    'STNG',     'FRO'    ]),
-    ('Strategy',   ['MSTR',    'MSTU',    'MSTY',    'MSTX'    ]),
-    ('Singapore',  ['^STI',    'ES3.SI',  'S68.SI',  'MBH.SI'  ]),
-])
-
-# Short labels for heatmap cells (max ~8 chars)
-SYMBOL_SHORT = {
-    'ES=F': 'S&P',    'NQ=F': 'NQ100',  'YM=F': 'Dow',    'RTY=F': 'R2K',    'NKD=F': 'Nikkei',
-    'ZB=F': '30Y',    'ZN=F': '10Y',    'ZF=F': '5Y',     'ZT=F': '2Y',
-    'GC=F': 'Gold',   'SI=F': 'Silver', 'PL=F': 'Plat',   'HG=F': 'Copper',
-    'CL=F': 'Crude',  'NG=F': 'NatGas', 'RB=F': 'Gas',    'HO=F': 'HeatOil',
-    'ZS=F': 'Soy',    'ZC=F': 'Corn',   'ZW=F': 'Wheat',  'ZM=F': 'SoyMeal',
-    'SB=F': 'Sugar',  'KC=F': 'Coffee', 'CC=F': 'Cocoa',  'CT=F': 'Cotton',
-    'BTC-USD': 'BTC', 'ETH-USD': 'ETH', 'SOL-USD': 'SOL', 'XRP-USD': 'XRP',
-    'BTC=F': 'BTCf',  'ETH=F': 'ETHf',
-    '6E=F': 'EUR',    '6J=F': 'JPY',    '6B=F': 'GBP',    '6A=F': 'AUD',
-    'USDSGD=X': 'USDSGD',
-    'ES3.SI': 'STI ETF', 'S68.SI': 'SGX', 'MBH.SI': 'MBH', 'MMS.SI': 'MMS',
-    '^STI': 'STI',
-    'XLB': 'Matrl',   'XLC': 'Comms',  'XLY': 'DiscR',  'XLP': 'Stpls',
-    'XLE': 'Energy',  'XLF': 'Fin',    'XLV': 'Health', 'XLI': 'Indus',
-    'XLK': 'Tech',    'XLU': 'Utils',  'XLRE': 'REITs', 'SPY': 'SPY',
-    'ZIM': 'ZIM',     'GOGL': 'GOGL',  'STNG': 'STNG',  'FRO': 'Frtln',
-    'SBLK': 'SBLK',  'GNK': 'GNK',    'GSL': 'GSL',    'MATX': 'MATX',
-    'MSTR': 'MSTR',  'MSTU': 'MSTRx2', 'MSTY': 'MSTY', 'MSTX': 'MSTRx2s',
-    'MSTZ': 'MSTRx2i',
-}
-
 SYMBOL_NAMES = {
     'ES=F': 'E-mini S&P 500', 'NQ=F': 'E-mini Nasdaq 100', 'YM=F': 'E-mini Dow',
     'RTY=F': 'E-mini Russell 2000', 'NKD=F': 'Nikkei 225',
@@ -134,16 +91,11 @@ THEMES = {
 
 def clean_symbol(sym):
     return (sym.replace('=F', '').replace('=X', '').replace('.SI', '')
-               .replace('^', '').replace('-USD', '').replace('-GBP', '')
-               .replace('-EUR', ''))
+               .replace('^', '').replace('-USD', '').replace('-GBP', '').replace('-EUR', ''))
 
 def sym_name(sym):
     """Friendly name: SYMBOL_NAMES lookup with clean_symbol fallback."""
     return SYMBOL_NAMES.get(sym, clean_symbol(sym))
-
-def sym_short(sym):
-    """Short label for tight UI cells (heatmap): SYMBOL_SHORT → clean_symbol fallback."""
-    return SYMBOL_SHORT.get(sym, clean_symbol(sym))
 
 def get_theme():
     """Single source of truth for current theme — used by all tabs."""
