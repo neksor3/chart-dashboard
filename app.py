@@ -72,11 +72,8 @@ def _inject_theme_css():
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stStatusWidget"] {{visibility: hidden;}}
-
 </style>
 """, unsafe_allow_html=True)
-
-
 
 
 def _detect_mobile():
