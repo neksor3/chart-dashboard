@@ -48,7 +48,6 @@ def _inject_theme_css():
     .stSelectbox > div > div {{ background-color: {sel_bg}; color: {sel_c}; font-family: 'Inter', sans-serif; border: 1px solid {sel_bdr}; }}
     .stTextInput > div > div > input {{ font-family: 'Inter', sans-serif; }}
     div[data-testid="stHorizontalBlock"] {{ gap: 0.3rem; }}
-    div[data-testid="stVerticalBlock"] {{ gap: 0.25rem !important; }}
     .stTabs [data-baseweb="tab-list"] {{ gap: 0; background-color: transparent; padding: 0; border-radius: 0; border-bottom: 1px solid {tab_bdr}; }}
     .stTabs [data-baseweb="tab"] {{
         background-color: transparent; color: {tab_c}; border: none;
@@ -72,7 +71,68 @@ def _inject_theme_css():
     #MainMenu {{visibility: hidden;}}
     footer {{visibility: hidden;}}
     [data-testid="stStatusWidget"] {{visibility: hidden;}}
+    #dot-wave-canvas {{
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        pointer-events: none;
+        z-index: 0;
+        opacity: 0.18;
+    }}
+    .stApp > * {{ position: relative; z-index: 1; }}
 </style>
+""", unsafe_allow_html=True)
+
+    st.markdown("""
+<canvas id="dot-wave-canvas"></canvas>
+<script>
+(function() {
+    const canvas = document.getElementById('dot-wave-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let W, H, dots, t = 0;
+
+    function resize() {
+        W = canvas.width  = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+        buildDots();
+    }
+
+    function buildDots() {
+        dots = [];
+        const cols = Math.ceil(W / 28);
+        const rows = Math.ceil(H / 28);
+        for (let r = 0; r <= rows; r++) {
+            for (let c = 0; c <= cols; c++) {
+                dots.push({ bx: c * 28, by: r * 28 });
+            }
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, W, H);
+        t += 0.008;
+        for (const d of dots) {
+            // wave displacement
+            const wave = Math.sin(d.bx * 0.018 + d.by * 0.012 + t) * 0.5
+                       + Math.sin(d.bx * 0.009 - d.by * 0.022 + t * 1.3) * 0.5;
+            // brightness based on wave
+            const bright = Math.max(0, wave);
+            const size   = 1.0 + bright * 1.6;
+            const alpha  = 0.15 + bright * 0.65;
+            ctx.beginPath();
+            ctx.arc(d.bx, d.by, size, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(200,220,255,${alpha.toFixed(2)})`;
+            ctx.fill();
+        }
+        requestAnimationFrame(draw);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    draw();
+})();
+</script>
 """, unsafe_allow_html=True)
 
 
