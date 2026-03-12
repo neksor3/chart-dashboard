@@ -670,7 +670,7 @@ def _render_pulse_news(iframe_height=600):
 TOP_N_BREAKOUTS = 5   # max rows per side (above/below) per period
 
 
-def _render_breakout_tables(breakout_data):
+def _render_breakout_tables(breakout_data, pulse_data=None):
     """
     Two compact tables stacked:
       Table 1 — WEEK BREAKOUTS  : ▲ above prev week high | ▼ below prev week low
@@ -833,7 +833,7 @@ def render_pulse_tab(is_mobile):
 
     if is_mobile:
         _render_movers(data)
-        _render_breakout_tables(breakout_data)
+        _render_breakout_tables(breakout_data, pulse_data=data)
         _render_pulse_news(iframe_height=400)
         _render_heatmap_grid(data)
     else:
