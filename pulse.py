@@ -162,8 +162,9 @@ for _syms in HEATMAP_SECTORS.values():
 @st.cache_data(ttl=300, show_spinner=False)
 def _fetch_breakout_data():
     """
-    Fetch 3 months of daily data per symbol.
-    3mo gives ~63 trading days — enough for:
+    Fetch 2 years of daily data per symbol.
+    2y gives ~500 trading days — enough for:
+      - full previous calendar year (up to ~252 bars)
       - full previous calendar month (up to ~23 bars)
       - full previous ISO week (up to 5 bars)
       - current period bars
@@ -175,7 +176,7 @@ def _fetch_breakout_data():
 
     # Batch download for non-index symbols
     try:
-        batch = yf.download(batch_syms, period='3mo', group_by='ticker',
+        batch = yf.download(batch_syms, period='2y', group_by='ticker',
                             threads=True, progress=False)
     except Exception as e:
         logger.warning(f"Breakout batch download failed: {e}")
@@ -184,15 +185,15 @@ def _fetch_breakout_data():
     for sym in syms:
         try:
             if sym.startswith('^'):
-                hist = yf.Ticker(sym).history(period='3mo')
+                hist = yf.Ticker(sym).history(period='2y')
             elif batch.empty:
-                hist = yf.Ticker(sym).history(period='3mo')
+                hist = yf.Ticker(sym).history(period='2y')
             elif len(batch_syms) == 1:
                 hist = batch.copy()
             elif sym in batch.columns.get_level_values(0):
                 hist = batch[sym].dropna(how='all')
             else:
-                hist = yf.Ticker(sym).history(period='3mo')
+                hist = yf.Ticker(sym).history(period='2y')
 
             if hist.empty or len(hist) < 10:
                 continue
@@ -836,13 +837,11 @@ def render_pulse_tab(is_mobile):
         _render_pulse_news(iframe_height=400)
         _render_heatmap_grid(data)
     else:
-        # Left column: movers + week breakouts + month breakouts (3 stacked tables)
-        # Right column: news stretching full height of left column
         col_left, col_right = st.columns([55, 45])
 
         with col_left:
             movers_height = _render_movers(data)
-            bo_height = _render_breakout_tables(breakout_data)
+            bo_height = _render_breakout_tables(breakout_data, pulse_data=data)
 
         with col_right:
             news_height = movers_height + 8 + bo_height
